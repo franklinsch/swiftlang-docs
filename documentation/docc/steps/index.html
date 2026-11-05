@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Steps</title><meta content="Defines a set of tasks the reader performs on a tutorial page." name="description"><script src="../../../navigator-index-docc-documentation.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../index.html">DocC</a></li><li>Steps</li></ul></nav><hgroup><p>Directive</p><h1>Steps</h1></hgroup><p>Defines a set of tasks the reader performs on a tutorial page.</p><ul id="availability"><li aria-label="Swift-DocC 5.5+, Available on Swift-DocC 5.5 and later" title="Available on Swift-DocC 5.5 and later">Swift-DocC 5.5+</li></ul><pre id="declaration"><code><span class="typeIdentifier">@Steps</span> {
+    ...
+}</code></pre></section><section id="Mentioned-In"><h2><a href="#Mentioned-In">Mentioned In</a></h2><ul><li><a href="../building-an-interactive-tutorial/index.html">Building an Interactive Tutorial</a></li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Use the <code>Steps</code> directive to define a set of tasks the reader performs on a tutorial page.</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.docc/3@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.docc/3~dark@2x.png"><img alt="A screenshot showing three steps on a tutorial page." decoding="async" loading="lazy"></picture></p><p>Each individual step contains instructional text along with either a code listing, an image , or a video.</p><pre><code>@Tutorial(time: 30) {
+    
+    ...
+    
+    @Section(title: "Create a Swift Package") {
+        @ContentAndMedia {
+
+            ...
+
+        }
+        
+        @Steps {
+            @Step {
+                Create a new directory named `SwiftPackage`.
+                
+                @Code(name: "CreateDirectory.sh", file: 01-create-dir.sh) {
+                    @Image(source: preview-01-create-directory.png, alt: "A screenshot from the command-line showing creating the directory using the `mkdir SwiftPackage` command.")
+                }
+            }    
+
+        @Step {
+            Change into the new directory.
+            
+            @Code(name: "ChangeDirectory.sh", file: 02-change-directory.sh) {
+                @Image(source: preview-02-change-directory.png, alt: "A screenshot from the command-line showing changing into the directory using the `cd SwiftPackage` command.")
+            }
+        }    
+
+            @Step {
+                Create a new Swift Package.
+                
+                @Code(name: "Package.swift", file: 03-create-package.sh) {
+                    @Image(source: preview-03-create-package.png, alt: "A screenshot from the command-line showing Swift Package creation using the `swift package init` command.")
+                }
+            }    
+            
+            ...
+
+        }
+    }
+}
+</code></pre><h3 id="Contained-Elements"><a href="#Contained-Elements">Contained Elements</a></h3><p>A set of steps can contain one or more of the following items:</p><ul><li><p>term <a href="../step/index.html"><code>Step</code></a>: An individual task the reader performs. <b>(optional)</b></p></li></ul><h3 id="Containing-Elements"><a href="#Containing-Elements">Containing Elements</a></h3><p>The following items can include a set of steps:</p><ul><li><p><a href="../section/index.html"><code>Section</code></a></p></li></ul></section><section id="Topics"><h2><a href="#Topics">Topics</a></h2><h3 id="Adding-Individual-Steps"><a href="#Adding-Individual-Steps">Adding Individual Steps</a></h3><p></p><ul><li><a href="../step/index.html"><code><span class="identifier">@Step</span></code></a><p>Defines an individual task the reader performs within a set of steps on a tutorial page.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

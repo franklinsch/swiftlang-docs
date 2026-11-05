@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Take extra care with unconstrained polymorphism</title><meta content="Take extra care with unconstrained polymorphism to avoid ambiguities in overload sets." name="description"><script src="../../../navigator-index-api-guidelines.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">API Guidelines</a></li><li>Take extra care with unconstrained polymorphism</li></ul></nav><hgroup><p>Article</p><h1>Take extra care with unconstrained polymorphism</h1></hgroup><p>Take extra care with unconstrained polymorphism to avoid ambiguities in overload sets.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Unconstrained polymorphism includes types such as <code>Any</code>, <code>AnyObject</code>, and unconstrained generic parameters.</p><p>⛔ For example, consider this overload set:</p><pre class="swift"><code>struct Array&lt;Element> {
+  /// Inserts `newElement` at `self.endIndex`.
+  public mutating func append(_ newElement: Element)
+
+  /// Inserts the contents of `newElements`, in order, at
+  /// `self.endIndex`.
+  public mutating func append&lt;S: SequenceType>(_ newElements: S)
+    where S.Generator.Element == Element
+}
+</code></pre><p>These methods form a semantic family, and the argument types appear at first to be sharply distinct.  However, when <code>Element</code> is <code>Any</code>, a single element can have the same type as a sequence of elements.</p><p>⛔ Because <code>Element</code> can be <code>Any</code>, this call is ambiguous between the two overloads:</p><pre class="swift"><code>var values: [Any] = [1, "a"]
+values.append([2, 3, 4]) // [1, "a", [2, 3, 4]] or [1, "a", 2, 3, 4]?
+</code></pre><p>✅ To eliminate the ambiguity, name the second overload more explicitly.</p><pre class="swift"><code>struct Array {
+  /// Inserts `newElement` at `self.endIndex`.
+  public mutating func append(_ newElement: Element)
+
+  /// Inserts the contents of `newElements`, in order, at
+  /// `self.endIndex`.
+  public mutating func append&lt;S: SequenceType>(**contentsOf** newElements: S)
+    where S.Generator.Element == Element
+}
+</code></pre><p>Notice how the new name better matches the documentation comment. In this case, the act of writing the documentation comment actually brought the issue to the API author’s attention.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Special-Instructions"><a href="#Special-Instructions">Special Instructions</a></h3><ul><li><a href="../tuple-and-closure-labels/index.html"><p class="api-collection">Label tuple members and name closure parameters</p></a><p>Label tuple members and name closure parameters where they appear in your API.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

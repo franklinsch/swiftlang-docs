@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Type Casting</title><meta content="Determine a value’s runtime type and give it more specific type information." name="description"><script src="../../../navigator-index-swift-book.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">The Swift Programming Language (6.4)</a></li><li>Type Casting</li></ul></nav><hgroup><p>Article</p><h1>Type Casting</h1></hgroup><p>Determine a value’s runtime type and give it more specific type information.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p><i>Type casting</i> is a way to check the type of an instance, or to treat that instance as a different superclass or subclass from somewhere else in its own class hierarchy.</p><p>Type casting in Swift is implemented with the <code>is</code> and <code>as</code> operators. These two operators provide a simple and expressive way to check the type of a value or cast a value to a different type.</p><p>You can also use type casting to check whether a type conforms to a protocol, as described in Protocols.</p><h2 id="Defining-a-Class-Hierarchy-for-Type-Casting"><a href="#Defining-a-Class-Hierarchy-for-Type-Casting">Defining a Class Hierarchy for Type Casting</a></h2><p>You can use type casting with a hierarchy of classes and subclasses to check the type of a particular class instance and to cast that instance to another class within the same hierarchy. The three code snippets below define a hierarchy of classes and an array containing instances of those classes, for use in an example of type casting.</p><p>The first snippet defines a new base class called <code>MediaItem</code>. This class provides basic functionality for any kind of item that appears in a digital media library. Specifically, it declares a <code>name</code> property of type <code>String</code>, and an <code>init(name:)</code> initializer. (It’s assumed that all media items, including all movies and songs, will have a name.)</p><pre class="swift"><code>class MediaItem {
+    var name: String
+    init(name: String) {
+        self.name = name
+    }
+}
+</code></pre><p>The next snippet defines two subclasses of <code>MediaItem</code>. The first subclass, <code>Movie</code>, encapsulates additional information about a movie or film. It adds a <code>director</code> property on top of the base <code>MediaItem</code> class, with a corresponding initializer. The second subclass, <code>Song</code>, adds an <code>artist</code> property and initializer on top of the base class:</p><pre class="swift"><code>class Movie: MediaItem {
+    var director: String
+    init(name: String, director: String) {
+        self.director = director
+        super.init(name: name)
+    }
+}
+
+class Song: MediaItem {
+    var artist: String
+    init(name: String, artist: String) {
+        self.artist = artist
+        super.init(name: name)
+    }
+}
+</code></pre><p>The final snippet creates a constant array called <code>library</code>, which contains two <code>Movie</code> instances and three <code>Song</code> instances. The type of the <code>library</code> array is inferred by initializing it with the contents of an array literal. Swift’s type checker is able to deduce that <code>Movie</code> and <code>Song</code> have a common superclass of <code>MediaItem</code>, and so it infers a type of <code>[MediaItem]</code> for the <code>library</code> array:</p><pre class="swift"><code>let library = [
+    Movie(name: "Casablanca", director: "Michael Curtiz"),
+    Song(name: "Blue Suede Shoes", artist: "Elvis Presley"),
+    Movie(name: "Citizen Kane", director: "Orson Welles"),
+    Song(name: "The One And Only", artist: "Chesney Hawkes"),
+    Song(name: "Never Gonna Give You Up", artist: "Rick Astley")
+]
+// the type of "library" is inferred to be [MediaItem]
+</code></pre><p>The items stored in <code>library</code> are still <code>Movie</code> and <code>Song</code> instances behind the scenes. However, if you iterate over the contents of this array, the items you receive back are typed as <code>MediaItem</code>, and not as <code>Movie</code> or <code>Song</code>. In order to work with them as their native type, you need to <i>check</i> their type, or <i>downcast</i> them to a different type, as described below.</p><h2 id="Checking-Type"><a href="#Checking-Type">Checking Type</a></h2><p>Use the <i>type check operator</i> (<code>is</code>) to check whether an instance is of a certain subclass type. The type check operator returns <code>true</code> if the instance is of that subclass type and <code>false</code> if it’s not.</p><p>The example below defines two variables, <code>movieCount</code> and <code>songCount</code>, which count the number of <code>Movie</code> and <code>Song</code> instances in the <code>library</code> array:</p><pre class="swift"><code>var movieCount = 0
+var songCount = 0
+
+for item in library {
+    if item is Movie {
+        movieCount += 1
+    } else if item is Song {
+        songCount += 1
+    }
+}
+
+print("Media library contains \(movieCount) movies and \(songCount) songs")
+// Prints "Media library contains 2 movies and 3 songs".
+</code></pre><p>This example iterates through all items in the <code>library</code> array. On each pass, the <code>for</code>-<code>in</code> loop sets the <code>item</code> constant to the next <code>MediaItem</code> in the array.</p><p><code>item is Movie</code> returns <code>true</code> if the current <code>MediaItem</code> is a <code>Movie</code> instance and <code>false</code> if it’s not. Similarly, <code>item is Song</code> checks whether the item is a <code>Song</code> instance. At the end of the <code>for</code>-<code>in</code> loop, the values of <code>movieCount</code> and <code>songCount</code> contain a count of how many <code>MediaItem</code> instances were found of each type.</p><h2 id="Downcasting"><a href="#Downcasting">Downcasting</a></h2><p>A constant or variable of a certain class type may actually refer to an instance of a subclass behind the scenes. Where you believe this is the case, you can try to <i>downcast</i> to the subclass type with a <i>type cast operator</i> (<code>as?</code> or <code>as!</code>).</p><p>Because downcasting can fail, the type cast operator comes in two different forms. The conditional form, <code>as?</code>, returns an optional value of the type you are trying to downcast to. The forced form, <code>as!</code>, attempts the downcast and force-unwraps the result as a single compound action.</p><p>Use the conditional form of the type cast operator (<code>as?</code>) when you aren’t sure if the downcast will succeed. This form of the operator will always return an optional value, and the value will be <code>nil</code> if the downcast was not possible. This enables you to check for a successful downcast.</p><p>Use the forced form of the type cast operator (<code>as!</code>) only when you are sure that the downcast will always succeed. This form of the operator will trigger a runtime error if you try to downcast to an incorrect class type.</p><p>The example below iterates over each <code>MediaItem</code> in <code>library</code>, and prints an appropriate description for each item. To do this, it needs to access each item as a true <code>Movie</code> or <code>Song</code>, and not just as a <code>MediaItem</code>. This is necessary in order for it to be able to access the <code>director</code> or <code>artist</code> property of a <code>Movie</code> or <code>Song</code> for use in the description.</p><p>In this example, each item in the array might be a <code>Movie</code>, or it might be a <code>Song</code>. You don’t know in advance which actual class to use for each item, and so it’s appropriate to use the conditional form of the type cast operator (<code>as?</code>) to check the downcast each time through the loop:</p><pre class="swift"><code>for item in library {
+    if let movie = item as? Movie {
+        print("Movie: \(movie.name), dir. \(movie.director)")
+    } else if let song = item as? Song {
+        print("Song: \(song.name), by \(song.artist)")
+    }
+}
+
+// Movie: Casablanca, dir. Michael Curtiz
+// Song: Blue Suede Shoes, by Elvis Presley
+// Movie: Citizen Kane, dir. Orson Welles
+// Song: The One And Only, by Chesney Hawkes
+// Song: Never Gonna Give You Up, by Rick Astley
+</code></pre><p>The example starts by trying to downcast the current <code>item</code> as a <code>Movie</code>. Because <code>item</code> is a <code>MediaItem</code> instance, it’s possible that it <i>might</i> be a <code>Movie</code>; equally, it’s also possible that it might be a <code>Song</code>, or even just a base <code>MediaItem</code>. Because of this uncertainty, the <code>as?</code> form of the type cast operator returns an <i>optional</i> value when attempting to downcast to a subclass type. The result of <code>item as? Movie</code> is of type <code>Movie?</code>, or “optional <code>Movie</code>”.</p><p>Downcasting to <code>Movie</code> fails when applied to the <code>Song</code> instances in the library array. To cope with this, the example above uses optional binding to check whether the optional <code>Movie</code> actually contains a value (that is, to find out whether the downcast succeeded.) This optional binding is written “<code>if let movie = item as? Movie</code>”, which can be read as:</p><p>“Try to access <code>item</code> as a <code>Movie</code>. If this is successful, set a new temporary constant called <code>movie</code> to the value stored in the returned optional <code>Movie</code>.”</p><p>If the downcasting succeeds, the properties of <code>movie</code> are then used to print a description for that <code>Movie</code> instance, including the name of its <code>director</code>. A similar principle is used to check for <code>Song</code> instances, and to print an appropriate description (including <code>artist</code> name) whenever a <code>Song</code> is found in the library.</p><aside class="note"><p class="label">Note</p><p>Casting doesn’t actually modify the instance or change its values. The underlying instance remains the same; it’s simply treated and accessed as an instance of the type to which it has been cast.</p></aside><h2 id="Type-Casting-for-Any-and-AnyObject"><a href="#Type-Casting-for-Any-and-AnyObject">Type Casting for Any and AnyObject</a></h2><p>Swift provides two special types for working with nonspecific types:</p><ul><li><p><code>Any</code> can represent an instance of any type at all, including function types.</p></li><li><p><code>AnyObject</code> can represent an instance of any class type.</p></li></ul><p>Use <code>Any</code> and <code>AnyObject</code> only when you explicitly need the behavior and capabilities they provide. It’s always better to be specific about the types you expect to work with in your code.</p><p>Here’s an example of using <code>Any</code> to work with a mix of different types, including function types and nonclass types. The example creates an array called <code>things</code>, which can store values of type <code>Any</code>:</p><pre class="swift"><code>var things: [Any] = []
+
+things.append(0)
+things.append(0.0)
+things.append(42)
+things.append(3.14159)
+things.append("hello")
+things.append((3.0, 5.0))
+things.append(Movie(name: "Ghostbusters", director: "Ivan Reitman"))
+things.append({ (name: String) -> String in "Hello, \(name)" })
+</code></pre><p>The <code>things</code> array contains two <code>Int</code> values, two <code>Double</code> values, a <code>String</code> value, a tuple of type <code>(Double, Double)</code>, the movie “Ghostbusters”, and a closure expression that takes a <code>String</code> value and returns another <code>String</code> value.</p><p>To discover the specific type of a constant or variable that’s known only to be of type <code>Any</code> or <code>AnyObject</code>, you can use an <code>is</code> or <code>as</code> pattern in a <code>switch</code> statement’s cases. The example below iterates over the items in the <code>things</code> array and queries the type of each item with a <code>switch</code> statement. Several of the <code>switch</code> statement’s cases bind their matched value to a constant of the specified type to enable its value to be printed:</p><pre class="swift"><code>for thing in things {
+    switch thing {
+    case 0 as Int:
+        print("zero as an Int")
+    case 0 as Double:
+        print("zero as a Double")
+    case let someInt as Int:
+        print("an integer value of \(someInt)")
+    case let someDouble as Double where someDouble > 0:
+        print("a positive double value of \(someDouble)")
+    case is Double:
+        print("some other double value that I don't want to print")
+    case let someString as String:
+        print("a string value of \"\(someString)\"")
+    case let (x, y) as (Double, Double):
+        print("an (x, y) point at \(x), \(y)")
+    case let movie as Movie:
+        print("a movie called \(movie.name), dir. \(movie.director)")
+    case let stringConverter as (String) -> String:
+        print(stringConverter("Michael"))
+    default:
+        print("something else")
+    }
+}
+
+// zero as an Int
+// zero as a Double
+// an integer value of 42
+// a positive double value of 3.14159
+// a string value of "hello"
+// an (x, y) point at 3.0, 5.0
+// a movie called Ghostbusters, dir. Ivan Reitman
+// Hello, Michael
+</code></pre><aside class="note"><p class="label">Note</p><p>The <code>Any</code> type represents values of any type, including optional types. Swift gives you a warning if you use an optional value where a value of type <code>Any</code> is expected. If you really do need to use an optional value as an <code>Any</code> value, you can use the <code>as</code> operator to explicitly cast the optional to <code>Any</code>, as shown below.</p><pre class="swift"><code>let optionalNumber: Int? = 3
+things.append(optionalNumber)        // Warning
+things.append(optionalNumber as Any) // No warning
+</code></pre></aside></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

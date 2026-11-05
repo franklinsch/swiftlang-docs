@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Blinking an LED in Morse code on the Raspberry Pi Pico W with the Pico SDK</title><meta content="Run a Swift program on a Raspberry Pi Pico W or Pico 2 W that signals “SOS” in Morse code using the Pico SDK’s Wi-Fi chip driver." name="description"><script src="../../../navigator-index-embedded-swift.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Embedded Swift</a></li><li><a href="../examples/index.html">Examples</a></li><li>Blinking an LED in Morse code on the Raspberry Pi Pico W with the Pico SDK</li></ul></nav><hgroup><p>Article</p><h1>Blinking an LED in Morse code on the Raspberry Pi Pico W with the Pico SDK</h1></hgroup><p>Run a Swift program on a Raspberry Pi Pico W or Pico 2 W that signals “SOS” in Morse code using the Pico SDK’s Wi-Fi chip driver.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>This example demonstrates how to integrate with the Pico SDK’s CMake build system on a Wi-Fi-enabled Pico board. Unlike the plain Raspberry Pi Pico, the Pico W and Pico 2 W don’t wire their LED directly to a GPIO pin — it’s attached to the onboard CYW43439 wireless chip instead, so the LED is controlled through the <code>cyw43_arch</code> driver rather than the regular GPIO API. See <a href="../rpipicoguide/index.html">Blinking an LED on the Raspberry Pi Pico with the Pico SDK</a> for the CMake and Pico SDK integration this example builds on for the non-Wi-Fi Pico.</p><p>The Swift code initializes the Wi-Fi chip driver, then toggles its LED in a loop that spells “SOS” using dots and dashes:</p><pre class="swift"><code>@main
+struct Main {
+  static func main() {
+    let led = UInt32(CYW43_WL_GPIO_LED_PIN)
+    if cyw43_arch_init() != 0 {
+      print("Wi-Fi init failed")
+      return
+    }
+    let dot = {
+      cyw43_arch_gpio_put(led, true)
+      sleep_ms(250)
+      cyw43_arch_gpio_put(led, false)
+      sleep_ms(250)
+    }
+    let dash = {
+      cyw43_arch_gpio_put(led, true)
+      sleep_ms(500)
+      cyw43_arch_gpio_put(led, false)
+      sleep_ms(250)
+    }
+    while true {
+      dot(); dot(); dot()
+      dash(); dash(); dash()
+      dot(); dot(); dot()
+    }
+  }
+}
+</code></pre><h2 id="Install-dependencies"><a href="#Install-dependencies">Install dependencies</a></h2><ul><li><p>A Raspberry Pi Pico W or Pico 2 W board. If you have a plain Pico (non-W) instead, see <a href="../rpipicoguide/index.html">Blinking an LED on the Raspberry Pi Pico with the Pico SDK</a> or the <a href="https://github.com/swiftlang/swift-embedded-examples/tree/main/rpi-pico-blink-sdk">rpi-pico-blink-sdk</a> example instead.</p></li><li><p>Follow the setup steps in the <a href="https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf">Pico “Getting Started” guide</a>. In particular, you’ll need:</p><ul><li><p>A checkout of the <a href="https://github.com/raspberrypi/pico-sdk.git">pico-sdk</a>, with git submodules checked out.</p></li><li><p>A checkout of the <a href="https://github.com/raspberrypi/pico-examples.git">pico-examples</a>.</p></li><li><p>CMake.</p></li><li><p>The <a href="https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads">Arm Embedded Toolchain</a>.</p></li></ul></li></ul><p>Before adding Swift, confirm that your setup can build the standard C/C++ sample projects. A good test is building and running the “blink” example from pico-examples.</p><h2 id="Install-Swift"><a href="#Install-Swift">Install Swift</a></h2><p>Follow the instructions in <a href="../installembeddedswift/index.html">Installing Embedded Swift</a> to install the latest Swift development snapshot with Embedded Swift support. Confirm the installation by running <code>swift --version</code> — it reports a “6.2-dev” or newer development snapshot.</p><h2 id="Build-the-project"><a href="#Build-the-project">Build the project</a></h2><p>Navigate to the example directory, set the required environment variables, and configure the build:</p><pre class="shell"><code>$ cd rpi-picow-blink-sdk
+$ export PICO_BOARD=pico_w  # or pico2_w
+$ export PICO_SDK_PATH='&lt;path-to-your-pico-sdk>'
+$ export PICO_TOOLCHAIN_PATH='&lt;path-to-the-arm-toolchain>'
+$ cmake -B build -G Ninja . -DCMAKE_EXPORT_COMPILE_COMMANDS=On
+</code></pre><p>Build the project:</p><pre class="shell"><code>$ cmake --build build
+</code></pre><h2 id="Run-on-a-device"><a href="#Run-on-a-device">Run on a device</a></h2><p>Connect the Pico W board to your Mac using USB, and make sure it’s in USB Mass Storage firmware upload mode (hold the BOOTSEL button while plugging in the board, or make sure the flash memory doesn’t already contain valid firmware).</p><p>Copy the UF2 firmware to the mounted volume:</p><pre class="shell"><code>$ cp build/swift-blinky.uf2 /Volumes/RP2040  # or /Volumes/RP2350 for Pico 2 W
+</code></pre><p>The LED blinks the “SOS” pattern in Morse code repeatedly.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Raspberry-Pi-examples"><a href="#Raspberry-Pi-examples">Raspberry Pi examples</a></h3><ul><li><a href="../rpi4bblinkguide/index.html"><p class="api-collection">Blinking an LED on the Raspberry Pi 4B</p></a><p>Run a baremetal Swift MMIO program that blinks the Raspberry Pi 4B’s status LED, with no SDK or operating system.</p></li><li><a href="../rpi5blinkguide/index.html"><p class="api-collection">Blinking an LED on the Raspberry Pi 5</p></a><p>Run a baremetal Swift MMIO program that blinks the Raspberry Pi 5’s status LED, with no SDK or operating system.</p></li><li><a href="../rpipicoblinkguide/index.html"><p class="api-collection">Blinking an LED in Morse code on the Raspberry Pi Pico</p></a><p>Run a baremetal Swift program on a Raspberry Pi Pico that spells “Hello Swift!” in Morse code on the onboard LED, with no SDK or operating system.</p></li><li><a href="../rpipico2neopixelguide/index.html"><p class="api-collection">Driving a NeoPixel LED on the Raspberry Pi Pico 2</p></a><p>Run a baremetal Swift program that drives a WS2812 NeoPixel RGB LED from an RP2350’s PIO block, with no SDK or operating system.</p></li><li><a href="../harmonyguide/index.html"><p class="api-collection">Building Harmony, a Bluetooth speaker and ferrofluid visualizer</p></a><p>Build and flash Harmony, a Raspberry Pi Pico W firmware in Swift that streams Bluetooth audio and drives a ferrofluid visualizer.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

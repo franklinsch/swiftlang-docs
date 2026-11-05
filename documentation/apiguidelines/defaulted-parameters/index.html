@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Take advantage of defaulted parameters</title><meta content="Take advantage of defaulted parameters when it simplifies common uses." name="description"><script src="../../../navigator-index-api-guidelines.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">API Guidelines</a></li><li>Take advantage of defaulted parameters</li></ul></nav><hgroup><p>Article</p><h1>Take advantage of defaulted parameters</h1></hgroup><p>Take advantage of defaulted parameters when it simplifies common uses.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Any parameter with a single commonly-used value is a candidate for a default. Default arguments improve readability by hiding irrelevant information.</p><p>⛔ Passing every option explicitly buries the one argument that matters among values callers rarely change:</p><pre class="swift"><code>let order = lastName.compare(
+  royalFamilyName**, options: [], range: nil, locale: nil**)
+</code></pre><p>✅ can become the much simpler:</p><pre class="swift"><code>let order = lastName.**compare(royalFamilyName)**
+</code></pre><p>Default arguments are generally preferable to the use of method families, because they impose a lower cognitive burden on anyone trying to understand the API.</p><p>✅ A single method with defaults replaces the whole family below, at a much lower cognitive cost:</p><pre class="swift"><code>extension String {
+  /// *...description...*
+  public func compare(
+     _ other: String, options: CompareOptions **= []**,
+     range: Range&lt;Index>? **= nil**, locale: Locale? **= nil**
+  ) -> Ordering
+}
+</code></pre><p>⛔ The above may not be simple, but it is much simpler than:</p><pre class="swift"><code>extension String {
+  /// *...description 1...*
+  public func **compare**(_ other: String) -> Ordering
+  /// *...description 2...*
+  public func **compare**(_ other: String, options: CompareOptions) -> Ordering
+  /// *...description 3...*
+  public func **compare**(
+     _ other: String, options: CompareOptions, range: Range&lt;Index>) -> Ordering
+  /// *...description 4...*
+  public func **compare**(
+     _ other: String, options: StringCompareOptions,
+     range: Range&lt;Index>, locale: Locale) -> Ordering
+}
+</code></pre><p>Every member of a method family needs to be separately documented and understood by users. To decide among them, a user needs to understand all of them, and occasional surprising relationships—for example, <code>foo(bar: nil)</code> and <code>foo()</code> aren’t always synonyms—make this a tedious process of ferreting out minor differences in mostly identical documentation.  Using a single method with defaults provides a vastly superior programmer experience.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Conventions-Parameters"><a href="#Conventions-Parameters">Conventions — Parameters</a></h3><ul><li><a href="../parameter-names-for-documentation/index.html"><p class="api-collection">Choose parameter names to serve documentation</p></a><p>Choose parameter names to serve documentation.</p></li><li><a href="../default-parameter-order/index.html"><p class="api-collection">Locate parameters with defaults toward the end</p></a><p>Prefer to locate parameters with defaults toward the end of the parameter list.</p></li><li><a href="../prefer-fileid/index.html"><p class="api-collection">Prefer #fileID in production</p></a><p>If your API will run in production, prefer <code>#fileID</code> over alternatives.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

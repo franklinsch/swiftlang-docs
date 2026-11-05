@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Sending closure risks causing data races (SendingClosureRisksDataRace)</title><script src="../../../navigator-index-compiler-diagnostics.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Swift compiler diagnostics</a></li><li><a href="../diagnostic-groups/index.html">Diagnostic groups</a></li><li>Sending closure risks causing data races (SendingClosureRisksDataRace)</li></ul></nav><hgroup><p>Article</p><h1>Sending closure risks causing data races (SendingClosureRisksDataRace)</h1></hgroup></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Sharing mutable state between concurrent tasks can cause data races in your program. Resolve this error by only accessing mutable state in one task at a time.</p><p>If a type does not conform to <code>Sendable</code>, the compiler enforces that each instance of that type is only accessed by one concurrency domain at a time. The compiler also prevents you from capturing values in closures that are sent to another concurrency domain if the value can be accessed from the original concurrency domain too.</p><p>For example:</p><pre class="swift"><code>class MyModel {
+  var count: Int = 0
+
+  func perform() {
+    Task {
+      self.update()
+    }
+  }
+
+  func update() { count += 1 }
+}
+</code></pre><p>The compiler diagnoses the capture of <code>self</code> in the task closure:</p><pre><code>| class MyModel {
+|   func perform() {
+|     Task {
+|     `- error: passing closure as a 'sending' parameter risks causing data races between code in the current isolation context and concurrent execution of the closure
+|       self.update()
+|            `- note: closure captures 'self' which is accessible to code in the current isolation context
+|     }
+|   }
+</code></pre><p>This code is invalid because the task that calls <code>perform()</code> runs concurrently with the task that calls <code>update()</code>. The <code>MyModel</code> type does not conform to <code>Sendable</code>, and it has unprotected mutable state that both concurrent tasks could access simultaneously.</p><p>To eliminate the risk of data races, all tasks that can access the <code>MyModel</code> instance must be serialized. The easiest way to accomplish this is to isolate <code>MyModel</code> to a global actor, such as the main actor:</p><pre class="swift"><code>@MainActor
+class MyModel {
+  func perform() {
+    Task {
+      self.update()
+    }
+  }
+
+  func update() { ... }
+}
+</code></pre><p>This resolves the data race because the two tasks that can access the <code>MyModel</code> value must switch to the main actor to access its state and methods.</p><p>The other approach to resolving the error is to ensure that only one task has access to the <code>MyModel</code> value at a time. For example:</p><pre class="swift"><code>class MyModel {
+  static func perform(model: sending MyModel) {
+    Task {
+      model.update()
+    }
+  }
+
+  func update() { ... }
+}
+</code></pre><p>This code is safe from data races because the caller of <code>perform</code> cannot access the <code>model</code> parameter again after the call. The <code>sending</code> parameter modifier indicates that the implementation of the function sends the value to a different concurrency domain, so it’s no longer safe to access the value in the caller. This ensures that only one task has access to the value at a time.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><ul><li><a href="../dynamic-callable-requirements/index.html"><p class="api-collection">@dynamicCallable implementation requirements (DynamicCallable)</p></a></li><li><a href="../add-preconcurrency-import/index.html"><p class="api-collection">Add @preconcurrency import (AddPreconcurrencyImport)</p></a></li><li><a href="../always-available-domain/index.html"><p class="api-collection">Always enabled availability domains (AlwaysAvailableDomain)</p></a><p>Warnings that identify <code>@available</code> attributes and <code>if #available</code> statements that reference custom availability domains which have been permanently enabled.</p></li><li><a href="../always-unsafe/index.html"><p class="api-collection">Always unsafe (AlwaysUnsafe)</p></a></li><li><a href="../trailing-closure-matching/index.html"><p class="api-collection">Argument matching for trailing closures (TrailingClosureMatching)</p></a></li><li><a href="../actor-isolated-mutating-async/index.html"><p class="api-collection">Calling a mutating async actor-isolated method (ActorIsolatedMutatingAsync)</p></a></li><li><a href="../actor-isolated-call/index.html"><p class="api-collection">Calling an actor-isolated method from a synchronous nonisolated context (ActorIsolatedCall)</p></a></li><li><a href="../sendable-closure-captures/index.html"><p class="api-collection">Captures in a `@Sendable` closure (SendableClosureCaptures)</p></a></li><li><a href="../compilation-caching/index.html"><p class="api-collection">Compilation caching (CompilationCaching)</p></a><p>Errors and warnings related to the compiler’s CAS compilation caching.</p></li><li><a href="../string-interpolation-conformance/index.html"><p class="api-collection">Conforming to `StringInterpolationProtocol` (StringInterpolationConformance)</p></a></li><li><a href="../conversion-from-isolated-any-to-synchronous/index.html"><p class="api-collection">Conversion from `@isolated(any)` function type to synchronous function type (ConversionFromIsolatedAnyToSynchronous)</p></a></li><li><a href="../region-isolation-cross-isolation-data-race/index.html"><p class="api-collection">Cross-isolation data race (RegionIsolationCrossIsolationDataRace)</p></a></li><li><a href="../deprecated-declaration/index.html"><p class="api-collection">Deprecated declaration warnings (DeprecatedDeclaration)</p></a><p>Warnings related to deprecated APIs that may be removed in future versions and should be replaced with more current alternatives.</p></li><li><a href="../implementation-only-deprecated/index.html"><p class="api-collection">Deprecated implementation-only imports (ImplementationOnlyDeprecated)</p></a><p>Warnings that identify <code>import</code> declarations with the <code>@_implementationOnly</code> attribute.</p></li><li><a href="../dynamic-exclusivity/index.html"><p class="api-collection">Dynamic exclusivity (DynamicExclusivity)</p></a><p>Experimental</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Enable data-race safety checking</title><meta content="Use Swift 6 to get full data-race safety checking or add checking to an existing Swift 5 project." name="description"><script src="../../../navigator-index-swift-migration-guide.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../../migrationguide/index.html">Migrating to Swift 6</a></li><li>Enable data-race safety checking</li></ul></nav><hgroup><p>Article</p><h1>Enable data-race safety checking</h1></hgroup><p>Use Swift 6 to get full data-race safety checking or add checking to an existing Swift 5 project.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>To enable data race safety checking for a Swift project, use the Swift 6 language mode. By default, Swift 6 enables full data race safety checking.</p><h2 id="Enable-the-Swift-6-language-mode"><a href="#Enable-the-Swift-6-language-mode">Enable the Swift 6 language mode</a></h2><h3 id="Swift-6-mode-with-Swift-packages"><a href="#Swift-6-mode-with-Swift-packages">Swift 6 mode with Swift packages</a></h3><p>A <code>Package.swift</code> file that uses <code>swift-tools-version</code> of <code>6.0</code> enables the Swift 6 language mode for all targets. You can still set the language mode for the package as a whole using the <code>swiftLanguageModes</code> property of <code>Package</code>. You can also change the language mode as needed on a per-target basis using the new <code>swiftLanguageMode</code> build setting:</p><pre class="swift"><code>// swift-tools-version: 6.0
+
+let package = Package(
+    name: "MyPackage",
+    products: [
+        // ...
+    ],
+    targets: [
+        // Uses the default tools language mode (6)
+        .target(
+            name: "FullyMigrated",
+        ),
+        // Still requires 5
+        .target(
+            name: "NotQuiteReadyYet",
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
+            ]
+        )
+    ]
+)
+</code></pre><p>Note that if your package needs to continue supporting earlier Swift toolchain versions and you want to use per-target <code>swiftLanguageMode</code>, you will need to create a version-specific manifest for pre-6 toolchains. For example, if you’d like to continue supporting 5.9 toolchains and up, you could have one manifest <code>Package@swift-5.9.swift</code>:</p><pre class="swift"><code>// swift-tools-version: 5.9
+
+let package = Package(
+    name: "MyPackage",
+    products: [
+        // ...
+    ],
+    targets: [
+        .target(
+            name: "FullyMigrated",
+        ),
+        .target(
+            name: "NotQuiteReadyYet",
+        )
+    ]
+)
+</code></pre><p>And another <code>Package.swift</code> for Swift toolchains 6.0+:</p><pre class="swift"><code>// swift-tools-version: 6.0
+
+let package = Package(
+    name: "MyPackage",
+    products: [
+        // ...
+    ],
+    targets: [
+        // Uses the default tools language mode (6)
+        .target(
+            name: "FullyMigrated",
+        ),
+        // Still requires 5
+        .target(
+            name: "NotQuiteReadyYet",
+            swiftSettings: [
+                .swiftLanguageMode(.v5)
+            ]
+        )
+    ]
+)
+</code></pre><p>If instead you would just like to use Swift 6 language mode when it’s available (while still continuing to support older modes) you can keep a single <code>Package.swift</code> and specify the version in a compatible manner:</p><pre class="swift"><code>// swift-tools-version: 5.9
+
+let package = Package(
+    name: "MyPackage",
+    products: [
+        // ...
+    ],
+    targets: [
+        .target(
+            name: "FullyMigrated",
+        ),
+    ],
+    // `swiftLanguageVersions` and `.version("6")` to support pre 6.0 swift-tools-version.
+    swiftLanguageVersions: [.version("6"), .v5]
+)
+</code></pre><h3 id="Swift-6-mode-with-command-line-invocations"><a href="#Swift-6-mode-with-command-line-invocations">Swift 6 mode with command-line invocations</a></h3><p><code>-swift-version 6</code> can be passed in a Swift package manager command-line invocation using the <code>-Xswiftc</code> flag:</p><pre><code>~ swift build -Xswiftc -swift-version -Xswiftc 6
+~ swift test -Xswiftc -swift-version -Xswiftc 6
+</code></pre><p>To enable the Swift 6 language mode when running <code>swift</code> or <code>swiftc</code> directly at the command line, pass <code>-swift-version 6</code>:</p><pre><code>~ swift -swift-version 6 main.swift
+</code></pre><h3 id="Swift-6-mode-with-Xcode"><a href="#Swift-6-mode-with-Xcode">Swift 6 mode with Xcode</a></h3><p>You can control the language mode for an Xcode project or target by setting the “Swift Language Version” build setting to “6”.</p><h4 id="Setting-XCConfig"><a href="#Setting-XCConfig">Setting XCConfig</a></h4><p>You can also set the <code>SWIFT_VERSION</code> setting to <code>6</code> in an xcconfig file:</p><pre><code>// In a Settings.xcconfig
+
+SWIFT_VERSION = 6;
+</code></pre><h2 id="Enable-data-race-safety-checking-as-warnings"><a href="#Enable-data-race-safety-checking-as-warnings">Enable data-race safety checking as warnings</a></h2><p>With a Swift target or package in a Swift 5 language mode or earlier, you can address data-race safety issues in your projects on a module-by-module basis. Enable the compiler’s actor isolation and <code>Sendable</code> checking as warnings to assess your progress toward eliminating data races before turning on the Swift 6 language mode.</p><p>Complete data-race safety checking can be enabled as warnings using the <code>-strict-concurrency</code> compiler flag.</p><h3 id="Checking-with-Swift-packages"><a href="#Checking-with-Swift-packages">Checking with Swift packages</a></h3><p>To enable complete concurrency checking for a target in a Swift package using Swift 5.9 or Swift 5.10 tools, use <a href="https://docs.swift.org/swiftpm/documentation/packagedescription/swiftsetting/enableexperimentalfeature(_:_:)"><code>Swift<wbr>Setting.enable<wbr>Experimental<wbr>Feature</code></a> in the Swift settings for the given target:</p><pre class="swift"><code>.target(
+  name: "MyTarget",
+  swiftSettings: [
+    .enableExperimentalFeature("StrictConcurrency")
+  ]
+)
+</code></pre><p>When using Swift 6.0 tools or later, use <a href="https://docs.swift.org/swiftpm/documentation/packagedescription/swiftsetting/enableupcomingfeature(_:_:)"><code>Swift<wbr>Setting.enable<wbr>Upcoming<wbr>Feature</code></a> in the Swift settings for a pre-Swift 6 language mode target:</p><pre class="swift"><code>.target(
+  name: "MyTarget",
+  swiftSettings: [
+    .enableUpcomingFeature("StrictConcurrency")
+  ]
+)
+</code></pre><p>Targets that adopt the Swift 6 language mode have complete checking enabled unconditionally and do not require any settings changes.</p><h3 id="Checking-with-command-line-invocations"><a href="#Checking-with-command-line-invocations">Checking with command-line invocations</a></h3><p>To enable complete concurrency checking when running <code>swift</code> or <code>swiftc</code> directly at the command line, pass <code>-strict-concurrency=complete</code>:</p><pre><code>~ swift -strict-concurrency=complete main.swift
+</code></pre><p><code>-strict-concurrency=complete</code> can be passed in a Swift package manager command-line invocation using the <code>-Xswiftc</code> flag:</p><pre><code>~ swift build -Xswiftc -strict-concurrency=complete
+~ swift test -Xswiftc -strict-concurrency=complete
+</code></pre><p>This can be useful to gauge the amount of concurrency warnings before adding the flag permanently in the package manifest as described in the following section.</p><h3 id="Checking-with-Xcode"><a href="#Checking-with-Xcode">Checking with Xcode</a></h3><p>To enable complete concurrency checking in an Xcode project, set the “Strict Concurrency Checking” setting to “Complete” in the Xcode build settings.</p><h4 id="Setting-XCConfig"><a href="#Setting-XCConfig">Setting XCConfig</a></h4><p>Alternatively, you can set <code>SWIFT_STRICT_CONCURRENCY</code> to <code>complete</code> in an xcconfig file:</p><pre><code>// In a Settings.xcconfig
+
+SWIFT_STRICT_CONCURRENCY = complete;
+</code></pre></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

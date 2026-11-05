@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>AnyObject</title><meta content="The protocol to which all classes implicitly conform." name="description"><script src="../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../index.html">Standard Library</a></li><li>AnyObject</li></ul></nav><hgroup><p>Type Alias</p><h1>Any<wbr>Object</h1></hgroup><p>The protocol to which all classes implicitly conform.</p><ul id="availability"><li aria-label="iOS 8.0+, Available on iOS 8.0 and later" title="Available on iOS 8.0 and later">iOS 8.0+</li><li aria-label="iPadOS 8.0+, Available on iPadOS 8.0 and later" title="Available on iPadOS 8.0 and later">iPadOS 8.0+</li><li aria-label="Mac Catalyst 13.0+, Available on Mac Catalyst 13.0 and later" title="Available on Mac Catalyst 13.0 and later">Mac Catalyst 13.0+</li><li aria-label="macOS 10.10+, Available on macOS 10.10 and later" title="Available on macOS 10.10 and later">macOS 10.10+</li><li aria-label="tvOS 9.0+, Available on tvOS 9.0 and later" title="Available on tvOS 9.0 and later">tvOS 9.0+</li><li aria-label="visionOS 1.0+, Available on visionOS 1.0 and later" title="Available on visionOS 1.0 and later">visionOS 1.0+</li><li aria-label="watchOS 2.0+, Available on watchOS 2.0 and later" title="Available on watchOS 2.0 and later">watchOS 2.0+</li></ul><pre id="declaration"><code><span class="keyword">typealias</span> AnyObject</code></pre></section><section id="Discussion"><h2><a href="#Discussion">Discussion</a></h2><p>You use <code>AnyObject</code> when you need the flexibility of an untyped object or when you use bridged Objective-C methods and properties that return an untyped result. <code>AnyObject</code> can be used as the concrete type for an instance of any class, class type, or class-only protocol. For example:</p><pre><code>class FloatRef {
+    let value: Float
+    init(_ value: Float) {
+        self.value = value
+    }
+}
+
+let x = FloatRef(2.3)
+let y: AnyObject = x
+let z: AnyObject = FloatRef.self
+</code></pre><p><code>AnyObject</code> can also be used as the concrete type for an instance of a type that bridges to an Objective-C class. Many value types in Swift bridge to Objective-C counterparts, like <code>String</code> and <code>Int</code>.</p><pre><code>let s: AnyObject = "This is a bridged string." as NSString
+print(s is NSString)
+// Prints "true"
+
+let v: AnyObject = 100 as NSNumber
+print(type(of: v))
+// Prints "__NSCFNumber"
+</code></pre><p>The flexible behavior of the <code>AnyObject</code> protocol is similar to Objective-C’s <code>id</code> type. For this reason, imported Objective-C types frequently use <code>AnyObject</code> as the type for properties, method parameters, and return values.</p><h1 id="Casting-AnyObject-Instances-to-a-Known-Type"><a href="#Casting-AnyObject-Instances-to-a-Known-Type">Casting AnyObject Instances to a Known Type</a></h1><p>Objects with a concrete type of <code>AnyObject</code> maintain a specific dynamic type and can be cast to that type using one of the type-cast operators (<code>as</code>, <code>as?</code>, or <code>as!</code>).</p><p>This example uses the conditional downcast operator (<code>as?</code>) to conditionally cast the <code>s</code> constant declared above to an instance of Swift’s <code>String</code> type.</p><pre><code>if let message = s as? String {
+    print("Successful cast to String: \(message)")
+}
+// Prints "Successful cast to String: This is a bridged string."
+</code></pre><p>If you have prior knowledge that an <code>AnyObject</code> instance has a particular type, you can use the unconditional downcast operator (<code>as!</code>). Performing an invalid cast triggers a runtime error.</p><pre><code>let message = s as! String
+print("Successful cast to String: \(message)")
+// Prints "Successful cast to String: This is a bridged string."
+
+let badCase = v as! String
+// Runtime error
+</code></pre><p>Casting is always safe in the context of a <code>switch</code> statement.</p><pre><code>let mixedArray: [AnyObject] = [s, v]
+for object in mixedArray {
+    switch object {
+    case let x as String:
+        print("'\(x)' is a String")
+    default:
+        print("'\(object)' is not a String")
+    }
+}
+// Prints "'This is a bridged string.' is a String"
+// Prints "'100' is not a String"
+</code></pre><h1 id="Accessing-Objective-C-Methods-and-Properties"><a href="#Accessing-Objective-C-Methods-and-Properties">Accessing Objective-C Methods and Properties</a></h1><p>When you use <code>AnyObject</code> as a concrete type, you have at your disposal every <code>@objc</code> method and property—that is, methods and properties imported from Objective-C or marked with the <code>@objc</code> attribute. Because Swift can’t guarantee at compile time that these methods and properties are actually available on an <code>AnyObject</code> instance’s underlying type, these <code>@objc</code> symbols are available as implicitly unwrapped optional methods and properties, respectively.</p><p>This example defines an <code>IntegerRef</code> type with an <code>@objc</code> method named <code>getIntegerValue()</code>.</p><pre><code>class IntegerRef {
+    let value: Int
+    init(_ value: Int) {
+        self.value = value
+    }
+
+    @objc func getIntegerValue() -> Int {
+        return value
+    }
+}
+
+func getObject() -> AnyObject {
+    return IntegerRef(100)
+}
+
+let obj: AnyObject = getObject()
+</code></pre><p>In the example, <code>obj</code> has a static type of <code>AnyObject</code> and a dynamic type of <code>IntegerRef</code>. You can use optional chaining to call the <code>@objc</code> method <code>getIntegerValue()</code> on <code>obj</code> safely. If you’re sure of the dynamic type of <code>obj</code>, you can call <code>getIntegerValue()</code> directly.</p><pre><code>let possibleValue = obj.getIntegerValue?()
+print(possibleValue)
+// Prints "Optional(100)"
+
+let certainValue = obj.getIntegerValue()
+print(certainValue)
+// Prints "100"
+</code></pre><p>If the dynamic type of <code>obj</code> doesn’t implement a <code>getIntegerValue()</code> method, the system returns a runtime error when you initialize <code>certainValue</code>.</p><p>Alternatively, if you need to test whether <code>obj.getIntegerValue()</code> exists, use optional binding before calling the method.</p><pre><code>if let f = obj.getIntegerValue {
+    print("The value of 'obj' is \(f())")
+} else {
+    print("'obj' does not have a 'getIntegerValue()' method")
+}
+// Prints "The value of 'obj' is 100"
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Existential-Types"><a href="#Existential-Types">Existential Types</a></h3><ul><li><a href="../anyclass/index.html"><code>typealias <span class="identifier">Any<wbr>Class</span></code></a><p>The protocol to which all class types implicitly conform.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

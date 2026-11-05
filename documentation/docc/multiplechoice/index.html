@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>MultipleChoice</title><meta content="Defines a single question and multiple possible answers to include in the Assessments section of a tutorial page." name="description"><script src="../../../navigator-index-docc-documentation.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../index.html">DocC</a></li><li>MultipleChoice</li></ul></nav><hgroup><p>Directive</p><h1>Multiple<wbr>Choice</h1></hgroup><p>Defines a single question and multiple possible answers to include in the Assessments section of a tutorial page.</p><ul id="availability"><li aria-label="Swift-DocC 5.5+, Available on Swift-DocC 5.5 and later" title="Available on Swift-DocC 5.5 and later">Swift-DocC 5.5+</li></ul><pre id="declaration"><code><span class="typeIdentifier">@MultipleChoice</span> {
+    ...
+}</code></pre></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Use the <code>MultipleChoice</code> directive to define a descriptive question that assesses the reader’s knowledge after they complete the steps in a tutorial. Multiple choice questions appear in the assessments section of a tutorial  page. Provide a question and several choices.</p><pre><code>@Tutorial(time: 30) {
+    
+    ...
+
+    @Assessments {
+        @MultipleChoice {
+            What element did you use to add space around and between your views?
+
+            @Choice(isCorrect: false) {
+                A state variable.
+
+                @Justification(reaction: "Try again!") {
+                    Remember, it's something you used to arrange views vertically.
+                }
+            }
+
+            @Choice(isCorrect: true) {
+                A `VStack` with trailing padding.
+
+                @Justification(reaction: "That's right!") {
+                    A `VStack` arranges views in a vertical line.
+                }
+            }
+
+            @Choice(isCorrect: false) {
+              
+              ...
+              
+            }
+        }  
+    }
+}
+</code></pre><h3 id="Contained-Elements"><a href="#Contained-Elements">Contained Elements</a></h3><p>A multiple choice question contains the following items:</p><ul><li><p>term <a href="../choice/index.html"><code>Choice</code></a>: A possible correct or incorrect answer to the question. It’s a good idea to include 2-4 choices. <b>(optional)</b></p></li></ul><h3 id="Containing-Elements"><a href="#Containing-Elements">Containing Elements</a></h3><p>The following items include multiple choice questions:</p><ul><li><p><a href="../assessments/index.html"><code>Assessments</code></a></p></li></ul></section><section id="Topics"><h2><a href="#Topics">Topics</a></h2><h3 id="Offering-Choices"><a href="#Offering-Choices">Offering Choices</a></h3><ul><li><a href="../choice/index.html"><code><span class="identifier">@Choice</span>(<span class="identifier">is<wbr>Correct</span>: Bool)</code></a><p>Defines a single choice for a multiple-choice question in the assessments section of a tutorial page.</p></li></ul></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Related-Documentation"><a href="#Related-Documentation">Related Documentation</a></h3><p></p><ul><li><a href="../tutorial/index.html"><code><span class="identifier">@Tutorial</span>(<span class="identifier">time</span>: Int, <span class="identifier">project<wbr>Files</span>: Resource<wbr>Reference)</code></a><p>Displays a tutorial page that teaches your Swift framework or package APIs through interactive coding exercises.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

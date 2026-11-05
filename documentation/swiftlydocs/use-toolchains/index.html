@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Use Swift toolchains</title><meta content="Choose an installed toolchain to use as default." name="description"><script src="../../../navigator-index-swiftly.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Swiftly</a></li><li>Use Swift toolchains</li></ul></nav><hgroup><p>Article</p><h1>Use Swift toolchains</h1></hgroup><p>Choose an installed toolchain to use as default.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Swiftly toolchains include a variety of compilers, linkers, debuggers, documentation generators, and other useful tools for working with Swift. Using a toolchain activates it so that when you run toolchain commands they are run with that version.</p><p>When you install a toolchain you can start using it right away. If you don’t have any other toolchains installed then it becomes the default.</p><pre><code>$ swiftly install latest
+$ swift --version
+Swift version 6.0.3 (swift-6.0.3-RELEASE)
+Target: aarch64-unknown-linux-gnu
+$ swift build    # Build with the current toolchain
+</code></pre><p>When you have more than one toolchain installed, you can choose which one to use with the <code>swiftly use</code> command. The following example illustrates installing two toolchains and explicitly using one:</p><pre><code>$ swiftly install 5.10.1
+$ swiftly install main-snapshot
+$ swiftly use 5.10.1
+$ swift build    # Builds with the 5.10.1 toolchain
+$ swift test     # Tests with the 5.10.1 toolchain
+$ swiftly use main-snapshot
+$ swift build    # Builds with the latest snapshot toolchain on the main branch
+$ lldb           # Run the debugger from the latest snapshot toolchain
+</code></pre><p>The <code>use</code> command doesn’t require a full version. It is sufficient to provide just a major version, or the major and minor versions. Swiftly uses the newest matching version that you have installed, if any.</p><pre><code>$ swiftly use 5
+swift --version  # Version matches the 5.10.1 toolchain that was installed above
+</code></pre><p>If you’re not certain which toolchain is in-use, invoke the <code>swiftly use</code> command to provide details:</p><pre><code>$ swiftly use
+Swift 5.10.1 (default)
+</code></pre><p>You can print the exact toolchain location with the <code>--print-location</code> flag:</p><pre><code>$ swiftly use --print-location
+/Users/someuser/Library/Developer/Toolchains/swift-5.10.1-RELEASE.xctoolchain
+</code></pre><h2 id="Sharing-recommended-toolchain-versions"><a href="#Sharing-recommended-toolchain-versions">Sharing recommended toolchain versions</a></h2><p>Swiftly can create and update a special <code>.swift-version</code> file at the top of your git repository so that you can share your toolchain preference with the rest of your team:</p><pre><code>$ cd path/to/git/repository
+$ swiftly use 6.0.1
+A new file `path/to/git/repository/.swift-version` will be created to set the new in-use toolchain for this project.
+Alternatively, you can set your default globally with the `--global-default` flag. Proceed with creating this file? (Y/n) Y
+$ cat .swift-version
+6.0.1
+</code></pre><p>When a team member uses swiftly with this git repository the toolchain that is in use matches the version in the file.</p><pre><code>$ cd path/to/git/repository
+$ swift --version
+Swift version 6.0.1 (swift-6.0.1-RELEASE)
+Target: aarch64-unknown-linux-gnu
+</code></pre><p>If that team member doesn’t have the toolchain installed on their system there will be an error. They can install the selected toolchain automatically like this:</p><pre><code>$ cd path/to/git/repository
+$ swiftly install    # Installs the version of the toolchain in the .swift-version file
+</code></pre><p>If you want to temporarily use a toolchain version for one command you can try <code>swiftly run</code>. The following command shows an example of using swiftly to build your package with the latest snapshot toolchain:</p><pre><code>$ swiftly run swift build +main-snapshot
+</code></pre><aside class="note"><p class="label">Note</p><p>The toolchain must be installed on your system before you can run with it.</p></aside><p>Swiftly uses the <code>.swift-version</code> file, if present in your working directory (or parent), to select the toolchain that is in use. If you are working in a directory that doesn’t have this file, then you can set a global default toolchain to use in these places.</p><pre><code>$ swiftly use --global-default 6.0.1
+</code></pre><p>Here the <code>--global-default</code> flag ensures that the default is set globally to the “6.0.1” toolchain whenever there isn’t a <code>.swift-version</code> file, and there isn’t a version specified in the <code>swiftly run</code> command. This flag doesn’t attempt to create a <code>.swift-version</code> file, or update it if it already exists.</p><h2 id="In-use-toolchains-and-default-toolchains"><a href="#In-use-toolchains-and-default-toolchains">In use toolchains and default toolchains</a></h2><p>When you list installed toolchains or use the <code>swiftly use</code> command to print the current in use toolchain, there will be tags for both “in use” and “default.” Sometimes the same toolchain has both tags!</p><pre><code>$ swiftly list
+Installed release toolchains
+----------------------------
+Swift 6.0.3
+Swift 6.0.2 (in use) (default)
+
+Installed snapshot toolchains
+-----------------------------
+</code></pre><p>Whenever a toolchain is tagged as “in use” indicates the toolchain that will be used when running toolchain commands from your current working directory. The one that is selected is based either on what is in a <code>.swift-version</code> file or the global default if there is no such file there.</p><p>The default tag is used to show the global default toolchain, which is independent of any swift version file. The global default is there for cases where the file doesn’t exist. It sets the toolchain that is in use in those cases.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Guides"><a href="#Guides">Guides</a></h3><ul><li><a href="../install-toolchains/index.html"><p class="api-collection">Install Swift toolchains</p></a><p>Install swift toolchains with Swiftly.</p></li><li><a href="../shell-autocompletion/index.html"><p class="api-collection">Add shell auto-completions</p></a><p>Generate shell autocompletions for swiftly.</p></li><li><a href="../uninstall-toolchains/index.html"><p class="api-collection">Uninstall Swift toolchains</p></a><p>Remove unneeded Swift toolchains.</p></li><li><a href="../update-toolchain/index.html"><p class="api-collection">Update Swift toolchains</p></a><p>Update installed toolchains.</p></li><li><a href="../automated-install/index.html"><p class="api-collection">Install swiftly automatically</p></a><p>Automatically install swiftly and Swift toolchains.</p></li><li><a href="../trouble/index.html"><p class="api-collection">Troubleshooting</p></a></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Calling Functions With Pointer Parameters</title><meta content="Use implicit pointer casting or bridging when calling functions that takes pointers as parameters." name="description"><script src="../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Standard Library</a></li><li><a href="../manual-memory-management/index.html">Manual Memory Management</a></li><li>Calling Functions With Pointer Parameters</li></ul></nav><hgroup><p>Article</p><h1>Calling Functions With Pointer Parameters</h1></hgroup><p>Use implicit pointer casting or bridging when calling functions that takes pointers as parameters.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>When calling a function that takes a pointer as a parameter, you can use implicit casting to pass a compatible pointer type or implicit bridging to pass a pointer to a variable or the contents of an array.</p><h3 id="Pass-a-Constant-Pointer-as-a-Parameter"><a href="#Pass-a-Constant-Pointer-as-a-Parameter">Pass a Constant Pointer as a Parameter</a></h3><p>When you call a function that is declared as taking an <code>UnsafePointer&lt;Type></code> argument, you can pass any of the following:</p><ul><li><p>An <code>UnsafePointer&lt;Type></code>, <code>UnsafeMutablePointer&lt;Type></code>, or <code>AutoreleasingUnsafeMutablePointer&lt;Type></code> value, which is implicitly cast to <code>UnsafePointer&lt;Type></code> as necessary.</p></li><li><p>A <code>String</code> value, if <code>Type</code> is <code>Int8</code> or <code>UInt8</code>. The string is automatically converted to UTF8 in a zero-terminated buffer, and a pointer to that buffer is passed to the function.</p></li><li><p>An in-out expression that contains a mutable variable, property, or subscript reference of type <code>Type</code>, which is passed as a pointer to the address of the left-hand side identifier.</p></li><li><p>A <code>[Type]</code> value, which is passed as a pointer to the start of the array.</p></li></ul><p>The pointer you pass to the function is only guaranteed to be valid for the duration of the function call. Do not persist the pointer and access it after the function has returned.</p><p>This example shows the different ways that you can call the a function that takes a constant pointer:</p><pre class="swift"><code>func takesAPointer(_ p: UnsafePointer&lt;Float>) {
+    // ...
+}
+
+var x: Float = 0.0
+takesAPointer(&amp;x)
+takesAPointer([1.0, 2.0, 3.0])
+</code></pre><p>When you call a function that takes an <code>UnsafeRawPointer</code> argument, you can pass the same operands as <code>UnsafePointer&lt;Type></code>, but with any type as <code>Type</code>.</p><p>This example shows the different ways that you can call a function that takes a constant raw pointer:</p><pre class="swift"><code>func takesARawPointer(_ p: UnsafeRawPointer?)  {
+    // ...
+}
+
+var x: Float = 0.0, y: Int = 0
+takesARawPointer(&amp;x)
+takesARawPointer(&amp;y)
+takesARawPointer([1.0, 2.0, 3.0] as [Float])
+let intArray = [1, 2, 3]
+takesARawPointer(intArray)
+takesARawPointer("How are you today?")
+</code></pre><h3 id="Pass-a-Mutable-Pointer-as-a-Parameter"><a href="#Pass-a-Mutable-Pointer-as-a-Parameter">Pass a Mutable Pointer as a Parameter</a></h3><p>When you call a function that is declared as taking an <code>UnsafeMutablePointer&lt;Type></code> argument, you can pass any of the following:</p><ul><li><p>An <code>UnsafeMutablePointer&lt;Type></code> value.</p></li><li><p>An in-out expression of type <code>Type</code> that contains a mutable variable, property, or subscript reference, which is passed as a pointer to the address of the mutable value.</p></li><li><p>An in-out expression of type <code>[Type]</code> that contains a mutable variable, property, or subscript reference, which is passed as a pointer to the start of the array, and is lifetime-extended for the duration of the call.</p></li></ul><p>This example shows the different ways that you can call a function that takes a mutable pointer:</p><pre class="swift"><code>func takesAMutablePointer(_ p: UnsafeMutablePointer&lt;Float>) {
+    // ...
+}
+
+var x: Float = 0.0
+var a: [Float] = [1.0, 2.0, 3.0]
+takesAMutablePointer(&amp;x)
+takesAMutablePointer(&amp;a)
+</code></pre><p>When you call a function that is declared as taking an <code>UnsafeMutableRawPointer</code> argument, you can pass the same operands as <code>UnsafeMutablePointer&lt;Type></code>, but for any type as <code>Type</code>.</p><p>This example shows the different ways that you can call a function that takes a mutable raw pointer:</p><pre class="swift"><code>func takesAMutableRawPointer(_ p: UnsafeMutableRawPointer?)  {
+    // ...
+}
+
+var x: Float = 0.0, y: Int = 0
+var a: [Float] = [1.0, 2.0, 3.0], b: [Int] = [1, 2, 3]
+takesAMutableRawPointer(&amp;x)
+takesAMutableRawPointer(&amp;y)
+takesAMutableRawPointer(&amp;a)
+takesAMutableRawPointer(&amp;b)
+</code></pre><h3 id="Pass-an-Autoreleasing-Pointer-as-a-Parameter"><a href="#Pass-an-Autoreleasing-Pointer-as-a-Parameter">Pass an Autoreleasing Pointer as a Parameter</a></h3><p>When you call a function that is declared as taking an <code>AutoreleasingUnsafeMutablePointer&lt;Type></code>, you can pass any of the following:</p><ul><li><p>An <code>AutoreleasingUnsafeMutablePointer&lt;Type></code> value.</p></li><li><p>An in-out expression that contains a mutable variable, property, or subscript reference of type <code>Type</code>. The value of the operand is copied bitwise into a temporary nonowning buffer. The address of that buffer is passed to the callee, and on return, the value in the buffer is loaded, retained, and reassigned into the operand.</p></li></ul><p>Unlike with other pointer types, you can’t use an array as an implicitly bridged parameter.</p><h3 id="Pass-a-Function-Pointer-as-a-Parameter"><a href="#Pass-a-Function-Pointer-as-a-Parameter">Pass a Function Pointer as a Parameter</a></h3><p>When calling a function that takes a C function pointer argument, you can pass a top-level Swift function, a closure literal, a closure declared with the <code>@convention(c)</code> attribute, or <code>nil</code>. You can also pass a closure property of a generic type or a generic method as long as no generic type parameters are referenced in the closure’s argument list or body.</p><p>For example, consider Core Foundation’s <code>CFArrayCreateMutable(_:_:_:)</code> function. The <code>CFArrayCreateMutable(_:_:_:)</code> function takes a <code>CFArrayCallBacks</code> structure, which is initialized with function pointer callbacks:</p><pre class="swift"><code>func customCopyDescription(_ p: UnsafeRawPointer?) -> Unmanaged&lt;CFString>? {
+    // return an Unmanaged&lt;CFString>? value
+}
+
+var callbacks = CFArrayCallBacks(
+    version: 0,
+    retain: nil,
+    release: nil,
+    copyDescription: customCopyDescription,
+    equal: { (p1, p2) -> DarwinBoolean in
+        // return Bool value
+    }
+)
+var mutableArray = CFArrayCreateMutable(nil, 0, &amp;callbacks)
+</code></pre><p>In this example, the <code>CFArrayCallBacks</code> initializer uses <code>nil</code> values as arguments for the <code>retain</code> and <code>release</code> parameters, the <code>customCopyDescription(_:)</code> function as the argument for the <code>customCopyDescription</code> parameter, and a closure literal as the argument for the <code>equal</code> parameter.</p><aside class="note"><p class="label">Note</p><p>Only Swift function types with C function reference calling convention may be used for function pointer arguments. Like a C function pointer, a Swift function type with the <code>@convention(c)</code> attribute does not capture the context of its surrounding scope.</p></aside></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

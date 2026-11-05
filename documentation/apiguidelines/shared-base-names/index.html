@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Methods can share a base name</title><meta content="Methods can share a base name when they share the same basic meaning or when they operate in distinct domains." name="description"><script src="../../../navigator-index-api-guidelines.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">API Guidelines</a></li><li>Methods can share a base name</li></ul></nav><hgroup><p>Article</p><h1>Methods can share a base name</h1></hgroup><p>Methods can share a base name when they share the same basic meaning or when they operate in distinct domains.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>✅ For example, the following is encouraged, since the methods do essentially the same things:</p><pre class="swift"><code>extension Shape {
+  /// Returns `true` if `other` is within the area of `self`;
+  /// otherwise, `false`.
+  func **contains**(_ other: **Point**) -> Bool { ... }
+
+  /// Returns `true` if `other` is entirely within the area of `self`;
+  /// otherwise, `false`.
+  func **contains**(_ other: **Shape**) -> Bool { ... }
+
+  /// Returns `true` if `other` is within the area of `self`;
+  /// otherwise, `false`.
+  func **contains**(_ other: **LineSegment**) -> Bool { ... }
+}
+</code></pre><p>✅ And since geometric types and collections are separate domains, this is also fine in the same program:</p><pre class="swift"><code>extension Collection where Element : Equatable {
+  /// Returns `true` if `self` contains an element equal to
+  /// `sought`; otherwise, `false`.
+  func **contains**(_ sought: Element) -> Bool { ... }
+}
+</code></pre><p>⛔ However, these <code>index</code> methods have different semantics, and should have been named differently:</p><pre class="swift"><code>extension Database {
+  /// Rebuilds the database's search index
+  func **index**() { ... }
+
+  /// Returns the `n`th row in the given table.
+  func **index**(_ n: Int, inTable: TableID) -> TableRow { ... }
+}
+</code></pre><p>⛔ Lastly, avoid “overloading on return type” because it causes ambiguities in the presence of type inference.</p><pre class="swift"><code>extension Box {
+  /// Returns the `Int` stored in `self`, if any, and
+  /// `nil` otherwise.
+  func **value**() -> Int? { ... }
+
+  /// Returns the `String` stored in `self`, if any, and
+  /// `nil` otherwise.
+  func **value**() -> String? { ... }
+}
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Conventions-General"><a href="#Conventions-General">Conventions — General</a></h3><ul><li><a href="../computed-property-complexity/index.html"><p class="api-collection">Document computed property complexity</p></a><p>Document the complexity of any computed property that is not O(1).</p></li><li><a href="../methods-over-free-functions/index.html"><p class="api-collection">Prefer methods and properties to free functions</p></a><p>Prefer methods and properties to free functions.</p></li><li><a href="../case-conventions/index.html"><p class="api-collection">Follow case conventions</p></a><p>Follow case conventions.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

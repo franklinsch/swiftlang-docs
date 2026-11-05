@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Customizing Your C Code for Swift</title><meta content="Use the `CF_SWIFT_NAME` macro to group functions that have related behavior." name="description"><script src="../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Standard Library</a></li><li>Customizing Your C Code for Swift</li></ul></nav><hgroup><p>Article</p><h1>Customizing Your C Code for Swift</h1></hgroup><p>Use the <code>CF_SWIFT_NAME</code> macro to group functions that have related behavior.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Because structures in C can’t have methods, property accessors, or custom initializers, you often need to write such functionality using global functions. Structures in Swift can declare methods, property accessors, and initializers. You use the <code>CF_SWIFT_NAME</code> macro to group together related global functions into a single structure type that’s imported into Swift.</p><h3 id="Apply-CFSWIFTNAME-to-Related-Functions"><a href="#Apply-CFSWIFTNAME-to-Related-Functions">Apply CF_SWIFT_NAME to Related Functions</a></h3><p>The example below shows several functions that are all related to a <code>Color</code> type. The <code>CF_SWIFT_NAME</code> macro is applied to each function, giving each one a new name for Swift that’s nested together under the <code>Color</code> type:</p><pre class="occ"><code>Color ColorCreateWithCMYK(float c, float m, float y, float k) CF_SWIFT_NAME(Color.init(c:m:y:k:));
+
+float ColorGetHue(Color color) CF_SWIFT_NAME(getter:Color.hue(self:));
+void ColorSetHue(Color color, float hue) CF_SWIFT_NAME(setter:Color.hue(self:newValue:));
+
+Color ColorDarkenColor(Color color, float amount) CF_SWIFT_NAME(Color.darken(self:amount:));
+
+extern const Color ColorBondiBlue CF_SWIFT_NAME(Color.bondiBlue);
+
+Color ColorGetCalibrationColor(void) CF_SWIFT_NAME(getter:Color.calibration());
+Color ColorSetCalibrationColor(Color color) CF_SWIFT_NAME(setter:Color.calibration(newValue:));
+</code></pre><p>The argument you pass to the <code>CF_SWIFT_NAME</code> macro uses the same syntax as the <code>#selector</code> expression. You use <code>self</code> in a <code>CF_SWIFT_NAME</code> argument to refer to the instance that the method belongs to.</p><h3 id="Import-Related-Functions-into-Swift"><a href="#Import-Related-Functions-into-Swift">Import Related Functions into Swift</a></h3><p>Here’s how Swift imports the related functions above into a single type:</p><pre class="swift"><code>extension Color {
+    init(c: Float, m: Float, y: Float, k: Float)
+
+    var hue: Float { get set }
+
+    func darken(amount: Float) -> Color
+
+    static var bondiBlue: Color
+
+    static var calibration: Color
+}
+</code></pre><aside class="note"><p class="label">Note</p><p>You can’t reorder or change the number of arguments for type members imported using the <code>CF_SWIFT_NAME</code> macro.</p></aside></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Language-interoperability"><a href="#Language-interoperability">Language interoperability</a></h3><ul><li><a href="../c-interoperability/index.html"><p class="api-collection">C Interoperability</p></a><p>Use imported C types or call C variadic functions.</p></li><li><a href="../cxx-interoperability/index.html"><p class="api-collection">C++ Interoperability</p></a><p>Work with standard C++ types.</p></li><li><a href="../using-imported-c-structs-and-unions-in-swift/index.html"><p class="api-collection">Using Imported C Structs and Unions in Swift</p></a><p>Learn how Swift represents imported C structures and unions, including types with bitfields and unnamed fields.</p></li><li><a href="../using-imported-c-functions-in-swift/index.html"><p class="api-collection">Using Imported C Functions in Swift</p></a><p>Learn how to call imported functions that are declared in a C header.</p></li><li><a href="../using-imported-c-macros-in-swift/index.html"><p class="api-collection">Using Imported C Macros in Swift</p></a><p>Use imported C-defined macros as constants.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

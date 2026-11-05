@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>swift package-collection describe</title><meta content="Get metadata for a collection or a package included in an imported collection." name="description"><script src="../../../navigator-index-swiftpm-PackageManagerDocs.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Package Manager (SwiftPM)</a></li><li><a href="../swiftpackagecollectioncommands/index.html">swift package-collection</a></li><li>swift package-collection describe</li></ul></nav><hgroup><p>Article</p><h1>swift package-collection describe</h1></hgroup><p>Get metadata for a collection or a package included in an imported collection.</p><ul id="availability"><li aria-label="Swift 5.5+, Available on Swift 5.5 and later" title="Available on Swift 5.5 and later">Swift 5.5+</li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>This subcommand shows metadata for a collection or a package included in an imported collection. The result can optionally be returned as JSON using <code>--json</code> for integration into other tools.</p><h3 id="Metadata-and-packages-of-a-collection"><a href="#Metadata-and-packages-of-a-collection">Metadata and packages of a collection</a></h3><p><code>describe</code> can be used for both collections that have been previously added to the list of the user’s configured collections, as well as to preview any other collections.</p><pre class="bash"><code>$ swift package-collection describe [--json] https://www.example.com/packages.json
+Name: Sample Package Collection
+Source: https://www.example.com/packages.json
+Description: ...
+Keywords: best, packages
+Created At: 2020-05-30 12:33
+Packages:
+    https://github.com/jpsim/yams
+    ...
+</code></pre><h4 id="Signed-package-collections"><a href="#Signed-package-collections">Signed package collections</a></h4><p>If a collection is signed, SwiftPM will check that the signature is valid before showing a preview.</p><pre class="bash"><code>$ swift package-collection describe https://www.example.com/bad-packages.json
+The collection's signature is invalid. If you would like to continue please rerun command with '--skip-signature-check'.
+</code></pre><p>Users may continue previewing the collection despite the error or preemptively skip the signature check on a package collection by passing the <code>--skip-signature-check</code> flag:</p><pre class="bash"><code>$ swift package-collection describe https://www.example.com/packages.json --skip-signature-check
+</code></pre><h3 id="Metadata-of-a-package"><a href="#Metadata-of-a-package">Metadata of a package</a></h3><p><code>describe</code> can also show the metadata of a package included in an imported collection:</p><pre class="bash"><code>$ swift package-collection describe [--json] https://github.com/jpsim/yams
+Description: A sweet and swifty YAML parser built on LibYAML.
+Available Versions: 4.0.0, 3.0.0, ...
+Stars: 14
+Readme: https://github.com/jpsim/Yams/blob/main/README.md
+Authors: @norio-nomura, @jpsim
+--------------------------------------------------------------
+Latest Version: 4.0.0
+Package Name: Yams
+Modules: Yams, CYaml
+Supported Platforms: iOS, macOS, Linux, tvOS, watchOS
+Supported Swift Versions: 5.3, 5.2, 5.1, 5.0
+License: MIT
+</code></pre><h3 id="Metadata-of-a-package-version"><a href="#Metadata-of-a-package-version">Metadata of a package version</a></h3><p>User may view additional metadata for a package version by passing <code>--version</code>:</p><pre class="bash"><code>$ swift package-collection describe [--json] --version 4.0.0 https://github.com/jpsim/yams
+Package Name: Yams
+Version: 4.0.0
+Modules: Yams, CYaml
+Supported Platforms: iOS, macOS, Linux, tvOS, watchOS
+Supported Swift Versions: 5.3, 5.2, 5.1, 5.0
+License: MIT
+</code></pre><h2 id="Usage"><a href="#Usage">Usage</a></h2><pre><code>package-collection describe [--json] &lt;package-url>
+  [--version=&lt;version>] [--skip-signature-check]
+  [--package-path=&lt;package-path>] [--cache-path=&lt;cache-path>]
+  [--config-path=&lt;config-path>]
+  [--security-path=&lt;security-path>]
+  [--scratch-path=&lt;scratch-path>]
+  [--swift-sdks-path=&lt;swift-sdks-path>]
+  [--toolset=&lt;toolset>...]
+  [--pkg-config-path=&lt;pkg-config-path>...]
+  [--enable-dependency-cache] [--disable-dependency-cache]
+  [--enable-build-manifest-caching]
+  [--disable-build-manifest-caching]
+  [--manifest-cache=&lt;manifest-cache>]
+  [--enable-experimental-prebuilts]
+  [--disable-experimental-prebuilts] [--verbose]
+  [--very-verbose|vv] [--quiet] [--color-diagnostics]
+  [--no-color-diagnostics] [--disable-sandbox] [--netrc]
+  [--enable-netrc] [--disable-netrc]
+  [--netrc-file=&lt;netrc-file>] [--enable-keychain]
+  [--disable-keychain]
+  [--resolver-fingerprint-checking=&lt;resolver-fingerprint-checking>]
+  [--resolver-signing-entity-checking=&lt;resolver-signing-entity-checking>]
+  [--enable-signature-validation]
+  [--disable-signature-validation] [--enable-prefetching]
+  [--disable-prefetching]
+  [--force-resolved-versions|disable-automatic-resolution|only-use-versions-from-resolved-file]
+  [--skip-update] [--disable-scm-to-registry-transformation]
+  [--use-registry-identity-for-scm]
+  [--replace-scm-with-registry]
+  [--default-registry-url=&lt;default-registry-url>]
+  [--configuration=&lt;configuration>] [--=&lt;Xcc>...]
+  [--=&lt;Xswiftc>...] [--=&lt;Xlinker>...] [--=&lt;Xcxx>...]
+  [--triple=&lt;triple>] [--sdk=&lt;sdk>] [--toolchain=&lt;toolchain>]
+  [--swift-sdk=&lt;swift-sdk>] [--sanitize=&lt;sanitize>...]
+  [--auto-index-store] [--enable-index-store]
+  [--disable-index-store]
+  [--enable-parseable-module-interfaces] [--jobs=&lt;jobs>]
+  [--use-integrated-swift-driver]
+  [--explicit-target-dependency-import-check=&lt;explicit-target-dependency-import-check>]
+  [--build-system=&lt;build-system>] [--=&lt;debug-info-format>]
+  [--enable-dead-strip] [--disable-dead-strip]
+  [--disable-local-rpath] [--version] [--help]
+</code></pre><ul><li><p>term <b>–json</b>:</p></li></ul><p><i>Output as JSON</i></p><ul><li><p>term <b>package-url</b>:</p></li></ul><p><i>URL of the package or collection to get information for.</i></p><ul><li><p>term <b>–version=&lt;version></b>:</p></li></ul><p><i>Version of the package to get information for.</i></p><ul><li><p>term <b>–skip-signature-check</b>:</p></li></ul><p><i>Skip signature check if the collection is signed.</i></p><ul><li><p>term <b>–package-path=&lt;package-path></b>:</p></li></ul><p><i>Specify the package path to operate on (default current directory). This changes the working directory before any other operation.</i></p><ul><li><p>term <b>–cache-path=&lt;cache-path></b>:</p></li></ul><p><i>Specify the shared cache directory path.</i></p><ul><li><p>term <b>–config-path=&lt;config-path></b>:</p></li></ul><p><i>Specify the shared configuration directory path.</i></p><ul><li><p>term <b>–security-path=&lt;security-path></b>:</p></li></ul><p><i>Specify the shared security directory path.</i></p><ul><li><p>term <b>–scratch-path=&lt;scratch-path></b>:</p></li></ul><p><i>Specify a custom scratch directory path. (default .build)</i></p><ul><li><p>term <b>–swift-sdks-path=&lt;swift-sdks-path></b>:</p></li></ul><p><i>Path to the directory containing installed Swift SDKs.</i></p><ul><li><p>term <b>–toolset=&lt;toolset></b>:</p></li></ul><p><i>Specify a toolset JSON file to use when building for the target platform. Use the option multiple times to specify more than one toolset. Toolsets will be merged in the order they’re specified into a single final toolset for the current build.</i></p><ul><li><p>term <b>–pkg-config-path=&lt;pkg-config-path></b>:</p></li></ul><p><i>Specify alternative path to search for pkg-config <code>.pc</code> files. Use the option multiple times to specify more than one path.</i></p><ul><li><p>term <b>–enable-dependency-cache|disable-dependency-cache</b>:</p></li></ul><p><i>Use a shared cache when fetching dependencies.</i></p><ul><li><p>term <b>–enable-build-manifest-caching|disable-build-manifest-caching</b>:</p></li><li><p>term <b>–manifest-cache=&lt;manifest-cache></b>:</p></li></ul><p><i>Caching mode of Package.swift manifests. Valid values are: (shared: shared cache, local: package’s build directory, none: disabled)</i></p><ul><li><p>term <b>–enable-experimental-prebuilts|disable-experimental-prebuilts</b>:</p></li></ul><p><i>Whether to use prebuilt swift-syntax libraries for macros.</i></p><ul><li><p>term <b>–verbose</b>:</p></li></ul><p><i>Increase verbosity to include informational output.</i></p><ul><li><p>term <b>–very-verbose|vv</b>:</p></li></ul><p><i>Increase verbosity to include debug output.</i></p><ul><li><p>term <b>–quiet</b>:</p></li></ul><p><i>Decrease verbosity to only include error output.</i></p><ul><li><p>term <b>–color-diagnostics|no-color-diagnostics</b>:</p></li></ul><p><i>Enables or disables color diagnostics when printing to a TTY. By default, color diagnostics are enabled when connected to a TTY and disabled otherwise.</i></p><ul><li><p>term <b>–disable-sandbox</b>:</p></li></ul><p><i>Disable using the sandbox when executing subprocesses.</i></p><ul><li><p>term <b>–netrc</b>:</p></li></ul><p><i>Use netrc file even in cases where other credential stores are preferred.</i></p><ul><li><p>term <b>–enable-netrc|disable-netrc</b>:</p></li></ul><p><i>Load credentials from a netrc file.</i></p><ul><li><p>term <b>–netrc-file=&lt;netrc-file></b>:</p></li></ul><p><i>Specify the netrc file path.</i></p><ul><li><p>term <b>–enable-keychain|disable-keychain</b>:</p></li></ul><p><i>Search credentials in macOS keychain.</i></p><ul><li><p>term <b>–resolver-fingerprint-checking=&lt;resolver-fingerprint-checking></b>:</p></li><li><p>term <b>–resolver-signing-entity-checking=&lt;resolver-signing-entity-checking></b>:</p></li><li><p>term <b>–enable-signature-validation|disable-signature-validation</b>:</p></li></ul><p><i>Validate signature of a signed package release downloaded from registry.</i></p><ul><li><p>term <b>–enable-prefetching|disable-prefetching</b>:</p></li><li><p>term <b>–force-resolved-versions|disable-automatic-resolution|only-use-versions-from-resolved-file</b>:</p></li></ul><p><i>Only use versions from the Package.resolved file and fail resolution if it is out-of-date.</i></p><ul><li><p>term <b>–skip-update</b>:</p></li></ul><p><i>Skip updating dependencies from their remote during a resolution.</i></p><ul><li><p>term <b>–disable-scm-to-registry-transformation</b>:</p></li></ul><p><i>Disable source control to registry transformation.</i></p><ul><li><p>term <b>–use-registry-identity-for-scm</b>:</p></li></ul><p><i>Look up source control dependencies in the registry and use their registry identity when possible to help deduplicate across the two origins.</i></p><ul><li><p>term <b>–replace-scm-with-registry</b>:</p></li></ul><p><i>Look up source control dependencies in the registry and use the registry to retrieve them instead of source control when possible.</i></p><ul><li><p>term <b>–default-registry-url=&lt;default-registry-url></b>:</p></li></ul><p><i>Default registry URL to use, instead of the registries.json configuration file.</i></p><ul><li><p>term <b>–configuration=&lt;configuration></b>:</p></li></ul><p><i>Build with configuration</i></p><ul><li><p>term <b>–=&lt;Xcc></b>:</p></li></ul><p><i>Pass flag through to all C compiler invocations.</i></p><ul><li><p>term <b>–=&lt;Xswiftc></b>:</p></li></ul><p><i>Pass flag through to all Swift compiler invocations.</i></p><ul><li><p>term <b>–=&lt;Xlinker></b>:</p></li></ul><p><i>Pass flag through to all linker invocations.</i></p><ul><li><p>term <b>–=&lt;Xcxx></b>:</p></li></ul><p><i>Pass flag through to all C++ compiler invocations.</i></p><ul><li><p>term <b>–triple=&lt;triple></b>:</p></li><li><p>term <b>–sdk=&lt;sdk></b>:</p></li><li><p>term <b>–toolchain=&lt;toolchain></b>:</p></li><li><p>term <b>–swift-sdk=&lt;swift-sdk></b>:</p></li></ul><p><i>Filter for selecting a specific Swift SDK to build with.</i></p><ul><li><p>term <b>–sanitize=&lt;sanitize></b>:</p></li></ul><p><i>Turn on runtime checks for erroneous behavior, possible values: address, thread, undefined, scudo.</i></p><ul><li><p>term <b>–auto-index-store|enable-index-store|disable-index-store</b>:</p></li></ul><p><i>Enable or disable indexing-while-building feature.</i></p><ul><li><p>term <b>–enable-parseable-module-interfaces</b>:</p></li><li><p>term <b>–jobs=&lt;jobs></b>:</p></li></ul><p><i>The number of jobs to spawn in parallel during the build process.</i></p><ul><li><p>term <b>–use-integrated-swift-driver</b>:</p></li><li><p>term <b>–explicit-target-dependency-import-check=&lt;explicit-target-dependency-import-check></b>:</p></li></ul><p><i>A flag that indicates this build should check whether targets only import their explicitly-declared dependencies.</i></p><ul><li><p>term <b>–build-system=&lt;build-system></b>:</p></li><li><p>term <b>–=&lt;debug-info-format></b>:</p></li></ul><p><i>The Debug Information Format to use.</i></p><ul><li><p>term <b>–enable-dead-strip|disable-dead-strip</b>:</p></li></ul><p><i>Disable/enable dead code stripping by the linker.</i></p><ul><li><p>term <b>–disable-local-rpath</b>:</p></li></ul><p><i>Disable adding $ORIGIN/@loader_path to the rpath by default.</i></p><ul><li><p>term <b>–version</b>:</p></li></ul><p><i>Show the version.</i></p><ul><li><p>term <b>–help</b>:</p></li></ul><p><i>Show help information.</i></p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Inspecting-package-collections"><a href="#Inspecting-package-collections">Inspecting package collections</a></h3><ul><li><a href="../packagecollectionlist/index.html"><p class="api-collection">swift package-collection list</p></a><p>List configured collections.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

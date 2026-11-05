@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Module Map Syntax Reference</title><meta content="A reference of module map directives, attributes, and syntax for defining C and C++ module interfaces." name="description"><script src="../../../navigator-index-swiftpm-PackageManagerDocs.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Package Manager (SwiftPM)</a></li><li><a href="../modulemaps/index.html">Creating Module Maps</a></li><li>Module Map Syntax Reference</li></ul></nav><hgroup><p>Article</p><h1>Module Map Syntax Reference</h1></hgroup><p>A reference of module map directives, attributes, and syntax for defining C and C++ module interfaces.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Module maps use a domain-specific language to describe how C, Objective-C, and C++ headers are organized into modules. This reference documents the syntax and semantics of module map declarations.</p><p>For instructions on creating module maps, see <a href="../modulemaps/index.html">Creating Module Maps</a>. For troubleshooting and testing module maps, see <a href="../debuggingmodulemaps/index.html">Debugging Module Maps</a>.</p><p>The <a href="https://clang.llvm.org/docs/Modules.html">Clang Modules documentation</a> is the official specification for module maps. The content below summarizes that reference for common Swift use cases.</p><h2 id="Module-declarations"><a href="#Module-declarations">Module declarations</a></h2><p>A module declaration defines a named module and specifies its contents.</p><h3 id="Basic-syntax"><a href="#Basic-syntax">Basic syntax</a></h3><pre><code>module ModuleName {
+    declarations
+}
+</code></pre><p>The module name must be a valid identifier. It can contain letters, numbers, and underscores, but can’t start with a number. The module name must match the product or target name in Swift Package Manager.</p><h3 id="Framework-modules"><a href="#Framework-modules">Framework modules</a></h3><p>Framework modules use a specialized syntax for macOS and iOS frameworks:</p><pre><code>framework module FrameworkName {
+    umbrella header "FrameworkName.h"
+    export *
+    module * { export * }
+}
+</code></pre><p>The <code>framework</code> keyword indicates the module represents a framework bundle. The <code>module * { export * }</code> pattern automatically creates and exports submodules for all headers.</p><h3 id="Explicit-submodules"><a href="#Explicit-submodules">Explicit submodules</a></h3><p>Submodules divide a module into smaller units:</p><pre><code>module ParentModule {
+    explicit module SubmoduleA {
+        header "SubA.h"
+        export *
+    }
+
+    explicit module SubmoduleB {
+        header "SubB.h"
+        export *
+    }
+}
+</code></pre><p>The <code>explicit</code> keyword requires clients to explicitly import the submodule. Code imports explicit submodules with <code>import ParentModule.SubmoduleA</code>.</p><p>Without the <code>explicit</code> keyword, the submodule is imported automatically when the parent module is imported.</p><h3 id="Header-declarations"><a href="#Header-declarations">Header declarations</a></h3><p>Header declarations specify which header files belong to a module.</p><h4 id="header"><a href="#header">header</a></h4><p>Includes a header file in the module:</p><pre><code>header "HeaderName.h"
+</code></pre><p>The path is relative to the module map file’s location. The compiler parses the header and makes its declarations available when the module is imported.</p><h4 id="umbrella-header"><a href="#umbrella-header">umbrella header</a></h4><p>Includes a header that itself includes all other public headers:</p><pre><code>umbrella header "ModuleName.h"
+</code></pre><p>Umbrella headers provide a single entry point for all module functionality. The header typically includes all other public headers with <code>#include</code> directives.</p><h4 id="private-header"><a href="#private-header">private header</a></h4><p>Includes a header that’s only visible within the module implementation:</p><pre><code>private header "InternalAPI.h"
+</code></pre><p>Private headers aren’t visible to clients that import the module. Use private headers for implementation details that other files within the module need to access.</p><h4 id="textual-header"><a href="#textual-header">textual header</a></h4><p>Includes a header that’s textually included rather than compiled as part of the module:</p><pre><code>textual header "Macros.h"
+</code></pre><p>Textual headers are typically used for macro-only headers or headers that can’t be parsed in isolation. The compiler includes the header’s contents directly into each translation unit rather than precompiling it as part of the module.</p><h4 id="exclude-header"><a href="#exclude-header">exclude header</a></h4><p>Explicitly excludes a header from an umbrella:</p><pre><code>umbrella header "Module.h"
+exclude header "Internal.h"
+</code></pre><p>When using an umbrella header that includes files you don’t want in the module, use <code>exclude header</code> to omit specific headers.</p><h4 id="umbrella-directory"><a href="#umbrella-directory">umbrella directory</a></h4><p>Includes all headers in a directory:</p><pre><code>umbrella "include"
+</code></pre><p>The compiler includes all headers found in the specified directory and its subdirectories. This is less common than umbrella headers because it provides less control over which headers are public.</p><h3 id="Export-declarations"><a href="#Export-declarations">Export declarations</a></h3><p>Export declarations control which modules are re-exported to clients.</p><h4 id="export-"><a href="#export-">export *</a></h4><p>Re-exports all imported modules:</p><pre><code>export *
+</code></pre><p>When a client imports your module, they also see declarations from modules your module imports. This is the most common export pattern for C libraries.</p><h4 id="Selective-exports"><a href="#Selective-exports">Selective exports</a></h4><p>Re-exports specific modules:</p><pre><code>module MyModule {
+    header "MyModule.h"
+    export Foundation
+    export Darwin
+}
+</code></pre><p>Only the specified modules are visible to clients. Modules imported but not exported remain private implementation details.</p><h3 id="Link-declarations"><a href="#Link-declarations">Link declarations</a></h3><p>Link declarations specify libraries the linker should include.</p><h4 id="Basic-syntax"><a href="#Basic-syntax">Basic syntax</a></h4><pre><code>link "libraryname"
+</code></pre><p>Specify the library name without the <code>lib</code> prefix or file extension. For example, use <code>link "z"</code> for <code>libz.a</code> or <code>libz.dylib</code>.</p><p>The build system passes this information to the linker automatically.</p><h4 id="Framework-links"><a href="#Framework-links">Framework links</a></h4><p>For macOS and iOS frameworks:</p><pre><code>link framework "FrameworkName"
+</code></pre><p>This tells the linker to link against the specified framework.</p><h3 id="Requirements"><a href="#Requirements">Requirements</a></h3><p>Requirements specify conditions that must be met for the module to be available.</p><h4 id="Language-requirements"><a href="#Language-requirements">Language requirements</a></h4><ul><li><p>term cplusplus: Requires C++ language support</p></li><li><p>term cplusplus11: Requires C++11 or later</p></li><li><p>term cplusplus14: Requires C++14 or later</p></li><li><p>term cplusplus17: Requires C++17 or later</p></li><li><p>term cplusplus20: Requires C++20 or later</p></li><li><p>term objc: Requires Objective-C language support</p></li><li><p>term opencl: Requires OpenCL support</p></li></ul><p>Example:</p><pre><code>module CppLibrary {
+    header "CppLibrary.h"
+    requires cplusplus11
+    export *
+}
+</code></pre><p>The compiler rejects the module if the build doesn’t satisfy the requirements.</p><h4 id="Feature-requirements"><a href="#Feature-requirements">Feature requirements</a></h4><ul><li><p>term blocks: Requires blocks (closures) support</p></li><li><p>term gnuinlineasm: Requires GNU inline assembly support</p></li></ul><p>Use the negation operator to exclude features:</p><pre><code>requires !gnuinlineasm
+</code></pre><h4 id="Combining-requirements"><a href="#Combining-requirements">Combining requirements</a></h4><p>Combine multiple requirements with commas:</p><pre><code>requires cplusplus, !blocks
+</code></pre><p>All requirements must be satisfied for the module to be available.</p><h3 id="Module-attributes"><a href="#Module-attributes">Module attributes</a></h3><p>Attributes modify module behavior and semantics.</p><h4 id="system"><a href="#system">[system]</a></h4><p>Marks a module as a system module:</p><pre><code>module SystemLibrary [system] {
+    header "system.h"
+    export *
+}
+</code></pre><p>System modules receive special treatment:</p><ul><li><p>Compiler warnings in system headers are suppressed</p></li><li><p>Swift imports certain Objective-C types differently (<code>NSUInteger</code> becomes <code>Int</code> instead of <code>UInt</code>)</p></li><li><p>The attribute ensures consistent behavior between local builds and client builds</p></li></ul><p>Use <code>[system]</code> for SDK-provided libraries and system headers.</p><h4 id="externc"><a href="#externc">[extern_c]</a></h4><p>Indicates C linkage for C++ code:</p><pre><code>module [extern_c] CLibrary {
+    header "clib.h"
+    export *
+}
+</code></pre><p>This is useful when wrapping C libraries in C++ contexts.</p><h4 id="noundeclaredincludes"><a href="#noundeclaredincludes">[no_undeclared_includes]</a></h4><p>Prevents implicit inclusion of headers:</p><pre><code>module StrictModule [no_undeclared_includes] {
+    header "StrictModule.h"
+    export *
+}
+</code></pre><p>Clients must explicitly import all modules they use. This makes dependencies explicit and prevents accidental reliance on transitive includes.</p><h3 id="Configuration-macros"><a href="#Configuration-macros">Configuration macros</a></h3><p>Configuration macros allow different module variants based on preprocessor definitions.</p><h4 id="configmacros"><a href="#configmacros">config_macros</a></h4><p>Declares macros that affect the module’s interface:</p><pre><code>module ConfigurableModule {
+    header "ConfigurableModule.h"
+    config_macros exhaustive DEBUG_MODE, FEATURE_X
+    export *
+}
+</code></pre><p>The <code>exhaustive</code> keyword lists all macros that affect the module’s API. The compiler creates separate module variants for different macro combinations.</p><p>Without configuration macros declared, the compiler assumes the module’s interface is independent of preprocessor state.</p><h3 id="Conflict-declarations"><a href="#Conflict-declarations">Conflict declarations</a></h3><p>Conflict declarations specify incompatible modules.</p><h4 id="conflict"><a href="#conflict">conflict</a></h4><p>Declares that a module conflicts with another:</p><pre><code>module NewModule {
+    header "NewModule.h"
+    conflict OldModule, "Use NewModule instead"
+    export *
+}
+</code></pre><p>The compiler produces an error if both modules are imported in the same translation unit. The message explains why the modules conflict, and what to do instead.</p><h3 id="Extern-modules"><a href="#Extern-modules">Extern modules</a></h3><p>Extern modules reference module maps in other files.</p><h4 id="extern-module"><a href="#extern-module">extern module</a></h4><p>References a module defined in another module map:</p><pre><code>extern module ExternalModule "path/to/other.modulemap"
+</code></pre><p>This allows organizing large module hierarchies across multiple files. The path is relative to the current module map file.</p><h3 id="Use-declarations"><a href="#Use-declarations">Use declarations</a></h3><p>Use declarations specify dependencies between modules.</p><h4 id="use"><a href="#use">use</a></h4><p>Declares that a module depends on another:</p><pre><code>module DependentModule {
+    header "DependentModule.h"
+    use Foundation
+    export *
+}
+</code></pre><p>This is informational and helps document module dependencies. Most module maps don’t need explicit <code>use</code> declarations.</p><h2 id="Complete-syntax-example"><a href="#Complete-syntax-example">Complete syntax example</a></h2><p>A comprehensive module map demonstrating multiple features:</p><pre><code>module CompleteExample [system] {
+    // Main module
+    umbrella header "CompleteExample.h"
+    export *
+
+    // Configuration
+    config_macros exhaustive DEBUG, LOGGING_ENABLED
+
+    // Linking
+    link "example"
+
+    // Requirements
+    requires !gnuinlineasm
+
+    // Explicit submodule
+    explicit module Utilities {
+        header "Utilities.h"
+        export *
+    }
+
+    // Private implementation submodule
+    explicit module Private {
+        private header "CompleteExample_Private.h"
+        export *
+    }
+
+    // C++ submodule
+    explicit module CPP {
+        header "CompleteExample_CPP.hpp"
+        requires cplusplus11
+        export *
+    }
+}
+
+// Backward compatibility module
+module CompleteExampleOld {
+    header "CompleteExample_Old.h"
+    conflict CompleteExample, "Use CompleteExample instead of CompleteExampleOld"
+    export *
+}
+</code></pre><h2 id="Module-map-file-naming"><a href="#Module-map-file-naming">Module map file naming</a></h2><p>Module map files must follow specific naming conventions:</p><ul><li><p>term module.modulemap: Standard public module map</p></li><li><p>term module.private.modulemap: Private module map for implementation details</p></li></ul><p>Swift Package Manager looks for <code>module.modulemap</code> by default.</p><h3 id="System-library-wrapper"><a href="#System-library-wrapper">System library wrapper</a></h3><pre><code>module SystemLib [system] {
+    header "shim.h"
+    link "systemlib"
+    export *
+}
+</code></pre><p>The shim header includes the actual system header, allowing the compiler to find it through search paths.</p><h3 id="C++-library"><a href="#C++-library">C++ library</a></h3><pre><code>module CppLib {
+    header "CppLib.hpp"
+    requires cplusplus11
+    export *
+}
+</code></pre><p>The <code>requires cplusplus11</code> directive ensures the module is only available in C++11 mode or later.</p><h3 id="Framework-with-submodules"><a href="#Framework-with-submodules">Framework with submodules</a></h3><pre><code>framework module MyFramework {
+    umbrella header "MyFramework.h"
+    export *
+    module * { export * }
+
+    explicit module Private {
+        private header "MyFramework_Private.h"
+        export *
+    }
+}
+</code></pre><p>Public headers are automatically modularized, while private headers require explicit import.</p><h3 id="Multiple-libraries"><a href="#Multiple-libraries">Multiple libraries</a></h3><pre><code>module CompositeLib {
+    module Core {
+        header "Core.h"
+        link "core"
+        export *
+    }
+
+    module Utils {
+        header "Utils.h"
+        link "utils"
+        export *
+    }
+}
+</code></pre><p>Each submodule can link to its own library.</p><h2 id="Diagnostic-directives"><a href="#Diagnostic-directives">Diagnostic directives</a></h2><p>Module maps don’t support preprocessor directives like <code>#if</code> or <code>#ifdef</code>. All content in a module map is always active.</p><p>To handle platform-specific headers, use separate module maps for each platform or use requirements:</p><pre><code>module CrossPlatform {
+    // Common headers
+    header "Common.h"
+
+    // Platform-specific via requirements
+    module Darwin {
+        requires objc
+        header "Darwin.h"
+        export *
+    }
+
+    export *
+}
+</code></pre><h2 id="Module-map-parsing"><a href="#Module-map-parsing">Module map parsing</a></h2><p>The compiler parses module maps with these characteristics:</p><ul><li><p>Comments use C++ style (<code>//</code>) or C style (<code>/* */</code>).</p></li><li><p>Identifiers follow C naming rules (letters, digits, underscores).</p></li><li><p>String literals use double quotes.</p></li><li><p>Paths in string literals are relative to the module map file.</p></li><li><p>Whitespace is insignificant outside string literals.</p></li><li><p>Module map files must be valid UTF-8.</p></li></ul><h2 id="Limitations-and-constraints"><a href="#Limitations-and-constraints">Limitations and constraints</a></h2><p>Module maps have several limitations:</p><ul><li><p>Module names can’t contain periods (use submodules instead).</p></li><li><p>Header paths must be relative to the module map file.</p></li><li><p>Circular dependencies between modules aren’t supported.</p></li><li><p>Conditional compilation directives aren’t supported in module maps.</p></li><li><p>Module maps assume headers are well-formed and can be parsed in isolation.</p></li></ul><h2 id="Integration-with-Swift-Package-Manager"><a href="#Integration-with-Swift-Package-Manager">Integration with Swift Package Manager</a></h2><p>Swift Package Manager uses module maps to bridge C and C++ libraries:</p><ul><li><p>The <code>moduleMapPath</code> field in artifact bundles specifies the module map location.</p></li><li><p>System library targets place module maps in the target directory.</p></li><li><p>The build system automatically adds <code>-fmodule-map-file=</code> flags.</p></li><li><p>Module names must match binary target or system library target names.</p></li></ul><p>For instructions on creating a module map, see <a href="../modulemaps/index.html">Creating Module Maps</a>.</p><h2 id="Best-practices"><a href="#Best-practices">Best practices</a></h2><p>Follow these practices when writing module maps:</p><ul><li><p>Use <code>[system]</code> for SDK and system library modules.</p></li><li><p>Specify <code>requires cplusplus</code> for any C++ code.</p></li><li><p>Use umbrella headers for multi-header libraries.</p></li><li><p>Keep module names simple and descriptive.</p></li><li><p>Match module names to artifact names exactly.</p></li><li><p>Use relative paths for all header references.</p></li><li><p>Document configuration macros with <code>exhaustive</code>.</p></li><li><p>Test module maps on all target platforms.</p></li><li><p>Use explicit submodules for optional functionality.</p></li><li><p>Keep module maps minimal and focused.</p></li></ul></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Related-Documentation"><a href="#Related-Documentation">Related Documentation</a></h3><ul><li><a href="../debuggingmodulemaps/index.html"><p class="api-collection">Debugging Module Maps</p></a><p>Diagnose and resolve issues when Swift can’t import your C or C++ libraries.</p></li></ul><ul><li><a href="../debuggingmodulemaps/index.html"><p class="api-collection">Debugging Module Maps</p></a><p>Diagnose and resolve issues when Swift can’t import your C or C++ libraries.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

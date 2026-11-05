@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Embedded Swift language restrictions (EmbeddedRestrictions)</title><meta content="Embedded Swift is a subset of the Swift language that that introduces some restrictions on the use of language features to eliminate the need for the Swift runtime. These restrictions are captured by the `EmbeddedRestrictions` diagnostic group." name="description"><script src="../../../navigator-index-compiler-diagnostics.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Swift compiler diagnostics</a></li><li><a href="../diagnostic-groups/index.html">Diagnostic groups</a></li><li>Embedded Swift language restrictions (EmbeddedRestrictions)</li></ul></nav><hgroup><p>Article</p><h1>Embedded Swift language restrictions (EmbeddedRestrictions)</h1></hgroup><p>Embedded Swift is a subset of the Swift language that that introduces some restrictions on the use of language features to eliminate the need for the Swift runtime. These restrictions are captured by the <code>EmbeddedRestrictions</code> diagnostic group.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>The Embedded Swift compilation model can produce extremely small binaries without external dependencies, suitable for restricted environments including embedded (microcontrollers) and baremetal setups (no operating system at all), and low-level environments (firmware, kernels, device drivers, low-level components of userspace OS runtimes). While the vast majority of Swift language features are available in Embedded Swift, there are some language features that require the full Swift standard library and runtime, which are not available in Embedded Swift.</p><p>Diagnostics in the <code>EmbeddedRestrictions</code> group describe those language features that cannot be used in Embedded Swift. These include:</p><ul><li><p>Dynamic casts to a type involving a protocol are not supported, because Embedded Swift does not include runtime metadata about protocol conformances. For example:</p><pre><code>protocol P: AnyObject { }
+func casting(object: AnyObject) {
+  if let p = object as? P { // error: cannot perform a dynamic cast to a type involving protocol 'P' in Embedded Swift
+    // ...
+  }
+}
+</code></pre></li><li><p>Overriding and <code>open</code> generic methods in a class, which are prohibited because they cannot be specialized for every possible call site. For example:</p><pre><code>open class MyGenericClass&lt;T> {
+  open func f&lt;U>(value: U) { }  // warning: generic instance method 'f(value:)' in a class cannot be 'open' in Embedded Swift
+
+  func g() { } // okay, not generic relative to the class itself
+
+  class func h() where T: P { }
+}
+
+class MyGenericSubclass&lt;T>: MyGenericClass&lt;T> {
+  override class func h() where T: P { } // warning: generic class method 'h' in a class cannot override another method in Embedded Swift
+}
+</code></pre></li><li><p>Generic methods used on values of protocol type, which are prohibited because they cannot be specialized for every possible call site. For example:</p><pre><code>protocol P: AnyObject {
+  func doNothing()
+  func doSomething&lt;T>(on value: T)
+}
+
+func testGenerics&lt;Value: P>(value: value, i: Int) {
+  value.doNothing()        // okay
+  value.doSomething(on: i) // okay, always specialized
+}
+
+func testValuesOfProtocolType(value: any P, i: Int) {
+  value.doNothing()        // okay
+  value.doSomething(on: i) // warning: cannot use generic instance method 'doSomething(on:)' on a value of type 'any P' in Embedded Swift
+}
+</code></pre></li><li><p>Passing a value of protocol type to a generic function that opens the existential, which requires unspecialized generics because the function cannot be specialized for a dynamically-provided type. For example:</p><pre><code>func acceptAny&lt;T>(_ value: T) { }
+
+func testPassingValueOfProtocolType(value: any P) {
+  acceptAny(value)              // warning: cannot open existential type 'any P' when passing it as an argument to global function 'acceptAny' in Embedded Swift
+  acceptAny(value as any P)     // okay, passes the existential itself
+}
+</code></pre></li><li><p><code>dynamic</code> declarations and <code>@_dynamicReplacement</code>, because Embedded Swift does not include the runtime support for replacing the implementation of a declaration. Both are ignored, so calls always use the original implementation, and a replacement is an ordinary declaration. For example:</p><pre><code>dynamic func greet() { }        // warning: global function 'greet()' cannot be 'dynamic' in Embedded Swift; 'dynamic' will be ignored
+
+@_dynamicReplacement(for: greet())
+func greetDifferently() { }     // warning: global function 'greetDifferently()' cannot be a dynamic replacement in Embedded Swift; '@_dynamicReplacement' will be ignored
+</code></pre></li></ul></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><ul><li><a href="../dynamic-callable-requirements/index.html"><p class="api-collection">@dynamicCallable implementation requirements (DynamicCallable)</p></a></li><li><a href="../add-preconcurrency-import/index.html"><p class="api-collection">Add @preconcurrency import (AddPreconcurrencyImport)</p></a></li><li><a href="../always-available-domain/index.html"><p class="api-collection">Always enabled availability domains (AlwaysAvailableDomain)</p></a><p>Warnings that identify <code>@available</code> attributes and <code>if #available</code> statements that reference custom availability domains which have been permanently enabled.</p></li><li><a href="../always-unsafe/index.html"><p class="api-collection">Always unsafe (AlwaysUnsafe)</p></a></li><li><a href="../trailing-closure-matching/index.html"><p class="api-collection">Argument matching for trailing closures (TrailingClosureMatching)</p></a></li><li><a href="../actor-isolated-mutating-async/index.html"><p class="api-collection">Calling a mutating async actor-isolated method (ActorIsolatedMutatingAsync)</p></a></li><li><a href="../actor-isolated-call/index.html"><p class="api-collection">Calling an actor-isolated method from a synchronous nonisolated context (ActorIsolatedCall)</p></a></li><li><a href="../sendable-closure-captures/index.html"><p class="api-collection">Captures in a `@Sendable` closure (SendableClosureCaptures)</p></a></li><li><a href="../compilation-caching/index.html"><p class="api-collection">Compilation caching (CompilationCaching)</p></a><p>Errors and warnings related to the compiler’s CAS compilation caching.</p></li><li><a href="../string-interpolation-conformance/index.html"><p class="api-collection">Conforming to `StringInterpolationProtocol` (StringInterpolationConformance)</p></a></li><li><a href="../conversion-from-isolated-any-to-synchronous/index.html"><p class="api-collection">Conversion from `@isolated(any)` function type to synchronous function type (ConversionFromIsolatedAnyToSynchronous)</p></a></li><li><a href="../region-isolation-cross-isolation-data-race/index.html"><p class="api-collection">Cross-isolation data race (RegionIsolationCrossIsolationDataRace)</p></a></li><li><a href="../deprecated-declaration/index.html"><p class="api-collection">Deprecated declaration warnings (DeprecatedDeclaration)</p></a><p>Warnings related to deprecated APIs that may be removed in future versions and should be replaced with more current alternatives.</p></li><li><a href="../implementation-only-deprecated/index.html"><p class="api-collection">Deprecated implementation-only imports (ImplementationOnlyDeprecated)</p></a><p>Warnings that identify <code>import</code> declarations with the <code>@_implementationOnly</code> attribute.</p></li><li><a href="../dynamic-exclusivity/index.html"><p class="api-collection">Dynamic exclusivity (DynamicExclusivity)</p></a><p>Experimental</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

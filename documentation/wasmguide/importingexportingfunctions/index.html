@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Importing and Exporting Functions</title><meta content="WebAssembly modules often need to interact with their host environment. This guide demonstrates how to build a Swift guest module that both exports functions to the host and imports functions from it, using `WasmKit` as the host application." name="description"><script src="../../../navigator-index-swift-wasm.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">WebAssembly (Wasm)</a></li><li>Importing and Exporting Functions</li></ul></nav><hgroup><p>Article</p><h1>Importing and Exporting Functions</h1></hgroup><p>WebAssembly modules often need to interact with their host environment. This guide demonstrates how to build a Swift guest module that both exports functions to the host and imports functions from it, using <code>WasmKit</code> as the host application.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>This process involves two Swift packages:</p><ol><li><p><b>Guest</b>: The WebAssembly module running inside the virtual machine.</p></li><li><p><b>Host</b>: The application that loads and executes the guest module.</p></li></ol><h2 id="1-The-Guest-Module"><a href="#1-The-Guest-Module">1. The Guest Module</a></h2><p>First, create a Swift package for the guest module. This module will:</p><ul><li><p><b>Export</b> an <code>add</code> function that the host can call.</p></li><li><p><b>Import</b> a <code>print_result</code> function from the host to display the result.</p></li></ul><p><b><code>Package.swift</code> for the Guest:</b> Enable the <code>Extern</code> experimental feature to use the <code>@_extern</code> attribute.</p><pre class="swift"><code>// swift-tools-version:6.2
+import PackageDescription
+
+let package = Package(
+    name: "Guest",
+    products: [
+        .library(name: "Guest", targets: ["Guest"]),
+    ],
+    targets: [
+        .target(
+            name: "Guest",
+            swiftSettings: [
+                .enableExperimentalFeature("Extern")
+            ]
+        ),
+    ]
+)
+</code></pre><p><b>Source code for the Guest (<code>Sources/Guest/Guest.swift</code>):</b></p><p>The imported function must be annotated with both <code>@_extern(c, ...)</code> and <code>@_extern(wasm, ...)</code>. <code>@_extern(c, ...)</code> ensures the C calling convention is used, so the Wasm import has the expected signature. <code>@_extern(wasm, ...)</code> declares it as a Wasm import from the host module.</p><p>In Swift 6.3 and later (including development snapshots), you can use the <code>@c</code> attribute (<a href="https://github.com/swiftlang/swift-evolution/blob/main/proposals/0495-cdecl.md">SE-0495</a>) for the export:</p><pre class="swift"><code>// 1. Import a function from the host
+@_extern(c, "print_result")
+@_extern(wasm, module: "host", name: "print_result")
+func print_result(_ value: Int32)
+
+// 2. Export a function to the host
+@_expose(wasm, "add_and_print")
+@c
+public func addAndPrint(_ lhs: Int32, _ rhs: Int32) -> Int32 {
+    let result = lhs + rhs
+    // Call the imported host function
+    print_result(result)
+    return result
+}
+</code></pre><p>On earlier Swift versions, use <code>@_cdecl</code> instead:</p><pre class="swift"><code>// 1. Import a function from the host
+@_extern(c, "print_result")
+@_extern(wasm, module: "host", name: "print_result")
+func print_result(_ value: Int32)
+
+// 2. Export a function to the host
+@_expose(wasm, "add_and_print")
+@_cdecl("add_and_print")
+public func addAndPrint(_ lhs: Int32, _ rhs: Int32) -> Int32 {
+    let result = lhs + rhs
+    // Call the imported host function
+    print_result(result)
+    return result
+}
+</code></pre><h2 id="2-Building-the-Guest"><a href="#2-Building-the-Guest">2. Building the Guest</a></h2><p>Compile the guest package using the Swift SDK for WebAssembly.</p><pre class="bash"><code># In the root directory of your guest package
+swift build --swift-sdk &lt;YOUR_WASM_SDK_ID>
+</code></pre><p>Swift Package Manager will produce a <code>.wasm</code> file at <code>.build/wasm32-unknown-wasi/debug/Guest.wasm</code>. Copy it to a known location:</p><pre class="bash"><code>cp .build/wasm32-unknown-wasi/debug/Guest.wasm guest.wasm
+</code></pre><h2 id="3-The-Host-Application-WasmKit"><a href="#3-The-Host-Application-WasmKit">3. The Host Application (WasmKit)</a></h2><p>Now, create the host application that will execute the guest module.</p><p><b><code>Package.swift</code> for the Host:</b> Add <code>WasmKit</code> and <code>WasmKitWASI</code> as dependencies.</p><pre class="swift"><code>// swift-tools-version:6.2
+import PackageDescription
+
+let package = Package(
+    name: "Host",
+    platforms: [.macOS(.v14)],
+    dependencies: [
+        .package(url: "https://github.com/swiftwasm/WasmKit.git", from: "0.2.0"),
+    ],
+    targets: [
+        .executableTarget(name: "Host", dependencies: [
+            .product(name: "WasmKit", package: "WasmKit"),
+            .product(name: "WasmKitWASI", package: "WasmKit"),
+        ]),
+    ]
+)
+</code></pre><p><b>Source code for the Host (<code>Sources/Host/Host.swift</code>):</b></p><pre class="swift"><code>import WasmKit
+import WasmKitWASI
+import Foundation
+
+@main
+struct Host {
+    static func main() throws {
+        let wasmBinary = try Data(contentsOf: URL(fileURLWithPath: "path/to/your/guest.wasm"))
+
+        let engine = Engine()
+        let store = Store(engine: engine)
+        let module = try parseWasm(bytes: Array(wasmBinary))
+
+        // 1. Define the host function to provide to the guest
+        let printResult = Function(store: store, parameters: [.i32]) { _, args in
+            let value = args[0]
+            print("[Host] The result is: \(value)")
+            return []
+        }
+
+        // 2. Set up WASI and instantiate the module
+        var imports = Imports()
+        let wasi = try WASIBridgeToHost()
+        wasi.link(to: &amp;imports, store: store)
+        imports.define(module: "host", name: "print_result", printResult)
+
+        let instance = try module.instantiate(store: store, imports: imports)
+
+        // Initialize the reactor (library) instance
+        try wasi.initialize(instance)
+
+        // 3. Call the exported function from the guest
+        let addAndPrint = instance.exports[function: "add_and_print"]!
+        _ = try addAndPrint([.i32(42), .i32(3)])
+    }
+}
+</code></pre><h2 id="4-Running-the-Host"><a href="#4-Running-the-Host">4. Running the Host</a></h2><p>Run the host application to see the interaction in action.</p><pre class="bash"><code># In the root directory of your host package
+swift run
+# Expected output: [Host] The result is: i32(45)
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><ul><li><a href="../porting/index.html"><p class="api-collection">Porting code from other platforms</p></a><p>Make your code cross-platform and compatible with WebAssembly by checking for libraries and APIs available for this platform.</p></li><li><a href="../testing/index.html"><p class="api-collection">Testing</p></a><p>Swift for WebAssembly supports both <code>swift-testing</code> and <code>XCTest</code> for writing test suites. Your project needs to have a <code>Package.swift</code> package manifest with test targets configured.</p></li><li><a href="../concurrency/index.html"><p class="api-collection">Concurrency</p></a><p>On macOS, iOS, and Linux, the <code>libdispatch</code>-based executor is used by default, but <code>libdispatch</code> is not supported in a single-threaded WebAssembly environment. However, there are still two global task executors available in Swift for Wasm.</p></li><li><a href="../debugging/index.html"><p class="api-collection">Debugging</p></a><p>Debugging is a crucial part of the development process. With official toolchains providing more integrated tools, debugging WebAssembly modules has become more streamlined.</p></li><li><a href="../troubleshooting/index.html"><p class="api-collection">Troubleshooting</p></a><p>These are some common issues you may run into while using Swift with WebAssembly.</p></li><li><a href="../multithreading/index.html"><p class="api-collection">Multi-threading</p></a><p>While Swift Concurrency is available in Swift for WebAssembly out of the box, it is single-threaded by default. Read this article for special considerations relevant to multi-threading.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

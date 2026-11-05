@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Patterns</title><meta content="Match and destructure values." name="description"><script src="../../../navigator-index-swift-book.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">The Swift Programming Language (6.4)</a></li><li>Patterns</li></ul></nav><hgroup><p>Article</p><h1>Patterns</h1></hgroup><p>Match and destructure values.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>A <i>pattern</i> represents the structure of a single value or a composite value. For example, the structure of a tuple <code>(1, 2)</code> is a comma-separated list of two elements. Because patterns represent the structure of a value rather than any one particular value, you can match them with a variety of values. For instance, the pattern <code>(x, y)</code> matches the tuple <code>(1, 2)</code> and any other two-element tuple. In addition to matching a pattern with a value, you can extract part or all of a composite value and bind each part to a constant or variable name.</p><p>In Swift, there are two basic kinds of patterns: those that successfully match any kind of value, and those that may fail to match a specified value at runtime.</p><p>The first kind of pattern is used for destructuring values in simple variable, constant, and optional bindings. These include wildcard patterns, identifier patterns, and any value binding or tuple patterns containing them. You can specify a type annotation for these patterns to constrain them to match only values of a certain type.</p><p>The second kind of pattern is used for full pattern matching, where the values you’re trying to match against may not be there at runtime. These include enumeration case patterns, optional patterns, expression patterns, and type-casting patterns. You use these patterns in a case label of a <code>switch</code> statement, a <code>catch</code> clause of a <code>do</code> statement, or in the case condition of an <code>if</code>, <code>while</code>, <code>guard</code>, or <code>for</code>-<code>in</code> statement.</p><aside class="grammar of a pattern"><p class="label">Grammar of a pattern</p><p></p><p><i>pattern</i> → <i>wildcard-pattern</i> <i>type-annotation</i><i>?</i> <br><i>pattern</i> → <i>identifier-pattern</i> <i>type-annotation</i><i>?</i> <br><i>pattern</i> → <i>value-binding-pattern</i> <br><i>pattern</i> → <i>tuple-pattern</i> <i>type-annotation</i><i>?</i> <br><i>pattern</i> → <i>enum-case-pattern</i> <br><i>pattern</i> → <i>optional-pattern</i> <br><i>pattern</i> → <i>type-casting-pattern</i> <br><i>pattern</i> → <i>expression-pattern</i></p></aside><h2 id="Wildcard-Pattern"><a href="#Wildcard-Pattern">Wildcard Pattern</a></h2><p>A <i>wildcard pattern</i> matches and ignores any value and consists of an underscore (<code>_</code>). Use a wildcard pattern when you don’t care about the values being matched against. For example, the following code iterates through the closed range <code>1...3</code>, ignoring the current value of the range on each iteration of the loop:</p><pre class="swift"><code>for _ in 1...3 {
+    // Do something three times.
+}
+</code></pre><aside class="grammar of a wildcard pattern"><p class="label">Grammar of a wildcard pattern</p><p></p><p><i>wildcard-pattern</i> → <b><code>_</code></b></p></aside><h2 id="Identifier-Pattern"><a href="#Identifier-Pattern">Identifier Pattern</a></h2><p>An <i>identifier pattern</i> matches any value and binds the matched value to a variable or constant name. For example, in the following constant declaration, <code>someValue</code> is an identifier pattern that matches the value <code>42</code> of type <code>Int</code>:</p><pre class="swift"><code>let someValue = 42
+</code></pre><p>When the match succeeds, the value <code>42</code> is bound (assigned) to the constant name <code>someValue</code>.</p><p>When the pattern on the left-hand side of a variable or constant declaration is an identifier pattern, the identifier pattern is implicitly a subpattern of a value-binding pattern.</p><aside class="grammar of an identifier pattern"><p class="label">Grammar of an identifier pattern</p><p></p><p><i>identifier-pattern</i> → <i>identifier</i></p></aside><h2 id="Value-Binding-Pattern"><a href="#Value-Binding-Pattern">Value-Binding Pattern</a></h2><p>A <i>value-binding pattern</i> binds matched values to variable or constant names. Value-binding patterns that bind a matched value to the name of a constant begin with the <code>let</code> keyword; those that bind to the name of variable begin with the <code>var</code> keyword.</p><p>Identifiers patterns within a value-binding pattern bind new named variables or constants to their matching values. For example, you can decompose the elements of a tuple and bind the value of each element to a corresponding identifier pattern.</p><pre class="swift"><code>let point = (3, 2)
+switch point {
+// Bind x and y to the elements of point.
+case let (x, y):
+    print("The point is at (\(x), \(y)).")
+}
+// Prints "The point is at (3, 2)."
+</code></pre><p>In the example above, <code>let</code> distributes to each identifier pattern in the tuple pattern <code>(x, y)</code>. Because of this behavior, the <code>switch</code> cases <code>case let (x, y):</code> and <code>case (let x, let y):</code> match the same values.</p><aside class="grammar of a value-binding pattern"><p class="label">Grammar of a value-binding pattern</p><p></p><p><i>value-binding-pattern</i> → <b><code>var</code></b> <i>pattern</i> | <b><code>let</code></b> <i>pattern</i></p></aside><h2 id="Tuple-Pattern"><a href="#Tuple-Pattern">Tuple Pattern</a></h2><p>A <i>tuple pattern</i> is a comma-separated list of zero or more patterns, enclosed in parentheses. Tuple patterns match values of corresponding tuple types.</p><p>You can constrain a tuple pattern to match certain kinds of tuple types by using type annotations. For example, the tuple pattern <code>(x, y): (Int, Int)</code> in the constant declaration <code>let (x, y): (Int, Int) = (1, 2)</code> matches only tuple types in which both elements are of type <code>Int</code>.</p><p>When a tuple pattern is used as the pattern in a <code>for</code>-<code>in</code> statement or in a variable or constant declaration, it can contain only wildcard patterns, identifier patterns, optional patterns, or other tuple patterns that contain those. For example, the following code isn’t valid because the element <code>0</code> in the tuple pattern <code>(x, 0)</code> is an expression pattern:</p><pre class="swift"><code>let points = [(0, 0), (1, 0), (1, 1), (2, 0), (2, 1)]
+// This code isn't valid.
+for (x, 0) in points {
+    /* ... */
+}
+</code></pre><p>The parentheses around a tuple pattern that contains a single element have no effect. The pattern matches values of that single element’s type. For example, the following are equivalent:</p><pre class="swift"><code>let a = 2        // a: Int = 2
+let (a) = 2      // a: Int = 2
+let (a): Int = 2 // a: Int = 2
+</code></pre><aside class="grammar of a tuple pattern"><p class="label">Grammar of a tuple pattern</p><p></p><p><i>tuple-pattern</i> → <b><code>(</code></b> <i>tuple-pattern-element-list</i><i>?</i> <b><code>)</code></b> <br><i>tuple-pattern-element-list</i> → <i>tuple-pattern-element</i> | <i>tuple-pattern-element</i> <b><code>,</code></b> <i>tuple-pattern-element-list</i> <br><i>tuple-pattern-element</i> → <i>pattern</i> | <i>identifier</i> <b><code>:</code></b> <i>pattern</i></p></aside><h2 id="Enumeration-Case-Pattern"><a href="#Enumeration-Case-Pattern">Enumeration Case Pattern</a></h2><p>An <i>enumeration case pattern</i> matches a case of an existing enumeration type. Enumeration case patterns appear in <code>switch</code> statement case labels and in the case conditions of <code>if</code>, <code>while</code>, <code>guard</code>, and <code>for</code>-<code>in</code> statements.</p><p>If the enumeration case you’re trying to match has any associated values, the corresponding enumeration case pattern must specify a tuple pattern that contains one element for each associated value. For an example that uses a <code>switch</code> statement to match enumeration cases containing associated values, see Enumerations.</p><p>An enumeration case pattern also matches values of that case wrapped in an optional. This simplified syntax lets you omit an optional pattern. Note that, because <code>Optional</code> is implemented as an enumeration, <code>.none</code> and <code>.some</code> can appear in the same switch as the cases of the enumeration type.</p><pre class="swift"><code>enum SomeEnum { case left, right }
+let x: SomeEnum? = .left
+switch x {
+case .left:
+    print("Turn left")
+case .right:
+    print("Turn right")
+case nil:
+    print("Keep going straight")
+}
+// Prints "Turn left".
+</code></pre><aside class="grammar of an enumeration case pattern"><p class="label">Grammar of an enumeration case pattern</p><p></p><p><i>enum-case-pattern</i> → <i>type-identifier</i><i>?</i> <b><code>.</code></b> <i>enum-case-name</i> <i>tuple-pattern</i><i>?</i></p></aside><h2 id="Optional-Pattern"><a href="#Optional-Pattern">Optional Pattern</a></h2><p>An <i>optional pattern</i> matches values wrapped in a <code>some(Wrapped)</code> case of an <code>Optional&lt;Wrapped></code> enumeration. Optional patterns consist of an identifier pattern followed immediately by a question mark and appear in the same places as enumeration case patterns.</p><p>Because optional patterns are syntactic sugar for <code>Optional</code> enumeration case patterns, the following are equivalent:</p><pre class="swift"><code>let someOptional: Int? = 42
+// Match using an enumeration case pattern.
+if case .some(let x) = someOptional {
+    print(x)
+}
+
+// Match using an optional pattern.
+if case let x? = someOptional {
+    print(x)
+}
+</code></pre><p>The optional pattern provides a convenient way to iterate over an array of optional values in a <code>for</code>-<code>in</code> statement, executing the body of the loop only for non-<code>nil</code> elements.</p><pre class="swift"><code>let arrayOfOptionalInts: [Int?] = [nil, 2, 3, nil, 5]
+// Match only non-nil values.
+for case let number? in arrayOfOptionalInts {
+    print("Found a \(number)")
+}
+// Found a 2
+// Found a 3
+// Found a 5
+</code></pre><aside class="grammar of an optional pattern"><p class="label">Grammar of an optional pattern</p><p></p><p><i>optional-pattern</i> → <i>identifier-pattern</i> <b><code>?</code></b></p></aside><h2 id="Type-Casting-Patterns"><a href="#Type-Casting-Patterns">Type-Casting Patterns</a></h2><p>There are two type-casting patterns, the <code>is</code> pattern and the <code>as</code> pattern. The <code>is</code> pattern appears only in <code>switch</code> statement case labels. The <code>is</code> and <code>as</code> patterns have the following form:</p><pre class="swift"><code>is &lt;#type#>
+&lt;#pattern#> as &lt;#type#>
+</code></pre><p>The <code>is</code> pattern matches a value if the type of that value at runtime is the same as the type specified in the right-hand side of the <code>is</code> pattern — or a subclass of that type. The <code>is</code> pattern behaves like the <code>is</code> operator in that they both perform a type cast but discard the returned type.</p><p>The <code>as</code> pattern matches a value if the type of that value at runtime is the same as the type specified in the right-hand side of the <code>as</code> pattern — or a subclass of that type. If the match succeeds, the type of the matched value is cast to the <i>pattern</i> specified in the right-hand side of the <code>as</code> pattern.</p><p>For an example that uses a <code>switch</code> statement to match values with <code>is</code> and <code>as</code> patterns, see TypeCasting.</p><aside class="grammar of a type casting pattern"><p class="label">Grammar of a type casting pattern</p><p></p><p><i>type-casting-pattern</i> → <i>is-pattern</i> | <i>as-pattern</i> <br><i>is-pattern</i> → <b><code>is</code></b> <i>type</i> <br><i>as-pattern</i> → <i>pattern</i> <b><code>as</code></b> <i>type</i></p></aside><h2 id="Expression-Pattern"><a href="#Expression-Pattern">Expression Pattern</a></h2><p>An <i>expression pattern</i> represents the value of an expression. Expression patterns appear only in <code>switch</code> statement case labels.</p><p>The expression represented by the expression pattern is compared with the value of an input expression using the pattern-matching operator (<code>~=</code>) from the Swift standard library. The matches succeeds if the <code>~=</code> operator returns <code>true</code>. By default, the <code>~=</code> operator compares two values of the same type using the <code>==</code> operator. It can also match a value with a range of values, by checking whether the value is contained within the range, as the following example shows.</p><pre class="swift"><code>let point = (1, 2)
+switch point {
+case (0, 0):
+    print("(0, 0) is at the origin.")
+case (-2...2, -2...2):
+    print("(\(point.0), \(point.1)) is near the origin.")
+default:
+    print("The point is at (\(point.0), \(point.1)).")
+}
+// Prints "(1, 2) is near the origin."
+</code></pre><p>You can overload the <code>~=</code> operator to provide custom expression matching behavior. For example, you can rewrite the above example to compare the <code>point</code> expression with a string representations of points.</p><pre class="swift"><code>// Overload the ~= operator to match a string with an integer.
+func ~= (pattern: String, value: Int) -> Bool {
+    return pattern == "\(value)"
+}
+switch point {
+case ("0", "0"):
+    print("(0, 0) is at the origin.")
+default:
+    print("The point is at (\(point.0), \(point.1)).")
+}
+// Prints "The point is at (1, 2)."
+</code></pre><aside class="grammar of an expression pattern"><p class="label">Grammar of an expression pattern</p><p></p><p><i>expression-pattern</i> → <i>expression</i></p></aside></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

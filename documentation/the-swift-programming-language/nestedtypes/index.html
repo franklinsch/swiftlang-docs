@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Nested Types</title><meta content="Define types inside the scope of another type." name="description"><script src="../../../navigator-index-swift-book.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">The Swift Programming Language (6.4)</a></li><li>Nested Types</li></ul></nav><hgroup><p>Article</p><h1>Nested Types</h1></hgroup><p>Define types inside the scope of another type.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Enumerations are often created to support a specific class or structure’s functionality. Similarly, it can be convenient to define utility structures purely for use within the context of a more complex type, and protocols that are normally used in conjunction with a specific type. To accomplish this, Swift enables you to define <i>nested types</i>, whereby you nest supporting types like enumerations, structures, and protocols within the definition of the type they support.</p><p>To nest a type within another type, write its definition within the outer braces of the type it supports. Types can be nested to as many levels as are required.</p><h2 id="Nested-Types-in-Action"><a href="#Nested-Types-in-Action">Nested Types in Action</a></h2><p>The example below defines a structure called <code>BlackjackCard</code>, which models a playing card as used in the game of Blackjack. The <code>BlackjackCard</code> structure contains two nested enumeration types called <code>Suit</code> and <code>Rank</code>.</p><p>In Blackjack, the Ace cards have a value of either one or eleven. This feature is represented by a structure called <code>Values</code>, which is nested within the <code>Rank</code> enumeration:</p><pre class="swift"><code>struct BlackjackCard {
+    // nested Suit enumeration
+    enum Suit: Character {
+        case spades = "♠", hearts = "♡", diamonds = "♢", clubs = "♣"
+    }
+
+    // nested Rank enumeration
+    enum Rank: Int {
+        case two = 2, three, four, five, six, seven, eight, nine, ten
+        case jack, queen, king, ace
+        struct Values {
+            let first: Int, second: Int?
+        }
+        var values: Values {
+            switch self {
+            case .ace:
+                return Values(first: 1, second: 11)
+            case .jack, .queen, .king:
+                return Values(first: 10, second: nil)
+            default:
+                return Values(first: self.rawValue, second: nil)
+            }
+        }
+    }
+
+    // BlackjackCard properties and methods
+    let rank: Rank, suit: Suit
+    var description: String {
+        var output = "suit is \(suit.rawValue),"
+        output += " value is \(rank.values.first)"
+        if let second = rank.values.second {
+            output += " or \(second)"
+        }
+        return output
+    }
+}
+</code></pre><p>The <code>Suit</code> enumeration describes the four common playing card suits, together with a raw <code>Character</code> value to represent their symbol.</p><p>The <code>Rank</code> enumeration describes the thirteen possible playing card ranks, together with a raw <code>Int</code> value to represent their face value. (This raw <code>Int</code> value isn’t used for the Jack, Queen, King, and Ace cards.)</p><p>As mentioned above, the <code>Rank</code> enumeration defines a further nested structure of its own, called <code>Values</code>. This structure encapsulates the fact that most cards have one value, but the Ace card has two values. The <code>Values</code> structure defines two properties to represent this:</p><ul><li><p><code>first</code>, of type <code>Int</code></p></li><li><p><code>second</code>, of type <code>Int?</code>, or “optional <code>Int</code>”</p></li></ul><p><code>Rank</code> also defines a computed property, <code>values</code>, which returns an instance of the <code>Values</code> structure. This computed property considers the rank of the card and initializes a new <code>Values</code> instance with appropriate values based on its rank. It uses special values for <code>jack</code>, <code>queen</code>, <code>king</code>, and <code>ace</code>. For the numeric cards, it uses the rank’s raw <code>Int</code> value.</p><p>The <code>BlackjackCard</code> structure itself has two properties — <code>rank</code> and <code>suit</code>. It also defines a computed property called <code>description</code>, which uses the values stored in <code>rank</code> and <code>suit</code> to build a description of the name and value of the card. The <code>description</code> property uses optional binding to check whether there’s a second value to display, and if so, inserts additional description detail for that second value.</p><p>Because <code>BlackjackCard</code> is a structure with no custom initializers, it has an implicit memberwise initializer, as described in Initialization. You can use this initializer to initialize a new constant called <code>theAceOfSpades</code>:</p><pre class="swift"><code>let theAceOfSpades = BlackjackCard(rank: .ace, suit: .spades)
+print("theAceOfSpades: \(theAceOfSpades.description)")
+// Prints "theAceOfSpades: suit is ♠, value is 1 or 11".
+</code></pre><p>Even though <code>Rank</code> and <code>Suit</code> are nested within <code>BlackjackCard</code>, their type can be inferred from context, and so the initialization of this instance is able to refer to the enumeration cases by their case names (<code>.ace</code> and <code>.spades</code>) alone. In the example above, the <code>description</code> property correctly reports that the Ace of Spades has a value of <code>1</code> or <code>11</code>.</p><h2 id="Referring-to-Nested-Types"><a href="#Referring-to-Nested-Types">Referring to Nested Types</a></h2><p>To use a nested type outside of its definition context, prefix its name with the name of the type it’s nested within:</p><pre class="swift"><code>let heartsSymbol = BlackjackCard.Suit.hearts.rawValue
+// heartsSymbol is "♡"
+</code></pre><p>For the example above, this enables the names of <code>Suit</code>, <code>Rank</code>, and <code>Values</code> to be kept deliberately short, because their names are naturally qualified by the context in which they’re defined.</p></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Writing Failable Asynchronous APIs</title><meta content="Vend results as part of an API when you can’t return errors synchronously." name="description"><script src="../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Standard Library</a></li><li><a href="../numbers-and-basic-values/index.html">Numbers and Basic Values</a></li><li><a href="../result/index.html">Result</a></li><li>Writing Failable Asynchronous APIs</li></ul></nav><hgroup><p>Article</p><h1>Writing Failable Asynchronous APIs</h1></hgroup><p>Vend results as part of an API when you can’t return errors synchronously.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>When writing a function, method, or other API that might fail, you use the <code>throws</code> keyword on the declaration to indicate that the API call can throw an error. However, you can’t use the <code>throws</code> keyword to model APIs that return asynchronously. Instead, use the <a href="../result/index.html"><code>Result</code></a> enumeration to capture information about whether an asychronous call succeeds or fails, and use the associated values for the <a href="../result/success(_:)/index.html"><code>Result.success(<wbr>_:)</code></a> and <a href="../result/failure(_:)/index.html"><code>Result.failure(<wbr>_:)</code></a> cases to carry information about the result of the call.</p><h3 id="Return-Result-Instances-Asynchronously"><a href="#Return-Result-Instances-Asynchronously">Return Result Instances Asynchronously</a></h3><p>The following example models an asynchronous source of random numbers. The <code>fetchRemoteRandomNumber(completion:)</code> method returns <code>Void</code> synchronously, and asynchronously calls a completion handler with a <code>Result&lt;Int, EntropyError></code> instance that contains either a random result or information about the failure.</p><pre class="swift"><code>let queue = DispatchQueue(label: "com.example.queue")
+
+enum EntropyError: Error {
+    case entropyDepleted
+}
+
+struct AsyncRandomGenerator {
+    static let entropyLimit = 5
+    var count = 0
+
+    mutating func fetchRemoteRandomNumber(
+        completion: @escaping (Result&lt;Int, EntropyError>) -> Void
+    ) {
+        let result: Result&lt;Int, EntropyError>
+        if count &lt; AsyncRandomGenerator.entropyLimit {
+            // Produce numbers until reaching the entropy limit.
+            result = .success(Int.random(in: 1...100))
+        } else {
+            // Supply a failure reason when the caller hits the limit.
+            result = .failure(.entropyDepleted)
+        }
+
+        count += 1
+
+        // Delay to simulate an asynchronous source of entropy.
+        queue.asyncAfter(deadline: .now() + 2) {
+            completion(result)
+        }
+    }
+}
+</code></pre><p>Users of your remote random number generator can decide how to handle both the success and failure cases:</p><pre class="swift"><code>var generator = AsyncRandomGenerator()
+
+// Request one more number than the limit to trigger a failure.
+(0..&lt;AsyncRandomGenerator.entropyLimit + 1).forEach { _ in
+    generator.fetchRemoteRandomNumber { result in
+        switch result {
+        case .success(let number):
+            print(number)
+        case .failure(let error):
+            print("Source of randomness failed: \(error)")
+        }
+    }
+}
+
+print("Waiting on some numbers.")
+
+dispatchMain()
+/* Prints:
+success(29)
+success(46)
+success(85)
+success(39)
+success(84)
+Source of randomness failed: entropyDepleted
+*/
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Representing-a-Result"><a href="#Representing-a-Result">Representing a Result</a></h3><ul><li><a href="../result/success(_:)/index.html"><code>case <span class="identifier">success</span>(<wbr>Success)</code></a><p>A success, storing a <code>Success</code> value.</p></li><li><a href="../result/failure(_:)/index.html"><code>case <span class="identifier">failure</span>(<wbr>Failure)</code></a><p>A failure, storing a <code>Failure</code> value.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

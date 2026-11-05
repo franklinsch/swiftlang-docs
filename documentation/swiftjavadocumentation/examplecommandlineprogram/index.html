@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Command-line program with its main in Swift</title><meta content="Build a Java command-line program whose entry point is implemented in Swift." name="description"><script src="../../../navigator-index-swift-java.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Swift Java Documentation</a></li><li>Command-line program with its main in Swift</li></ul></nav><hgroup><p>Article</p><h1>Command-line program with its main in Swift</h1></hgroup><p>Build a Java command-line program whose entry point is implemented in Swift.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><aside class="note"><p class="label">Note</p><p>The instructions here work, but we are still smoothing out the interoperability story.</p></aside><p>In this example the program starts in the JVM: a Java class declares a <code>native</code> method, and Swift provides its implementation. This walks through the four pieces you need: the Java class that loads a native Swift library and declares the <code>native</code> entry point, a SwiftPM dynamic library product, the Swift implementation of that entry point, and the command line invocation that ties them together.</p><p>(If instead you want a Swift executable that starts a JVM to call Java APIs, see <code>Samples/JavaProbablyPrime</code> and <a href="../featuresjavakitmacros/index.html">Features: JavaKit macros</a>.)</p><h3 id="1-Create-a-Java-class-to-wrap-the-Swift-library"><a href="#1-Create-a-Java-class-to-wrap-the-Swift-library">1. Create a Java class to wrap the Swift library</a></h3><p>First, define a Java class that loads your native Swift library and declares a <code>native</code> entry point into the Swift code:</p><pre class="java"><code>package org.swift.javakit;
+
+public class HelloSwiftMain {
+    static {
+        System.loadLibrary("HelloSwift");
+    }
+
+    public static native String runSwiftMain(String[] args);
+
+    public static void main(String[] args) {
+        System.out.println(runSwiftMain(args));
+    }
+}
+</code></pre><p>Compile this into a <code>.class</code> file with <code>javac</code> before you build the Swift half:</p><pre class="bash"><code>javac Java/src/org/swift/javakit/HelloSwiftMain.java
+</code></pre><h3 id="2-Create-a-Swift-library"><a href="#2-Create-a-Swift-library">2. Create a Swift library</a></h3><p>The Java class created above loads a native library <code>HelloSwift</code> that needs to contain a definition of the <code>main</code> method in the class <code>org.swift.javakit.HelloSwiftMain</code>. <code>HelloSwift</code> should be defined as a SwiftPM dynamic library product:</p><pre class="swift"><code>  products: [
+    .library(
+      name: "HelloSwift",
+      type: .dynamic,
+      targets: ["HelloSwift"]
+    ),
+  ]
+</code></pre><p>with an associated target that depends on <code>SwiftJava</code>:</p><pre class="swift"><code>  .target(
+     name: "HelloSwift",
+     dependencies: [
+       .product(name: "ArgumentParser", package: "swift-argument-parser"),
+       .product(name: "SwiftJava", package: "swift-java")
+     ])
+</code></pre><h3 id="3-Implement-the-native-Java-method-in-Swift"><a href="#3-Implement-the-native-Java-method-in-Swift">3. Implement the native Java method in Swift</a></h3><p>Implementations of <code>native</code> methods live in an <code>@JavaImplementation</code> extension of the Swift wrapper for the Java class. Declare the wrapper with <code>@JavaClass</code>, list the <code>native</code> methods in a <code>NativeMethods</code> protocol, and mark each implementation with <code>@JavaMethod</code>. A <code>static native</code> method is implemented by a <code>static func</code> that takes an <code>environment: JNIEnvironment</code> parameter:</p><pre class="swift"><code>import SwiftJava
+
+@JavaClass("org.swift.javakit.HelloSwiftMain")
+open class HelloSwiftMain: JavaObject {
+}
+
+protocol HelloSwiftMainNativeMethods {
+  static func runSwiftMain(_ args: [String], environment: JNIEnvironment) -> String
+}
+
+@JavaImplementation("org.swift.javakit.HelloSwiftMain")
+extension HelloSwiftMain: HelloSwiftMainNativeMethods {
+  @JavaMethod
+  static func runSwiftMain(_ args: [String], environment: JNIEnvironment) -> String {
+    "Command line arguments are: \(args)"
+  }
+}
+</code></pre><aside class="important"><p class="label">Important</p><p>use <code>@JavaMethod static func</code> here, not <code>@JavaStaticMethod</code>. <code>@JavaStaticMethod</code> declares a Java static method that Swift <i>calls</i>; <code>@JavaImplementation</code> + <code>@JavaMethod</code> <i>provides</i> the implementation of a Java <code>native</code> method.</p></aside><p>Build this library with <code>swift build</code>, then find the directory containing the resulting shared library (<code>libHelloSwift.dylib</code>, <code>libHelloSwift.so</code>, or <code>HelloSwift.dll</code>, depending on platform). It is usually in <code>.build/debug/</code>.</p><h3 id="4-Putting-it-all-together"><a href="#4-Putting-it-all-together">4. Putting it all together</a></h3><p>Finally, run the program on the command line:</p><pre class="bash"><code>java -cp Java/src \
+  -Djava.library.path=$(PATH_CONTAINING_HELLO_SWIFT)/ \
+  org.swift.javakit.HelloSwiftMain -v argument
+</code></pre><p>This prints the command-line arguments <code>-v</code> and <code>argument</code> as seen by Swift.</p><h3 id="Bonus-Swift-argument-parser"><a href="#Bonus-Swift-argument-parser">Bonus: Swift argument parser</a></h3><p>The easiest way to process the arguments Java hands you is the <a href="https://github.com/apple/swift-argument-parser">Swift argument parser library</a>. Declare a <code>ParsableCommand</code> and parse into it from the native method’s implementation:</p><p>Note that the command is a separate <code>ParsableCommand</code> type rather than the <code>@JavaClass</code> wrapper itself: the wrapper is a class backed by a Java instance, so it cannot also satisfy <code>ParsableCommand</code>’s value semantics.</p><p><code>Samples/JavaKitSampleApp</code> contains this example, along with runtime tests that call the Java entry point and check the parsed result.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Related-Documentation"><a href="#Related-Documentation">Related Documentation</a></h3><ul><li><a href="../featuresjavakitmacros/index.html"><p class="api-collection">Features: JavaKit macros</p></a><p>Detailed feature documentation for calling Java from Swift using JavaKit macros (<code>@JavaClass</code>, <code>@JavaMethod</code>, <code>@JavaField</code>, <code>@JavaImplementation</code>, …).</p></li><li><a href="../swiftjavacommandlinetool/index.html"><p class="api-collection">swift-java</p></a><p>The <code>swift-java</code> command line tool offers multiple ways to interact with your Java interoperability enabled projects.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

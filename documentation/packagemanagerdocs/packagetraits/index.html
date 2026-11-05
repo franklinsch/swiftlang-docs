@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Providing configurable packages using traits</title><meta content="Define one or more package traits to offer default and configurable features for a package." name="description"><script src="../../../navigator-index-swiftpm-PackageManagerDocs.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Package Manager (SwiftPM)</a></li><li><a href="../addingdependencies/index.html">Adding dependencies to a Swift package</a></li><li>Providing configurable packages using traits</li></ul></nav><hgroup><p>Article</p><h1>Providing configurable packages using traits</h1></hgroup><p>Define one or more package traits to offer default and configurable features for a package.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Swift packages before version 6.1 offer a non-configurable API surface for each version. Starting with Swift 6.1, packages may offer traits, which express a configurable API surface for a package.</p><p>Use traits to enable additional API beyond the core API of the package. For example, a trait may enable an experimental API, optional extended functionality that requires additional dependencies, or functionality you may want to enable only in specific circumstances.</p><p>Traits that you specify when building a package only activate within the package you’re building. If your package wants to use a trait in a dependent package, it needs to encode the traits it needs in its dependencies.</p><aside class="note"><p class="label">Note</p><p>Don’t remove or disable public API when you enable a trait.</p></aside><p>Within the package that defines a trait, the trait expresses conditional compilation. Swift Package Manager exposes enabled traits as conditional blocks (for example, <code>#if YourTrait</code>) that you can use to conditionally enable imports or different compilation paths in code.</p><p>Trait names are namespaced within the package that hosts them. A trait name in one package has no impact on any other package. Trait names must be <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/lexicalstructure#Identifiers">valid Swift identifiers</a> with the addition of the characters of <code>-</code> and <code>+</code>. Don’t use the trait names <code>default</code> or <code>defaults</code> (regardless of capitalization). These values aren’t allowed to avoid confusion with the default traits that a package defines.</p><h3 id="Declare-traits"><a href="#Declare-traits">Declare traits</a></h3><p>Create a trait to define additional functionality, and define it in the <a href="https://docs.swift.org/latest/documentation/packagedescription/package/traits">traits</a> property of the package manifest. Use <a href="https://docs.swift.org/latest/documentation/packagedescription/trait/default(enabledtraits:)"><code>.default(<wbr>enabled<wbr>Traits:)</code></a> to provide the set of traits that the package uses by default. If you don’t define a default set of traits to enable, Swift Package Manager enables no traits by default.</p><p>The following example illustrates a single trait, <code>FeatureA</code>, that is enabled by default:</p><pre class="swift"><code>// ...
+traits: [
+    .trait(name: "FeatureA"),
+    .default(enabledTraits: ["FeatureA"]),
+],
+// ...
+</code></pre><p>Traits can also represent a set of other traits, which allows you to group features together. The following example illustrates defining three traits, and an additional trait (<code>B-and-C</code>) that enables both traits <code>FeatureB</code> and <code>FeatureC</code>:</p><pre class="swift"><code>// ...
+traits: [
+    .trait(name: "FeatureA"),
+    .trait(name: "FeatureB"),
+    .trait(name: "FeatureC"),
+    .trait(name: "B-and-C", enabledTraits: ["FeatureB", "FeatureC"]),
+    .default(enabledTraits: ["FeatureA"]),
+],
+// ...
+</code></pre><p>For the example above, the default trait is <code>FeatureA</code>.</p><aside class="note"><p class="label">Note</p><p>Changing the default set of traits for your package is a major semantic version change if it removes API surface. Adding traits isn’t a major version change.</p></aside><p>Swift Package Manager treats traits as purely additive, and unifies enabled traits across all packages within the build graph. Design your traits so that they enable additional API (and their dependencies, if needed).</p><h4 id="Define-mutually-exclusive-traits"><a href="#Define-mutually-exclusive-traits">Define mutually exclusive traits</a></h4><p>The package manifest format doesn’t support declaring mutually exclusive traits. In the rare case that you need to offer mutually exclusive traits, protect that scenario in code:</p><pre class="swift"><code>#if FeatureA &amp;&amp; FeatureC
+#error("FeatureA and FeatureC are mutually exclusive")
+#endif // FeatureA &amp;&amp; FeatureC
+</code></pre><aside class="note"><p class="label">Note</p><p>Providing mutually exclusive traits can result in compilation errors when a developer enables them.</p></aside><h3 id="Depend-on-a-package-with-a-trait"><a href="#Depend-on-a-package-with-a-trait">Depend on a package with a trait</a></h3><p>A package dependency that doesn’t specify traits uses the package with its default traits enabled. To enable specific traits, add them to the <code>traits</code> parameter in the package dependency declaration.</p><p>The following example shows how to depend on <code>swift-configuration</code> with both the <code>defaults</code> and <code>YAML</code> traits enabled:</p><pre class="swift"><code>dependencies: [
+    .package(
+        url: "https://github.com/apple/swift-configuration.git",
+        from: "1.0.0",
+        traits: [
+            .defaults,
+            "YAML"
+        ]
+    ),
+]
+</code></pre><aside class="tip"><p class="label">Tip</p><p>When you specify traits for a dependency, you explicitly define which traits to enable. The default traits aren’t included automatically. To use both the default and additional traits, add <code>.defaults</code> to the list of traits you specify.</p></aside><h3 id="Use-traits-in-your-code"><a href="#Use-traits-in-your-code">Use traits in your code</a></h3><p>Use the name of a trait for conditional compilation. Wrap the additional API surface for that trait within a conditional compilation block. For example, if the trait <code>FeatureA</code> is defined and enabled, the compiler sees and compiles the function <code>additionalAPI()</code>:</p><pre class="swift"><code>#if FeatureA
+public func additionalAPI() {
+  // ...
+}
+#endif // FeatureA
+</code></pre><h3 id="Use-a-trait-to-enable-conditional-dependencies"><a href="#Use-a-trait-to-enable-conditional-dependencies">Use a trait to enable conditional dependencies</a></h3><p>You can use a trait to optionally include a dependency, or a dependency with specific traits enabled, to support the functionality you expose with a trait. To do so, add the dependency you need to the manifest’s <code>dependencies</code> declaration, then use a conditional dependency for a trait or traits defined in the package to add that dependency to a target.</p><p>The following example illustrates the relevant portions of a package manifest that defines a trait <code>FeatureB</code>, a local dependency that is used only when the trait is enabled:</p><pre class="swift"><code>// ...
+traits: [
+    "FeatureB"
+    // this trait exists only within *this* package
+],
+dependencies: [
+    .package( 
+        path: "../some/local/path",
+        traits: ["DependencyFeatureTrait"] 
+    // this enables the trait DependencyFeatureTrait on 
+    // the local dependency at ../some/local/path.
+    )
+]
+// ... 
+targets: [
+    .target(
+        name: "MyTarget",
+        dependencies: [
+            .product(
+                name: "MyAPI",
+                package: "MyDependency",
+                condition: .when(traits: ["FeatureB"]) 
+    // if the FeatureB trait is enabled in *this* package, then
+    // the `MyAPI` product is included as a dependency for `MyTarget`.
+            )
+        ]
+    ),
+]
+</code></pre><p>The following code wraps the import with the trait’s conditional compilation, and defines additional API that uses the dependency:</p><pre class="swift"><code>#if FeatureB
+    import MyAPI
+#endif // FeatureB
+
+// ...
+
+#if FeatureB
+    public func additionalAPI() {
+        MyAPI.provideExtraFunctionality()
+        // ...
+    }
+#endif // FeatureB
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><ul><li><a href="../resolvingpackageversions/index.html"><p class="api-collection">Resolving and updating dependencies</p></a><p>Coordinate and constrain dependencies for your package.</p></li><li><a href="../resolvingdependencyfailures/index.html"><p class="api-collection">Resolving package dependency failures</p></a><p>Understand dependency failure scenarios.</p></li><li><a href="../addingsystemlibrarydependency/index.html"><p class="api-collection">Adding a dependency on a system library.</p></a><p>Define the location for the library and provide module map to expose C headers to Swift.</p></li><li><a href="../examplesystemlibrarypkgconfig/index.html"><p class="api-collection">Swift package example that uses system library dependency with pkg-config</p></a><p>Create an Command-line executable package that uses libgit2 as a system library dependency.</p></li><li><a href="../editingdependencypackage/index.html"><p class="api-collection">Editing a remote dependency used in a Swift package</p></a><p>Temporarily switch a remote dependency to local in order to edit the dependency.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

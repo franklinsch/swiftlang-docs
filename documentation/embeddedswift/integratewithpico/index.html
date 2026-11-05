@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Integrating with the Raspberry Pi Pico SDK</title><meta content="Set up a project that can seamlessly use C APIs from the Pico SDK." name="description"><script src="../../../navigator-index-embedded-swift.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Embedded Swift</a></li><li>Integrating with the Raspberry Pi Pico SDK</li></ul></nav><hgroup><p>Article</p><h1>Integrating with the Raspberry Pi Pico SDK</h1></hgroup><p>Set up a project that can seamlessly use C APIs from the Pico SDK.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Development for <a href="https://www.raspberrypi.com/products/raspberry-pi-pico/">Raspberry Pi Pico and Pico W</a> normally uses the <a href="https://github.com/raspberrypi/pico-sdk">Pico SDK</a> and the vendor provides several <a href="https://github.com/raspberrypi/pico-examples">sample projects in the pico-examples repository</a>. The SDK and sample project setup is described in:</p><ul><li><p><a href="https://www.raspberrypi.com/documentation/microcontrollers/c_sdk.html#sdk-setup">https://www.raspberrypi.com/documentation/microcontrollers/c_sdk.html#sdk-setup</a></p></li><li><p><a href="https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf">https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf</a></p></li></ul><p>Before trying to use Swift with the Pico SDK, make sure your environment works and can build the provided C/C++ sample projects.</p><p>The following walks through setting up a minimal three-file project from scratch to explain the key concepts. For a complete, more fleshed out example that supports multiple Pico boards, see the <a href="https://github.com/swiftlang/swift-embedded-examples/tree/main/rpi-pico-blink-sdk">rpi-pico-blink-sdk</a> project.</p><h2 id="CMake-setup-with-a-bridging-header"><a href="#CMake-setup-with-a-bridging-header">CMake setup with a bridging header</a></h2><p>The Pico SDK is using CMake as its build system, and so the simplest way to integrate with it is to also use CMake to build a Swift firmware application on top of the SDK and the libraries from it. The following describes an example set up of that on a “blinky” example (code that just blinks the built-in LED).</p><p>Let’s create a directory with a Swift source file, a bridging header, and a CMake definition file:</p><pre><code>./SwiftPicoBlinky/Main.swift
+./SwiftPicoBlinky/BridgingHeader.h
+./SwiftPicoBlinky/CMakeLists.txt
+</code></pre><p>In <code>Main.swift</code>, let’s add basic logic to initialize the GPIO port for the Pico’s built-in LED, and then turn it on and off in a loop:</p><pre class="swift"><code>@main
+struct Main {
+  static func main() {
+    let led = UInt32(PICO_DEFAULT_LED_PIN)
+    gpio_init(led)
+    gpio_set_dir(led, /*out*/true)
+    while true {
+      gpio_put(led, true)
+      sleep_ms(250)
+      gpio_put(led, false)
+      sleep_ms(250)
+    }
+  }
+}
+</code></pre><p>Notice that we’re using functions and variables defined in C in the Pico SDK. For that to be possible, the Swift compiler needs to have access to the C header files that define these functions and variables. The cleanest option would be to define a modulemap, but for simplicity let’s just use a bridging header to make declarations visible in Swift without a module. <code>BridgingHeader.h</code> should contain:</p><pre class="c"><code>#pragma once
+
+#include "pico/stdlib.h"
+</code></pre><p>Finally, we need to define the application’s build rules in CMake that will be using CMake logic from the Pico SDK. The following content of <code>CMakeLists.txt</code> leverages CMake 3.29’s native Swift language support:</p><pre class="cmake"><code>cmake_minimum_required(VERSION 3.29)
+include($ENV{PICO_SDK_PATH}/external/pico_sdk_import.cmake)
+
+project(swift-blinky)
+pico_sdk_init()
+
+# Enable Swift language support
+enable_language(Swift)
+
+# Set Swift compilation mode to whole module optimization
+set(CMAKE_Swift_COMPILATION_MODE wholemodule)
+
+add_executable(swift-blinky Main.swift)
+set_target_properties(swift-blinky PROPERTIES 
+  LINKER_LANGUAGE CXX)
+
+target_compile_options(swift-blinky PUBLIC "$&lt;$&lt;COMPILE_LANGUAGE:Swift>:SHELL:
+  -enable-experimental-feature Embedded
+  -target armv6m-none-none-eabi -Xcc -mfloat-abi=soft -Xcc -fshort-enums
+  -Xfrontend -function-sections
+  -import-bridging-header ${CMAKE_CURRENT_LIST_DIR}/BridgingHeader.h
+>")
+
+target_link_libraries(swift-blinky
+  pico_stdlib hardware_uart hardware_gpio
+)
+
+pico_add_extra_outputs(swift-blinky)
+</code></pre><h2 id="Configure-and-build"><a href="#Configure-and-build">Configure and build</a></h2><p>With these three files, we can now configure and build a Swift firmware for the Pico:</p><pre class="bash"><code>$ export PICO_BOARD=pico
+$ export PICO_SDK_PATH=&lt;path_to_pico_sdk>
+$ export PICO_TOOLCHAIN_PATH=&lt;path_to_arm_toolchain>
+$ ls -al
+-rw-r--r--   1 kuba  staff    39B Feb  2 22:08 BridgingHeader.h
+-rw-r--r--   1 kuba  staff   650B Feb  2 22:08 CMakeLists.txt
+-rw-r--r--   1 kuba  staff   262B Feb  2 22:08 Main.swift
+$ mkdir build
+$ cd build
+$ cmake -S ../ -B . -G Ninja
+$ ninja -v
+</code></pre><p>This should produce several build artifacts in the <code>build/</code> subdirectory, include <code>swift-blinky.uf2</code>, which can be directly uploaded to the Pico by copying it into the fake Mass Storage Volume that the device presents when plugged over USB in BOOTSEL mode.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="SDK-support"><a href="#SDK-support">SDK support</a></h3><ul><li><a href="../integratingwithplatforms/index.html"><p class="api-collection">Integrating with embedded platforms</p></a><p>Learn the common patterns and approaches for integrating Swift with existing embedded systems.</p></li><li><a href="../portingtonewplatforms/index.html"><p class="api-collection">Bringing Embedded Swift to a new platform</p></a><p>Implement the small set of runtime entry points that Embedded Swift expects from any platform, hosted or baremetal.</p></li><li><a href="../baremetal/index.html"><p class="api-collection">Using Embedded Swift in baremetal mode</p></a><p>Program without an SDK for maximum control and minimal size.</p></li><li><a href="../integratewithzephyr/index.html"><p class="api-collection">Integrating with the Zephyr RTOS SDK</p></a><p>Integrate Swift with Zephyr RTOS for embedded systems development.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

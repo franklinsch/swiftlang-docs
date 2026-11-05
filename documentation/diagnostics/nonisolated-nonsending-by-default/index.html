@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>nonisolated(nonsending) by Default (NonisolatedNonsendingByDefault)</title><meta content="Runs nonisolated async functions on the caller’s actor by default." name="description"><script src="../../../navigator-index-compiler-diagnostics.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Swift compiler diagnostics</a></li><li><a href="../upcoming-language-features/index.html">Upcoming language features</a></li><li>nonisolated(nonsending) by Default (NonisolatedNonsendingByDefault)</li></ul></nav><hgroup><p>Article</p><h1>nonisolated(nonsending) by Default (NonisolatedNonsendingByDefault)</h1></hgroup><p>Runs nonisolated async functions on the caller’s actor by default.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Prior to this feature, nonisolated async functions <i>never</i> run on an actor’s executor and instead switch to global generic executor. The motivation was to prevent unnecessary serialization and contention for the actor by switching off of the actor to run the nonisolated async function, but this does  have a number of unfortunate consequences:</p><ol><li><p><code>nonisolated</code> is difficult to understand</p></li><li><p>Async functions that run on the caller’s actor are difficult to express</p></li><li><p>It’s easy to write invalid async APIs</p></li><li><p>It’s difficult to write higher-order async APIs</p></li></ol><p>Introduced in Swift 6.2, <code>-enable-upcoming-feature NonisolatedNonsendingByDefault</code> changes the execution semantics of nonisolated async functions to always run on the caller’s actor by default. A new <code>@concurrent</code> attribute can be added in order to specify that a function must <i>always</i> switch off of an actor to run.</p><pre class="swift"><code>struct S: Sendable {
+  func performSync() {}
+
+  // `nonisolated(nonsending)` is the default
+  func performAsync() async {}
+
+  @concurrent
+  func alwaysSwitch() async {}
+}
+
+actor MyActor {
+  let s: Sendable
+
+  func call() async {
+    s.performSync() // runs on actor's executor
+
+    await s.performAsync() // runs on actor's executor
+
+    s.alwaysSwitch() // switches to global generic executor
+  }
+}
+</code></pre><p>A <code>nonisolated(nonsending)</code> modifier can also be used prior to enabling this upcoming feature in order to run on the caller’s actor. To achieve the same semantics as above, <code>S</code> in this case would instead be:</p><pre class="swift"><code>struct S: Sendable {
+  func performSync() {}
+
+  nonisolated(nonsending)
+  func performAsync() async {}
+
+  // `@concurrent` is the default
+  func alwaysSwitch() async {}
+}
+</code></pre><h2 id="Migration"><a href="#Migration">Migration</a></h2><pre class="sh"><code>-enable-upcoming-feature NonisolatedNonsendingByDefault:migrate
+</code></pre><p>Enabling migration for <code>NonisolatedNonsendingByDefault</code> adds fix-its that aim to keep the current async semantics by adding <code>@concurrent</code> to all existing nonisolated async functions and closures.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><ul><li><a href="../existential-any/index.html"><p class="api-collection">Existential any (ExistentialAny)</p></a><p><code>any</code> existential type syntax.</p></li><li><a href="../member-import-visibility/index.html"><p class="api-collection">Member import visibility (MemberImportVisibility)</p></a><p>Enables errors for uses of members that cannot be accessed because their defining module is not directly imported.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

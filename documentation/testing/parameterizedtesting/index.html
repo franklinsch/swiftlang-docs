@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Implementing parameterized tests</title><meta content="Specify different input parameters to generate multiple test cases from a test function." name="description"><script src="../../../navigator-index-swift-testing.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Testing</a></li><li>Implementing parameterized tests</li></ul></nav><hgroup><p>Article</p><h1>Implementing parameterized tests</h1></hgroup><p>Specify different input parameters to generate multiple test cases from a test function.</p><ul id="availability"><li aria-label="Swift 6.0+, Available on Swift 6.0 and later" title="Available on Swift 6.0 and later">Swift 6.0+</li><li aria-label="Xcode 16.0+, Available on Xcode 16.0 and later" title="Available on Xcode 16.0 and later">Xcode 16.0+</li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Some tests need to be run over many different inputs. For instance, a test might need to validate all cases of an enumeration. The testing library lets developers specify one or more collections to iterate over during testing, with the elements of those collections being forwarded to a test function. An invocation of a test function with a particular set of argument values is called a test <i>case</i>.</p><p>By default, the test cases of a test function run in parallel with each other. For more information about test parallelization, see <a href="../parallelization/index.html">Running tests serially or in parallel</a>.</p><h3 id="Parameterize-over-an-array-of-values"><a href="#Parameterize-over-an-array-of-values">Parameterize over an array of values</a></h3><p>It is very common to want to run a test <i>n</i> times over an array containing the values that should be tested. Consider the following test function:</p><pre class="swift"><code>enum Food {
+  case burger, iceCream, burrito, noodleBowl, kebab
+}
+
+@Test("All foods available")
+func foodsAvailable() async throws {
+  for food: Food in [.burger, .iceCream, .burrito, .noodleBowl, .kebab] {
+    let foodTruck = FoodTruck(selling: food)
+    #expect(await foodTruck.cook(food))
+  }
+}
+</code></pre><p>If this test function fails for one of the values in the array, it may be unclear which value failed. Instead, the test function can be <i>parameterized over</i> the various inputs:</p><pre class="swift"><code>enum Food {
+  case burger, iceCream, burrito, noodleBowl, kebab
+}
+
+@Test("All foods available", arguments: [Food.burger, .iceCream, .burrito, .noodleBowl, .kebab])
+func foodAvailable(_ food: Food) async throws {
+  let foodTruck = FoodTruck(selling: food)
+  #expect(await foodTruck.cook(food))
+}
+</code></pre><p>When passing a collection to the <code>@Test</code> attribute for parameterization, the testing library passes each element in the collection, one at a time, to the test function as its first (and only) argument. Then, if the test fails for one or more inputs, the corresponding diagnostics can clearly indicate which inputs to examine.</p><h3 id="Parameterize-over-the-cases-of-an-enumeration"><a href="#Parameterize-over-the-cases-of-an-enumeration">Parameterize over the cases of an enumeration</a></h3><p>The previous example includes a hard-coded list of <code>Food</code> cases to test. If <code>Food</code> is an enumeration that conforms to <code>CaseIterable</code>, you can instead write:</p><pre class="swift"><code>enum Food: CaseIterable {
+  case burger, iceCream, burrito, noodleBowl, kebab
+}
+
+@Test("All foods available", arguments: Food.allCases)
+func foodAvailable(_ food: Food) async throws {
+  let foodTruck = FoodTruck(selling: food)
+  #expect(await foodTruck.cook(food))
+}
+</code></pre><p>This way, if a new case is added to the <code>Food</code> enumeration, it’s automatically tested by this function.</p><h3 id="Parameterize-over-a-range-of-integers"><a href="#Parameterize-over-a-range-of-integers">Parameterize over a range of integers</a></h3><p>It is possible to parameterize a test function over a closed range of integers:</p><pre class="swift"><code>@Test("Can make large orders", arguments: 1 ... 100)
+func makeLargeOrder(count: Int) async throws {
+  let foodTruck = FoodTruck(selling: .burger)
+  #expect(await foodTruck.cook(.burger, quantity: count))
+}
+</code></pre><aside class="note"><p class="label">Note</p><p>Very large ranges such as <code>0 ..&lt; .max</code> may take an excessive amount of time to test, or may never complete due to resource constraints.</p></aside><h3 id="Pass-the-same-arguments-to-multiple-test-functions"><a href="#Pass-the-same-arguments-to-multiple-test-functions">Pass the same arguments to multiple test functions</a></h3><p>If you want to pass the same collection of arguments to two or more parameterized test functions, you can extract the arguments to a separate function or property and pass it to each <code>@Test</code> attribute. For example:</p><pre class="swift"><code>extension Food {
+  static var bestSelling: [Food] {
+    get async throws { /* ... */ }
+  }
+}
+
+@Test(arguments: try await Food.bestSelling)
+func `Order entree`(food: Food) {
+  let foodTruck = FoodTruck()
+  #expect(foodTruck.order(food))
+}
+
+@Test(arguments: try await Food.bestSelling)
+func `Package leftovers`(food: Food) throws {
+  let foodTruck = FoodTruck()
+  let container = try #require(foodTruck.container(fitting: food))
+  try container.add(food)
+}
+</code></pre><aside class="tip"><p class="label">Tip</p><p>You can prefix expressions passed to <code>arguments:</code> with <code>try</code> or <code>await</code>. The testing library evaluates them lazily only if it determines that the associated test will run.</p></aside><h3 id="Test-with-more-than-one-collection"><a href="#Test-with-more-than-one-collection">Test with more than one collection</a></h3><p>It’s possible to test more than one collection. Consider the following test function:</p><pre class="swift"><code>@Test("Can make large orders", arguments: Food.allCases, 1 ... 100)
+func makeLargeOrder(of food: Food, count: Int) async throws {
+  let foodTruck = FoodTruck(selling: food)
+  #expect(await foodTruck.cook(food, quantity: count))
+}
+</code></pre><p>Elements from the first collection are passed as the first argument to the test function, and elements from the second collection are passed as the second argument.</p><p>Assuming there are five cases in the <code>Food</code> enumeration, this test function will, when run, be invoked 500 times (5 x 100) with every possible combination of food and order size. These combinations are referred to as the collections’ Cartesian product.</p><p>To avoid the combinatoric semantics shown above, use <a href="https://developer.apple.com/documentation/swift/zip(_:_:)"><code>zip()</code></a>:</p><pre class="swift"><code>@Test("Can make large orders", arguments: zip(Food.allCases, 1 ... 100))
+func makeLargeOrder(of food: Food, count: Int) async throws {
+  let foodTruck = FoodTruck(selling: food)
+  #expect(await foodTruck.cook(food, quantity: count))
+}
+</code></pre><p>The zipped sequence will be “destructured” into two arguments automatically, then passed to the test function for evaluation.</p><p>This revised test function is invoked once for each tuple in the zipped sequence, for a total of five invocations instead of 500 invocations. In other words, this test function is passed the inputs <code>(.burger, 1)</code>, <code>(.iceCream, 2)</code>, …, <code>(.kebab, 5)</code> instead of <code>(.burger, 1)</code>, <code>(.burger, 2)</code>, <code>(.burger, 3)</code>, …, <code>(.kebab, 99)</code>, <code>(.kebab, 100)</code>.</p><h3 id="Run-selected-test-cases"><a href="#Run-selected-test-cases">Run selected test cases</a></h3><p>If a parameterized test meets certain requirements, the testing library allows people to run specific test cases it contains. This can be useful when a test has many cases but only some are failing since it enables re-running and debugging the failing cases in isolation.</p><p>To support running selected test cases, it must be possible to deterministically match the test case’s arguments. When someone attempts to run selected test cases of a parameterized test function, the testing library evaluates each argument of the tests’ cases for conformance to one of several known protocols, and if all arguments of a test case conform to one of those protocols, that test case can be run selectively. The following lists the known protocols, in precedence order (highest to lowest):</p><ol><li><p><a href="../customtestargumentencodable/index.html"><code>Custom<wbr>Test<wbr>Argument<wbr>Encodable</code></a></p></li><li><p><code>RawRepresentable</code>, where <code>RawValue</code> conforms to <code>Encodable</code></p></li><li><p><code>Encodable</code></p></li><li><p><code>Identifiable</code>, where <code>ID</code> conforms to <code>Encodable</code></p></li></ol><p>If any argument of a test case doesn’t meet one of the above requirements, then the overall test case cannot be run selectively.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Test-parameterization"><a href="#Test-parameterization">Test parameterization</a></h3><ul><li><a href="../test(_:_:arguments:)-8kn7a/index.html"><code>macro <span class="identifier">Test</span>&lt;<wbr>C>(<wbr>String?, any Test<wbr>Trait..., <span class="identifier">arguments</span>: C)</code></a><p>Declare a test parameterized over a collection of values.</p></li><li><a href="../test(_:_:arguments:_:)/index.html"><code>macro <span class="identifier">Test</span>&lt;<wbr>C1, C2>(<wbr>String?, any Test<wbr>Trait..., <span class="identifier">arguments</span>: C1, C2)</code></a><p>Declare a test parameterized over two collections of values.</p></li><li><a href="../test(_:_:arguments:)-3rzok/index.html"><code>macro <span class="identifier">Test</span>&lt;<wbr>C1, C2>(<wbr>String?, any Test<wbr>Trait..., <span class="identifier">arguments</span>: Zip2Sequence&lt;<wbr>C1, C2>)</code></a><p>Declare a test parameterized over two zipped collections of values.</p></li><li><a href="../customtestargumentencodable/index.html"><code>protocol <span class="identifier">Custom<wbr>Test<wbr>Argument<wbr>Encodable</span></code></a><p>A protocol for customizing how arguments passed to parameterized tests are encoded, which is used to match against when running specific arguments.</p></li><li><a href="../test/case/index.html"><code>struct <span class="identifier">Case</span></code></a><p>A single test case from a parameterized <a href="../test/index.html"><code>Test</code></a>.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

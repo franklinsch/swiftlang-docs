@@ -1,0 +1,1 @@
+window.doccNavigatorIndex = {"includedArchiveIdentifiers":["SwiftApplePlatforms"],"interfaceLanguages":{"swift":[{"path":"\/documentation\/swiftappleplatforms","title":"Apple platforms","type":"module"}]},"schemaVersion":{"major":0,"minor":1,"patch":2}};

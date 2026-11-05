@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Preserving the Results of a Throwing Expression</title><meta content="Call the initializer that wraps a throwing expression when you need to serialize or memoize the result." name="description"><script src="../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Standard Library</a></li><li><a href="../numbers-and-basic-values/index.html">Numbers and Basic Values</a></li><li><a href="../result/index.html">Result</a></li><li>Preserving the Results of a Throwing Expression</li></ul></nav><hgroup><p>Article</p><h1>Preserving the Results of a Throwing Expression</h1></hgroup><p>Call the initializer that wraps a throwing expression when you need to serialize or memoize the result.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Sometimes you need to preserve the entire result of a function call or other expression that can either throw or return a value. For example, you may need to serialize the result or pass it as a value to another part of your app that handles the result data. Use the <a href="../result/index.html"><code>Result</code></a> type in these scenarios to capture the result of a potentially failing operation.</p><h3 id="Identify-a-Throwing-Expression-to-Preserve"><a href="#Identify-a-Throwing-Expression-to-Preserve">Identify a Throwing Expression to Preserve</a></h3><p>Typically, you use <code>do-catch</code> statements to handle throwing expressions immediately, but sometimes you need to store the whole result of the operation for later processing during tasks like analyzing a batch of calls. The following example introduces an API that generates random numbers, but that fails approximately half of the time.</p><pre class="swift"><code>enum EntropyError: Error {
+    case entropyDepleted
+}
+
+struct UnreliableRandomGenerator {
+    func random() throws -> Int {
+        if Bool.random() {
+            return Int.random(in: 1...100)
+        } else {
+            throw EntropyError.entropyDepleted
+        }
+    }
+}
+</code></pre><h3 id="Convert-the-Throwing-Expression-to-a-Result"><a href="#Convert-the-Throwing-Expression-to-a-Result">Convert the Throwing Expression to a Result</a></h3><p>You preserve the return value or thrown error from a throwing expression using the <a href="../result/index.html"><code>Result</code></a> enumeration’s <code>init(catching:)</code> initializer. Invoke the throwing expression inside the closure you pass to the initializer:</p><pre class="swift"><code>let singleSample = Result { try UnreliableRandomGenerator().random() }
+</code></pre><p>In most scenarios, you use the preserved result as part of broader functionality in your code. For example, you may run a series of randomness tests and compute the statistical average of both a range of numbers returned from a random number generator, as well as the failure rate of calling the API. In these cases, you need to store the whole result rather than just the success value or that the API call failed.</p><p>The following example uses the <code>init(catching:)</code> initializer in the broader context of saving a series of calls for later statistical analysis:</p><pre class="swift"><code>struct RandomnessMonitor {
+    let randomnessSource: UnreliableRandomGenerator
+    var results: [Result&lt;Int, Error>] = []
+
+    init(generator: UnreliableRandomGenerator) {
+        randomnessSource = generator
+    }
+
+    mutating func sample() {
+        let sample = Result { try randomnessSource.random() }
+        results.append(sample)
+    }
+
+    func summary() -> (Double, Double) {
+        let totals = results.reduce((sum: 0, count: 0)) { total, sample in
+            switch sample {
+            case .success(let number):
+                return (total.sum + number, total.count)
+            case .failure:
+                return (total.sum, total.count + 1)
+            }
+        }
+
+        return (
+            average: Double(totals.sum) / Double(results.count - totals.count),
+            failureRate: Double(totals.count) / Double(results.count)
+        )
+    }
+}
+</code></pre><p>Running the analysis on a sufficiently large sample generates an average number near 50 and a failure rate near 50%:</p><pre class="swift"><code>var monitor = RandomnessMonitor(generator: UnreliableRandomGenerator())
+(0..&lt;1000).forEach { _ in monitor.sample() }
+let (average, failureRate) = monitor.summary()
+print("Average value: \(average), failure rate: \(failureRate * 100.0)%.")
+// Prints values such as: "Average value: 47.95, failure rate: 48.69%."
+</code></pre></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>LazySequenceProtocol</title><meta content="A sequence on which normally-eager sequence operations are implemented lazily." name="description"><script src="../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../index.html">Standard Library</a></li><li>LazySequenceProtocol</li></ul></nav><hgroup><p>Protocol</p><h1>Lazy<wbr>Sequence<wbr>Protocol</h1></hgroup><p>A sequence on which normally-eager sequence operations are implemented lazily.</p><ul id="availability"><li aria-label="iOS 8.0+, Available on iOS 8.0 and later" title="Available on iOS 8.0 and later">iOS 8.0+</li><li aria-label="iPadOS 8.0+, Available on iPadOS 8.0 and later" title="Available on iPadOS 8.0 and later">iPadOS 8.0+</li><li aria-label="Mac Catalyst 13.0+, Available on Mac Catalyst 13.0 and later" title="Available on Mac Catalyst 13.0 and later">Mac Catalyst 13.0+</li><li aria-label="macOS 10.10+, Available on macOS 10.10 and later" title="Available on macOS 10.10 and later">macOS 10.10+</li><li aria-label="tvOS 9.0+, Available on tvOS 9.0 and later" title="Available on tvOS 9.0 and later">tvOS 9.0+</li><li aria-label="visionOS 1.0+, Available on visionOS 1.0 and later" title="Available on visionOS 1.0 and later">visionOS 1.0+</li><li aria-label="watchOS 2.0+, Available on watchOS 2.0 and later" title="Available on watchOS 2.0 and later">watchOS 2.0+</li></ul><pre id="declaration"><code><span class="keyword">protocol</span> LazySequenceProtocol : <a class="typeIdentifier" href="../sequence/index.html">Sequence</a></code></pre></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Lazy sequences can be used to avoid needless storage allocation and computation, because they use an underlying sequence for storage and compute their elements on demand. For example, <code>doubled</code> in this code sample is a sequence containing the values <code>2</code>, <code>4</code>, and <code>6</code>.</p><pre><code>let doubled = [1, 2, 3].lazy.map { $0 * 2 }
+</code></pre><p>Each time an element of the lazy sequence <code>doubled</code> is accessed, the closure accesses and transforms an element of the underlying array.</p><p>Sequence operations that take closure arguments, such as <code>map(_:)</code> and <code>filter(_:)</code>, are normally eager: They use the closure immediately and return a new array. When you use the <code>lazy</code> property, you give the standard library explicit permission to store the closure and the sequence in the result, and defer computation until it is needed.</p><h2 id="Adding-New-Lazy-Operations"><a href="#Adding-New-Lazy-Operations">Adding New Lazy Operations</a></h2><p>To add a new lazy sequence operation, extend this protocol with a method that returns a lazy wrapper that itself conforms to <code>LazySequenceProtocol</code>.  For example, an eager <code>scan(_:_:)</code> method is defined as follows:</p><pre><code>extension Sequence {
+    /// Returns an array containing the results of
+    ///
+    ///   p.reduce(initial, nextPartialResult)
+    ///
+    /// for each prefix `p` of `self`, in order from shortest to
+    /// longest. For example:
+    ///
+    ///     (1..&lt;6).scan(0, +) // [0, 1, 3, 6, 10, 15]
+    ///
+    /// - Complexity: O(n)
+    func scan&lt;Result>(
+        _ initial: Result,
+        _ nextPartialResult: (Result, Element) -> Result
+    ) -> [Result] {
+        var result = [initial]
+        for x in self {
+            result.append(nextPartialResult(result.last!, x))
+        }
+        return result
+    }
+}
+</code></pre><p>You can build a sequence type that lazily computes the elements in the result of a scan:</p><pre><code>struct LazyScanSequence&lt;Base: Sequence, Result>
+    : LazySequenceProtocol
+{
+    let initial: Result
+    let base: Base
+    let nextPartialResult:
+        (Result, Base.Element) -> Result
+
+    struct Iterator: IteratorProtocol {
+        var base: Base.Iterator
+        var nextElement: Result?
+        let nextPartialResult:
+            (Result, Base.Element) -> Result
+        
+        mutating func next() -> Result? {
+            return nextElement.map { result in
+                nextElement = base.next().map {
+                    nextPartialResult(result, $0)
+                }
+                return result
+            }
+        }
+    }
+    
+    func makeIterator() -> Iterator {
+        return Iterator(
+            base: base.makeIterator(),
+            nextElement: initial as Result?,
+            nextPartialResult: nextPartialResult)
+    }
+}
+</code></pre><p>Finally, you can give all lazy sequences a lazy <code>scan(_:_:)</code> method:</p><pre><code>extension LazySequenceProtocol {
+    func scan&lt;Result>(
+        _ initial: Result,
+        _ nextPartialResult: @escaping (Result, Element) -> Result
+    ) -> LazyScanSequence&lt;Self, Result> {
+        return LazyScanSequence(
+            initial: initial, base: self, nextPartialResult: nextPartialResult)
+    }
+}
+</code></pre><p>With this type and extension method, you can call <code>.lazy.scan(_:_:)</code> on any sequence to create a lazily computed scan. The resulting <code>LazyScanSequence</code> is itself lazy, too, so further sequence operations also defer computation.</p><p>The explicit permission to implement operations lazily applies only in contexts where the sequence is statically known to conform to <code>LazySequenceProtocol</code>. In the following example, because the extension applies only to <code>Sequence</code>, side-effects such as the accumulation of <code>result</code> are never unexpectedly dropped or deferred:</p><pre><code>extension Sequence where Element == Int {
+    func sum() -> Int {
+        var result = 0
+        _ = self.map { result += $0 }
+        return result
+    }
+}
+</code></pre><p>Don’t actually use <code>map</code> for this purpose, however, because it creates and discards the resulting array. Instead, use <code>reduce</code> for summing operations, or <code>forEach</code> or a <code>for</code>-<code>in</code> loop for operations with side effects.</p></section><section id="Topics"><h2><a href="#Topics">Topics</a></h2><h3 id="Associated-Types"><a href="#Associated-Types">Associated Types</a></h3><ul><li><a href="elements-swift.associatedtype/index.html"><code>associatedtype <span class="identifier">Elements</span> : Sequence = Self</code></a><p>A <code>Sequence</code> that can contain the same elements as this one, possibly with a simpler type.</p></li></ul><h3 id="Instance-Properties"><a href="#Instance-Properties">Instance Properties</a></h3><ul><li><a href="elements-6570c/index.html"><code>var <span class="identifier">elements</span>: Self.Elements</code></a><p>A sequence containing the same elements as this one, possibly with a simpler type.</p></li><li><a href="lazy-2u2ey/index.html"><code>var <span class="identifier">lazy</span>: Self.Elements</code></a></li><li><a href="lazy-4q4ln/index.html"><code>var <span class="identifier">lazy</span>: Lazy<wbr>Sequence&lt;<wbr>Self.Elements></code></a></li></ul><h3 id="Instance-Methods"><a href="#Instance-Methods">Instance Methods</a></h3><ul><li><a href="compactmap(_:)/index.html"><code>func <span class="identifier">compact<wbr>Map</span>&lt;<wbr>Element<wbr>Of<wbr>Result>((<wbr>Self.Elements.Element) -> Element<wbr>Of<wbr>Result?) -> Lazy<wbr>Map<wbr>Sequence&lt;<wbr>Lazy<wbr>Filter<wbr>Sequence&lt;<wbr>Lazy<wbr>Map<wbr>Sequence&lt;<wbr>Self.Elements, Element<wbr>Of<wbr>Result?>><wbr>, Element<wbr>Of<wbr>Result></code></a><p>Returns the non-<code>nil</code> results of mapping the given transformation over this sequence.</p></li><li><a href="drop(while:)/index.html"><code>func <span class="identifier">drop</span>(<span class="identifier">while</span>: (<wbr>Self.Elements.Element) -> Bool) -> Lazy<wbr>Drop<wbr>While<wbr>Sequence&lt;<wbr>Self.Elements></code></a><p>Returns a lazy sequence that skips any initial elements that satisfy <code>predicate</code>.</p></li><li><a href="filter(_:)/index.html"><code>func <span class="identifier">filter</span>((<wbr>Self.Elements.Element) -> Bool) -> Lazy<wbr>Filter<wbr>Sequence&lt;<wbr>Self.Elements></code></a><p>Returns the elements of <code>self</code> that satisfy <code>isIncluded</code>.</p></li><li><a href="flatmap(_:)-11y2e/index.html"><code>func <span class="identifier">flat<wbr>Map</span>&lt;<wbr>Element<wbr>Of<wbr>Result>((<wbr>Self.Elements.Element) -> Element<wbr>Of<wbr>Result?) -> Lazy<wbr>Map<wbr>Sequence&lt;<wbr>Lazy<wbr>Filter<wbr>Sequence&lt;<wbr>Lazy<wbr>Map<wbr>Sequence&lt;<wbr>Self.Elements, Element<wbr>Of<wbr>Result?>><wbr>, Element<wbr>Of<wbr>Result></code></a><p>Returns the non-<code>nil</code> results of mapping the given transformation over this sequence.</p></li><li><a href="flatmap(_:)-9blrr/index.html"><code>func <span class="identifier">flat<wbr>Map</span>&lt;<wbr>Segment<wbr>Of<wbr>Result>((<wbr>Self.Elements.Element) -> Segment<wbr>Of<wbr>Result) -> Lazy<wbr>Sequence&lt;<wbr>Flatten<wbr>Sequence&lt;<wbr>Lazy<wbr>Map<wbr>Sequence&lt;<wbr>Self.Elements, Segment<wbr>Of<wbr>Result>>></code></a><p>Returns the concatenated results of mapping the given transformation over this sequence.</p></li><li><a href="joined()/index.html"><code>func <span class="identifier">joined</span>() -> Lazy<wbr>Sequence&lt;<wbr>Flatten<wbr>Sequence&lt;<wbr>Self.Elements>></code></a><p>Returns a lazy sequence that concatenates the elements of this sequence of sequences.</p></li><li><a href="map(_:)/index.html"><code>func <span class="identifier">map</span>&lt;<wbr>U>((<wbr>Self.Element) -> U) -> Lazy<wbr>Map<wbr>Sequence&lt;<wbr>Self.Elements, U></code></a><p>Returns a <code>LazyMapSequence</code> over this <code>Sequence</code>.  The elements of the result are computed lazily, each time they are read, by calling <code>transform</code> function on a base element.</p></li><li><a href="prefix(while:)/index.html"><code>func <span class="identifier">prefix</span>(<span class="identifier">while</span>: (<wbr>Self.Elements.Element) -> Bool) -> Lazy<wbr>Prefix<wbr>While<wbr>Sequence&lt;<wbr>Self.Elements></code></a><p>Returns a lazy sequence of the initial consecutive elements that satisfy <code>predicate</code>.</p></li></ul></section><section id="Relationships"><h2><a href="#Relationships">Relationships</a></h2><h3 id="Inherits-From"><a href="#Inherits-From">Inherits From</a></h3><ul><li><a href="../sequence/index.html"><code>Sequence</code></a></li></ul><h3 id="Inherited-By"><a href="#Inherited-By">Inherited By</a></h3><ul><li><a href="../lazycollectionprotocol/index.html"><code>Lazy<wbr>Collection<wbr>Protocol</code></a></li></ul><h3 id="Conforming-Types"><a href="#Conforming-Types">Conforming Types</a></h3><ul><li><a href="../lazymapsequence/index.html"><code>Lazy<wbr>Map<wbr>Sequence</code></a></li><li><a href="../lazyfiltersequence/index.html"><code>Lazy<wbr>Filter<wbr>Sequence</code></a></li><li><a href="../slice/index.html"><code>Slice</code></a></li><li><a href="../lazyprefixwhilesequence/index.html"><code>Lazy<wbr>Prefix<wbr>While<wbr>Sequence</code></a></li><li><a href="../lazysequence/index.html"><code>Lazy<wbr>Sequence</code></a></li><li><a href="../lazydropwhilesequence/index.html"><code>Lazy<wbr>Drop<wbr>While<wbr>Sequence</code></a></li><li><a href="../reversedcollection/index.html"><code>Reversed<wbr>Collection</code></a></li></ul></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Lazy-Collections"><a href="#Lazy-Collections">Lazy Collections</a></h3><ul><li><a href="../lazycollectionprotocol/index.html"><code>protocol <span class="identifier">Lazy<wbr>Collection<wbr>Protocol</span></code></a></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

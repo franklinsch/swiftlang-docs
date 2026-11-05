@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Appendix B - Package Release Metadata JSON Schema</title><meta content="JSON schema for the `metadata` object accepted by a create package release request." name="description"><script src="../../../navigator-index-swiftpm-PackageManagerDocs.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Package Manager (SwiftPM)</a></li><li><a href="../registryserverspecification/index.html">Swift Package Registry Service Specification</a></li><li>Appendix B - Package Release Metadata JSON Schema</li></ul></nav><hgroup><p>Article</p><h1>Appendix B - Package Release Metadata JSON Schema</h1></hgroup><p>JSON schema for the <code>metadata</code> object accepted by a create package release request.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>The <code>metadata</code> section of the <a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#46-Create-a-package-release">create package release request</a> must be a JSON object of type <a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecificationAppendixB#PackageRelease-type"><code>Package<wbr>Release</code></a>, as defined in the JSON schema below.</p><pre class="json"><code>{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/swiftlang/swift-package-manager/blob/main/Documentation/PackageRegistry/Registry.md",
+  "title": "Package Release Metadata",
+  "description": "Metadata of a package release.",
+  "type": "object",
+  "properties": {
+    "author": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the author."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address of the author."
+        },
+        "description": {
+          "type": "string",
+          "description": "A description of the author."
+        },
+        "organization": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the organization."
+            },
+            "email": {
+              "type": "string",
+              "format": "email",
+              "description": "Email address of the organization."
+            },
+            "description": {
+              "type": "string",
+              "description": "A description of the organization."
+            },
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "description": "URL of the organization."
+            },
+          },
+          "required": ["name"]
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the author."
+        },
+      },
+      "required": ["name"]
+    },
+    "description": {
+      "type": "string",
+      "description": "A description of the package release."
+    },
+    "licenseURL": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL of the package release's license document."
+    },
+    "originalPublicationTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Original publication time of the package release in ISO 8601 format."
+    },
+    "readmeURL": {
+      "type": "string",
+      "format": "uri",
+      "description": "URL of the README specifically for the package release or broadly for the package."
+    },
+    "repositoryURLs": {
+      "type": "array",
+      "description": "Code repository URL(s) of the package release.",
+      "items": {
+        "type": "string",
+        "description": "Code repository URL."
+      }
+    }
+  }
+}
+</code></pre><h6 id="PackageRelease-type"><a href="#PackageRelease-type">PackageRelease type</a></h6><table><thead><tr><th>Property</th><th class="center">Type</th><th>Description</th><th class="center">Required</th></tr></thead><tbody><tr><td><code>author</code></td><td class="center"><a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecificationAppendixB#Author-type">Author</a></td><td>Author of the package release.</td><td class="center"></td></tr><tr><td><code>description</code></td><td class="center">String</td><td>A description of the package release.</td><td class="center"></td></tr><tr><td><code>licenseURL</code></td><td class="center">String</td><td>URL of the package release’s license document.</td><td class="center"></td></tr><tr><td><code>originalPublicationTime</code></td><td class="center">String</td><td>Original publication time of the package release in <a href="https://www.iso.org/iso-8601-date-and-time-format.html">ISO 8601</a> format. This can be set if the package release was previously published elsewhere.A registry should record the publication time independently and include it as <code>publishedAt</code> in the <a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#42-Fetch-information-about-a-package-release">package release metadata response</a>. In case both <code>originalPublicationTime</code> and <code>publishedAt</code> are set, <code>originalPublicationTime</code> should be used.</td><td class="center"></td></tr><tr><td><code>readmeURL</code></td><td class="center">String</td><td>URL of the README specifically for the package release or broadly for the package.</td><td class="center"></td></tr><tr><td><code>repositoryURLs</code></td><td class="center">Array</td><td>Code repository URL(s) of the package. It is recommended to include all URL variations (e.g., SSH, HTTPS) for the same repository. This can be an empty array if the package does not have source control representation.<br>Setting this property is one way through which a registry can obtain repository URL to package identifier mappings for the <a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#45-Lookup-package-identifiers-registered-for-a-URL">“lookup package identifiers registered for a URL” API</a>. A registry may choose other mechanism(s) for package authors to specify such mappings.</td><td class="center"></td></tr></tbody></table><h6 id="Author-type"><a href="#Author-type">Author type</a></h6><table><thead><tr><th>Property</th><th class="center">Type</th><th>Description</th><th class="center">Required</th></tr></thead><tbody><tr><td><code>name</code></td><td class="center">String</td><td>Name of the author.</td><td class="center">✓</td></tr><tr><td><code>email</code></td><td class="center">String</td><td>Email address of the author.</td><td class="center"></td></tr><tr><td><code>description</code></td><td class="center">String</td><td>A description of the author.</td><td class="center"></td></tr><tr><td><code>organization</code></td><td class="center"><a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecificationAppendixB#Organization-type">Organization</a></td><td>Organization that the author belongs to.</td><td class="center"></td></tr><tr><td><code>url</code></td><td class="center">String</td><td>URL of the author.</td><td class="center"></td></tr></tbody></table><h6 id="Organization-type"><a href="#Organization-type">Organization type</a></h6><table><thead><tr><th>Property</th><th class="center">Type</th><th>Description</th><th class="center">Required</th></tr></thead><tbody><tr><td><code>name</code></td><td class="center">String</td><td>Name of the organization.</td><td class="center">✓</td></tr><tr><td><code>email</code></td><td class="center">String</td><td>Email address of the organization.</td><td class="center"></td></tr><tr><td><code>description</code></td><td class="center">String</td><td>A description of the organization.</td><td class="center"></td></tr><tr><td><code>url</code></td><td class="center">String</td><td>URL of the organization.</td><td class="center"></td></tr></tbody></table></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Appendices"><a href="#Appendices">Appendices</a></h3><ul><li><a href="../registryserverspecificationappendixa/index.html"><p class="api-collection">Appendix A - OpenAPI Document</p></a><p>Non-normative OpenAPI (v3) description of the registry service.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

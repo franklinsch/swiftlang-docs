@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Generics</title><meta content="Write code that works for multiple types and specify requirements for those types." name="description"><script src="../../../navigator-index-swift-book.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">The Swift Programming Language (6.4)</a></li><li>Generics</li></ul></nav><hgroup><p>Article</p><h1>Generics</h1></hgroup><p>Write code that works for multiple types and specify requirements for those types.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p><i>Generic code</i> enables you to write flexible, reusable functions and types that can work with any type, subject to requirements that you define. You can write code that avoids duplication and expresses its intent in a clear, abstracted manner.</p><p>Generics are one of the most powerful features of Swift, and much of the Swift standard library is built with generic code. In fact, you’ve been using generics throughout the <i>Language Guide</i>, even if you didn’t realize it. For example, Swift’s <code>Array</code> and <code>Dictionary</code> types are both generic collections. You can create an array that holds <code>Int</code> values, or an array that holds <code>String</code> values, or indeed an array for any other type that can be created in Swift. Similarly, you can create a dictionary to store values of any specified type, and there are no limitations on what that type can be.</p><h2 id="The-Problem-that-Generics-Solve"><a href="#The-Problem-that-Generics-Solve">The Problem that Generics Solve</a></h2><p>Here’s a standard, nongeneric function called <code>swapTwoInts(_:_:)</code>, which swaps two <code>Int</code> values:</p><pre class="swift"><code>func swapTwoInts(_ a: inout Int, _ b: inout Int) {
+    let temporaryA = a
+    a = b
+    b = temporaryA
+}
+</code></pre><p>This function makes use of in-out parameters to swap the values of <code>a</code> and <code>b</code>, as described in Functions.</p><p>The <code>swapTwoInts(_:_:)</code> function swaps the original value of <code>b</code> into <code>a</code>, and the original value of <code>a</code> into <code>b</code>. You can call this function to swap the values in two <code>Int</code> variables:</p><pre class="swift"><code>var someInt = 3
+var anotherInt = 107
+swapTwoInts(&amp;someInt, &amp;anotherInt)
+print("someInt is now \(someInt), and anotherInt is now \(anotherInt)")
+// Prints "someInt is now 107, and anotherInt is now 3".
+</code></pre><p>The <code>swapTwoInts(_:_:)</code> function is useful, but it can only be used with <code>Int</code> values. If you want to swap two <code>String</code> values, or two <code>Double</code> values, you have to write more functions, such as the <code>swapTwoStrings(_:_:)</code> and <code>swapTwoDoubles(_:_:)</code> functions shown below:</p><pre class="swift"><code>func swapTwoStrings(_ a: inout String, _ b: inout String) {
+    let temporaryA = a
+    a = b
+    b = temporaryA
+}
+
+func swapTwoDoubles(_ a: inout Double, _ b: inout Double) {
+    let temporaryA = a
+    a = b
+    b = temporaryA
+}
+</code></pre><p>You may have noticed that the bodies of the <code>swapTwoInts(_:_:)</code>, <code>swapTwoStrings(_:_:)</code>, and <code>swapTwoDoubles(_:_:)</code> functions are identical. The only difference is the type of the values that they accept (<code>Int</code>, <code>String</code>, and <code>Double</code>).</p><p>It’s more useful, and considerably more flexible, to write a single function that swaps two values of <i>any</i> type. Generic code enables you to write such a function. (A generic version of these functions is defined below.)</p><aside class="note"><p class="label">Note</p><p>In all three functions, the types of <code>a</code> and <code>b</code> must be the same. If <code>a</code> and <code>b</code> aren’t of the same type, it isn’t possible to swap their values. Swift is a type-safe language, and doesn’t allow (for example) a variable of type <code>String</code> and a variable of type <code>Double</code> to swap values with each other. Attempting to do so results in a compile-time error.</p></aside><h2 id="Generic-Functions"><a href="#Generic-Functions">Generic Functions</a></h2><p><i>Generic functions</i> can work with any type. Here’s a generic version of the <code>swapTwoInts(_:_:)</code> function from above, called <code>swapTwoValues(_:_:)</code>:</p><pre class="swift"><code>func swapTwoValues&lt;T>(_ a: inout T, _ b: inout T) {
+    let temporaryA = a
+    a = b
+    b = temporaryA
+}
+</code></pre><p>The body of the <code>swapTwoValues(_:_:)</code> function is identical to the body of the <code>swapTwoInts(_:_:)</code> function. However, the first line of <code>swapTwoValues(_:_:)</code> is slightly different from <code>swapTwoInts(_:_:)</code>. Here’s how the first lines compare:</p><pre class="swift"><code>func swapTwoInts(_ a: inout Int, _ b: inout Int)
+func swapTwoValues&lt;T>(_ a: inout T, _ b: inout T)
+</code></pre><p>The generic version of the function uses a <i>placeholder</i> type name (called <code>T</code>, in this case) instead of an <i>actual</i> type name (such as <code>Int</code>, <code>String</code>, or <code>Double</code>). The placeholder type name doesn’t say anything about what <code>T</code> must be, but it <i>does</i> say that both <code>a</code> and <code>b</code> must be of the same type <code>T</code>, whatever <code>T</code> represents. The actual type to use in place of <code>T</code> is determined each time the <code>swapTwoValues(_:_:)</code> function is called.</p><p>The other difference between a generic function and a nongeneric function is that the generic function’s name (<code>swapTwoValues(_:_:)</code>) is followed by the placeholder type name (<code>T</code>) inside angle brackets (<code>&lt;T></code>). The brackets tell Swift that <code>T</code> is a placeholder type name within the <code>swapTwoValues(_:_:)</code> function definition. Because <code>T</code> is a placeholder, Swift doesn’t look for an actual type called <code>T</code>.</p><p>The <code>swapTwoValues(_:_:)</code> function can now be called in the same way as <code>swapTwoInts</code>, except that it can be passed two values of <i>any</i> type, as long as both of those values are of the same type as each other. Each time <code>swapTwoValues(_:_:)</code> is called, the type to use for <code>T</code> is inferred from the types of values passed to the function.</p><p>In the two examples below, <code>T</code> is inferred to be <code>Int</code> and <code>String</code> respectively:</p><pre class="swift"><code>var someInt = 3
+var anotherInt = 107
+swapTwoValues(&amp;someInt, &amp;anotherInt)
+// someInt is now 107, and anotherInt is now 3
+
+var someString = "hello"
+var anotherString = "world"
+swapTwoValues(&amp;someString, &amp;anotherString)
+// someString is now "world", and anotherString is now "hello"
+</code></pre><aside class="note"><p class="label">Note</p><p>The <code>swapTwoValues(_:_:)</code> function defined above is inspired by a generic function called <code>swap</code>, which is part of the Swift standard library, and is automatically made available for you to use in your apps. If you need the behavior of the <code>swapTwoValues(_:_:)</code> function in your own code, you can use Swift’s existing <code>swap(_:_:)</code> function rather than providing your own implementation.</p></aside><h2 id="Type-Parameters"><a href="#Type-Parameters">Type Parameters</a></h2><p>In the <code>swapTwoValues(_:_:)</code> example above, the placeholder type <code>T</code> is an example of a <i>type parameter</i>. Type parameters specify and name a placeholder type, and are written immediately after the function’s name, between a pair of matching angle brackets (such as <code>&lt;T></code>).</p><p>Once you specify a type parameter, you can use it to define the type of a function’s parameters (such as the <code>a</code> and <code>b</code> parameters of the <code>swapTwoValues(_:_:)</code> function), or as the function’s return type, or as a type annotation within the body of the function. In each case, the type parameter is replaced with an <i>actual</i> type whenever the function is called. (In the <code>swapTwoValues(_:_:)</code> example above, <code>T</code> was replaced with <code>Int</code> the first time the function was called, and was replaced with <code>String</code> the second time it was called.)</p><p>You can provide more than one type parameter by writing multiple type parameter names within the angle brackets, separated by commas.</p><h2 id="Naming-Type-Parameters"><a href="#Naming-Type-Parameters">Naming Type Parameters</a></h2><p>In most cases, type parameters have descriptive names, such as <code>Key</code> and <code>Value</code> in <code>Dictionary&lt;Key, Value></code> and <code>Element</code> in <code>Array&lt;Element></code>, which tells the reader about the relationship between the type parameter and the generic type or function it’s used in. However, when there isn’t a meaningful relationship between them, it’s traditional to name them using single letters such as <code>T</code>, <code>U</code>, and <code>V</code>, such as <code>T</code> in the <code>swapTwoValues(_:_:)</code> function above.</p><p>Use upper camel case names for type parameters, like <code>T</code> and <code>MyTypeParameter</code>, to indicate that they’re a placeholder for a <i>type</i>, not a value.</p><aside class="note"><p class="label">Note</p><p> If you don’t need to name a type parameter and its generic type constraints are simple, there’s an alternate, lightweight syntax you can use instead, as described in OpaqueTypes.</p></aside><h2 id="Generic-Types"><a href="#Generic-Types">Generic Types</a></h2><p>In addition to generic functions, Swift enables you to define your own <i>generic types</i>. These are custom classes, structures, and enumerations that can work with <i>any</i> type, in a similar way to <code>Array</code> and <code>Dictionary</code>.</p><p>This section shows you how to write a generic collection type called <code>Stack</code>. A stack is an ordered set of values, similar to an array, but with a more restricted set of operations than Swift’s <code>Array</code> type. An array allows new items to be inserted and removed at any location in the array. A stack, however, allows new items to be appended only to the end of the collection (known as <i>pushing</i> a new value on to the stack). Similarly, a stack allows items to be removed only from the end of the collection (known as <i>popping</i> a value off the stack).</p><aside class="note"><p class="label">Note</p><p>The concept of a stack is used by the <code>UINavigationController</code> class to model the view controllers in its navigation hierarchy. You call the <code>UINavigationController</code> class <code>pushViewController(_:animated:)</code> method to add (or push) a view controller on to the navigation stack, and its <code>popViewControllerAnimated(_:)</code> method to remove (or pop) a view controller from the navigation stack. A stack is a useful collection model whenever you need a strict “last in, first out” approach to managing a collection.</p></aside><p>The illustration below shows the push and pop behavior for a stack:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/stackPushPop@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/stackPushPop~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><ol><li><p>There are currently three values on the stack.</p></li><li><p>A fourth value is pushed onto the top of the stack.</p></li><li><p>The stack now holds four values, with the most recent one at the top.</p></li><li><p>The top item in the stack is popped.</p></li><li><p>After popping a value, the stack once again holds three values.</p></li></ol><p>Here’s how to write a nongeneric version of a stack, in this case for a stack of <code>Int</code> values:</p><pre class="swift"><code>struct IntStack {
+    var items: [Int] = []
+    mutating func push(_ item: Int) {
+        items.append(item)
+    }
+    mutating func pop() -> Int {
+        return items.removeLast()
+    }
+}
+</code></pre><p>This structure uses an <code>Array</code> property called <code>items</code> to store the values in the stack. <code>Stack</code> provides two methods, <code>push</code> and <code>pop</code>, to push and pop values on and off the stack. These methods are marked as <code>mutating</code>, because they need to modify (or <i>mutate</i>) the structure’s <code>items</code> array.</p><p>The <code>IntStack</code> type shown above can only be used with <code>Int</code> values, however. It would be much more useful to define a <i>generic</i> <code>Stack</code> structure, that can manage a stack of <i>any</i> type of value.</p><p>Here’s a generic version of the same code:</p><pre class="swift"><code>struct Stack&lt;Element> {
+    var items: [Element] = []
+    mutating func push(_ item: Element) {
+        items.append(item)
+    }
+    mutating func pop() -> Element {
+        return items.removeLast()
+    }
+}
+</code></pre><p>Note how the generic version of <code>Stack</code> is essentially the same as the nongeneric version, but with a type parameter called <code>Element</code> instead of an actual type of <code>Int</code>. This type parameter is written within a pair of angle brackets (<code>&lt;Element></code>) immediately after the structure’s name.</p><p><code>Element</code> defines a placeholder name for a type to be provided later. This future type can be referred to as <code>Element</code> anywhere within the structure’s definition. In this case, <code>Element</code> is used as a placeholder in three places:</p><ul><li><p>To create a property called <code>items</code>, which is initialized with an empty array of values of type <code>Element</code></p></li><li><p>To specify that the <code>push(_:)</code> method has a single parameter called <code>item</code>, which must be of type <code>Element</code></p></li><li><p>To specify that the value returned by the <code>pop()</code> method will be a value of type <code>Element</code></p></li></ul><p>Because it’s a generic type, <code>Stack</code> can be used to create a stack of <i>any</i> valid type in Swift, in a similar manner to <code>Array</code> and <code>Dictionary</code>.</p><p>You create a new <code>Stack</code> instance by writing the type to be stored in the stack within angle brackets. For example, to create a new stack of strings, you write <code>Stack&lt;String>()</code>:</p><pre class="swift"><code>var stackOfStrings = Stack&lt;String>()
+stackOfStrings.push("uno")
+stackOfStrings.push("dos")
+stackOfStrings.push("tres")
+stackOfStrings.push("cuatro")
+// the stack now contains 4 strings
+</code></pre><p>Here’s how <code>stackOfStrings</code> looks after pushing these four values on to the stack:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/stackPushedFourStrings@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/stackPushedFourStrings~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>Popping a value from the stack removes and returns the top value, <code>"cuatro"</code>:</p><pre class="swift"><code>let fromTheTop = stackOfStrings.pop()
+// fromTheTop is equal to "cuatro", and the stack now contains 3 strings
+</code></pre><p>Here’s how the stack looks after popping its top value:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/stackPoppedOneString@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/stackPoppedOneString~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><h2 id="Extending-a-Generic-Type"><a href="#Extending-a-Generic-Type">Extending a Generic Type</a></h2><p>When you extend a generic type, you don’t provide a type parameter list as part of the extension’s definition. Instead, the type parameter list from the <i>original</i> type definition is available within the body of the extension, and the original type parameter names are used to refer to the type parameters from the original definition.</p><p>The following example extends the generic <code>Stack</code> type to add a read-only computed property called <code>topItem</code>, which returns the top item on the stack without popping it from the stack:</p><pre class="swift"><code>extension Stack {
+    var topItem: Element? {
+        return items.isEmpty ? nil : items[items.count - 1]
+    }
+}
+</code></pre><p>The <code>topItem</code> property returns an optional value of type <code>Element</code>. If the stack is empty, <code>topItem</code> returns <code>nil</code>; if the stack isn’t empty, <code>topItem</code> returns the final item in the <code>items</code> array.</p><p>Note that this extension doesn’t define a type parameter list. Instead, the <code>Stack</code> type’s existing type parameter name, <code>Element</code>, is used within the extension to indicate the optional type of the <code>topItem</code> computed property.</p><p>The <code>topItem</code> computed property can now be used with any <code>Stack</code> instance to access and query its top item without removing it.</p><pre class="swift"><code>if let topItem = stackOfStrings.topItem {
+    print("The top item on the stack is \(topItem).")
+}
+// Prints "The top item on the stack is tres."
+</code></pre><p>Extensions of a generic type can also include requirements that instances of the extended type must satisfy in order to gain the new functionality, as discussed in Generics below.</p><h2 id="Type-Constraints"><a href="#Type-Constraints">Type Constraints</a></h2><p>The <code>swapTwoValues(_:_:)</code> function and the <code>Stack</code> type can work with any type. However, it’s sometimes useful to enforce certain <i>type constraints</i> on the types that can be used with generic functions and generic types. Type constraints specify that a type parameter must inherit from a specific class, or conform to a particular protocol or protocol composition.</p><p>For example, Swift’s <code>Dictionary</code> type places a limitation on the types that can be used as keys for a dictionary. As described in CollectionTypes, the type of a dictionary’s keys must be <i>hashable</i>. That is, it must provide a way to make itself uniquely representable. <code>Dictionary</code> needs its keys to be hashable so that it can check whether it already contains a value for a particular key. Without this requirement, <code>Dictionary</code> couldn’t tell whether it should insert or replace a value for a particular key, nor would it be able to find a value for a given key that’s already in the dictionary.</p><p>This requirement is enforced by a type constraint on the key type for <code>Dictionary</code>, which specifies that the key type must conform to the <code>Hashable</code> protocol, a special protocol defined in the Swift standard library. All of Swift’s basic types (such as <code>String</code>, <code>Int</code>, <code>Double</code>, and <code>Bool</code>) are hashable by default. For information about making your own custom types conform to the <code>Hashable</code> protocol, see <a href="https://developer.apple.com/documentation/swift/hashable#Conforming-to-the-Hashable-Protocol">Conforming to the Hashable Protocol</a>.</p><p>You can define your own type constraints when creating custom generic types, and these constraints provide much of the power of generic programming. Abstract concepts like <code>Hashable</code> characterize types in terms of their conceptual characteristics, rather than their concrete type.</p><h3 id="Type-Constraint-Syntax"><a href="#Type-Constraint-Syntax">Type Constraint Syntax</a></h3><p>You write type constraints by placing a single class or protocol constraint after a type parameter’s name, separated by a colon, as part of the type parameter list. The basic syntax for type constraints on a generic function is shown below (although the syntax is the same for generic types):</p><pre class="swift"><code>func someFunction&lt;T: SomeClass, U: SomeProtocol>(someT: T, someU: U) {
+    // function body goes here
+}
+</code></pre><p>The hypothetical function above has two type parameters. The first type parameter, <code>T</code>, has a type constraint that requires <code>T</code> to be a subclass of <code>SomeClass</code>. The second type parameter, <code>U</code>, has a type constraint that requires <code>U</code> to conform to the protocol <code>SomeProtocol</code>.</p><h3 id="Type-Constraints-in-Action"><a href="#Type-Constraints-in-Action">Type Constraints in Action</a></h3><p>Here’s a nongeneric function called <code>findIndex(ofString:in:)</code>, which is given a <code>String</code> value to find and an array of <code>String</code> values within which to find it. The <code>findIndex(ofString:in:)</code> function returns an optional <code>Int</code> value, which will be the index of the first matching string in the array if it’s found, or <code>nil</code> if the string can’t be found:</p><pre class="swift"><code>func findIndex(ofString valueToFind: String, in array: [String]) -> Int? {
+    for (index, value) in array.enumerated() {
+        if value == valueToFind {
+            return index
+        }
+    }
+    return nil
+}
+</code></pre><p>The <code>findIndex(ofString:in:)</code> function can be used to find a string value in an array of strings:</p><pre class="swift"><code>let strings = ["cat", "dog", "llama", "parakeet", "terrapin"]
+if let foundIndex = findIndex(ofString: "llama", in: strings) {
+    print("The index of llama is \(foundIndex)")
+}
+// Prints "The index of llama is 2".
+</code></pre><p>The principle of finding the index of a value in an array isn’t useful only for strings, however. You can write the same functionality as a generic function by replacing any mention of strings with values of some type <code>T</code> instead.</p><p>Here’s how you might expect a generic version of <code>findIndex(ofString:in:)</code>, called <code>findIndex(of:in:)</code>, to be written. Note that the return type of this function is still <code>Int?</code>, because the function returns an optional index number, not an optional value from the array. Be warned, though — this function doesn’t compile, for reasons explained after the example:</p><pre class="swift"><code>func findIndex&lt;T>(of valueToFind: T, in array:[T]) -> Int? {
+    for (index, value) in array.enumerated() {
+        if value == valueToFind {
+            return index
+        }
+    }
+    return nil
+}
+</code></pre><p>This function doesn’t compile as written above. The problem lies with the equality check, “<code>if value == valueToFind</code>”. Not every type in Swift can be compared with the equal to operator (<code>==</code>). If you create your own class or structure to represent a complex data model, for example, then the meaning of “equal to” for that class or structure isn’t something that Swift can guess for you. Because of this, it isn’t possible to guarantee that this code will work for <i>every</i> possible type <code>T</code>, and an appropriate error is reported when you try to compile the code.</p><p>All is not lost, however. The Swift standard library defines a protocol called <code>Equatable</code>, which requires any conforming type to implement the equal to operator (<code>==</code>) and the not equal to operator (<code>!=</code>) to compare any two values of that type. All of Swift’s standard types automatically support the <code>Equatable</code> protocol.</p><p>Any type that’s <code>Equatable</code> can be used safely with the <code>findIndex(of:in:)</code> function, because it’s guaranteed to support the equal to operator. To express this fact, you write a type constraint of <code>Equatable</code> as part of the type parameter’s definition when you define the function:</p><pre class="swift"><code>func findIndex&lt;T: Equatable>(of valueToFind: T, in array:[T]) -> Int? {
+    for (index, value) in array.enumerated() {
+        if value == valueToFind {
+            return index
+        }
+    }
+    return nil
+}
+</code></pre><p>The single type parameter for <code>findIndex(of:in:)</code> is written as <code>T: Equatable</code>, which means “any type <code>T</code> that conforms to the <code>Equatable</code> protocol.”</p><p>The <code>findIndex(of:in:)</code> function now compiles successfully and can be used with any type that’s <code>Equatable</code>, such as <code>Double</code> or <code>String</code>:</p><pre class="swift"><code>let doubleIndex = findIndex(of: 9.3, in: [3.14159, 0.1, 0.25])
+// doubleIndex is an optional Int with no value, because 9.3 isn't in the array
+let stringIndex = findIndex(of: "Andrea", in: ["Mike", "Malcolm", "Andrea"])
+// stringIndex is an optional Int containing a value of 2
+</code></pre><h2 id="Associated-Types"><a href="#Associated-Types">Associated Types</a></h2><p>When defining a protocol, it’s sometimes useful to declare one or more associated types as part of the protocol’s definition. An <i>associated type</i> gives a placeholder name to a type that’s used as part of the protocol. The actual type to use for that associated type isn’t specified until the protocol is adopted. Associated types are specified with the <code>associatedtype</code> keyword.</p><h3 id="Associated-Types-in-Action"><a href="#Associated-Types-in-Action">Associated Types in Action</a></h3><p>Here’s an example of a protocol called <code>Container</code>, which declares an associated type called <code>Item</code>:</p><pre class="swift"><code>protocol Container {
+    associatedtype Item
+    mutating func append(_ item: Item)
+    var count: Int { get }
+    subscript(i: Int) -> Item { get }
+}
+</code></pre><p>The <code>Container</code> protocol defines three required capabilities that any container must provide:</p><ul><li><p>It must be possible to add a new item to the container with an <code>append(_:)</code> method.</p></li><li><p>It must be possible to access a count of the items in the container through a <code>count</code> property that returns an <code>Int</code> value.</p></li><li><p>It must be possible to retrieve each item in the container with a subscript that takes an <code>Int</code> index value.</p></li></ul><p>This protocol doesn’t specify how the items in the container should be stored or what type they’re allowed to be. The protocol only specifies the three bits of functionality that any type must provide in order to be considered a <code>Container</code>. A conforming type can provide additional functionality, as long as it satisfies these three requirements.</p><p>Any type that conforms to the <code>Container</code> protocol must be able to specify the type of values it stores. Specifically, it must ensure that only items of the right type are added to the container, and it must be clear about the type of the items returned by its subscript.</p><p>To define these requirements, the <code>Container</code> protocol needs a way to refer to the type of the elements that a container will hold, without knowing what that type is for a specific container. The <code>Container</code> protocol needs to specify that any value passed to the <code>append(_:)</code> method must have the same type as the container’s element type, and that the value returned by the container’s subscript will be of the same type as the container’s element type.</p><p>To achieve this, the <code>Container</code> protocol declares an associated type called <code>Item</code>, written as  <code>associatedtype Item</code>. The protocol doesn’t define what <code>Item</code> is — that information is left for any conforming type to provide. Nonetheless, the <code>Item</code> alias provides a way to refer to the type of the items in a <code>Container</code>, and to define a type for use with the <code>append(_:)</code> method and subscript, to ensure that the expected behavior of any <code>Container</code> is enforced.</p><p>Here’s a version of the nongeneric <code>IntStack</code> type from Generics above, adapted to conform to the <code>Container</code> protocol:</p><pre class="swift"><code>struct IntStack: Container {
+    // original IntStack implementation
+    var items: [Int] = []
+    mutating func push(_ item: Int) {
+        items.append(item)
+    }
+    mutating func pop() -> Int {
+        return items.removeLast()
+    }
+    // conformance to the Container protocol
+    typealias Item = Int
+    mutating func append(_ item: Int) {
+        self.push(item)
+    }
+    var count: Int {
+        return items.count
+    }
+    subscript(i: Int) -> Int {
+        return items[i]
+    }
+}
+</code></pre><p>The <code>IntStack</code> type implements all three of the <code>Container</code> protocol’s requirements, and in each case wraps part of the <code>IntStack</code> type’s existing functionality to satisfy these requirements.</p><p>Moreover, <code>IntStack</code> specifies that for this implementation of <code>Container</code>, the appropriate <code>Item</code> to use is a type of <code>Int</code>. The definition of <code>typealias Item = Int</code> turns the abstract type of <code>Item</code> into a concrete type of <code>Int</code> for this implementation of the <code>Container</code> protocol.</p><p>Thanks to Swift’s type inference, you don’t actually need to declare a concrete <code>Item</code> of <code>Int</code> as part of the definition of <code>IntStack</code>. Because <code>IntStack</code> conforms to all of the requirements of the <code>Container</code> protocol, Swift can infer the appropriate <code>Item</code> to use, simply by looking at the type of the <code>append(_:)</code> method’s <code>item</code> parameter and the return type of the subscript. Indeed, if you delete the <code>typealias Item = Int</code> line from the code above, everything still works, because it’s clear what type should be used for <code>Item</code>.</p><p>You can also make the generic <code>Stack</code> type conform to the <code>Container</code> protocol:</p><pre class="swift"><code>struct Stack&lt;Element>: Container {
+    // original Stack&lt;Element> implementation
+    var items: [Element] = []
+    mutating func push(_ item: Element) {
+        items.append(item)
+    }
+    mutating func pop() -> Element {
+        return items.removeLast()
+    }
+    // conformance to the Container protocol
+    mutating func append(_ item: Element) {
+        self.push(item)
+    }
+    var count: Int {
+        return items.count
+    }
+    subscript(i: Int) -> Element {
+        return items[i]
+    }
+}
+</code></pre><p>This time, the type parameter <code>Element</code> is used as the type of the <code>append(_:)</code> method’s <code>item</code> parameter and the return type of the subscript. Swift can therefore infer that <code>Element</code> is the appropriate type to use as the <code>Item</code> for this particular container.</p><h3 id="Extending-an-Existing-Type-to-Specify-an-Associated-Type"><a href="#Extending-an-Existing-Type-to-Specify-an-Associated-Type">Extending an Existing Type to Specify an Associated Type</a></h3><p>You can extend an existing type to add conformance to a protocol, as described in Protocols. This includes a protocol with an associated type.</p><p>Swift’s <code>Array</code> type already provides an <code>append(_:)</code> method, a <code>count</code> property, and a subscript with an <code>Int</code> index to retrieve its elements. These three capabilities match the requirements of the <code>Container</code> protocol. This means that you can extend <code>Array</code> to conform to the <code>Container</code> protocol simply by declaring that <code>Array</code> adopts the protocol. You do this with an empty extension, as described in Protocols:</p><pre class="swift"><code>extension Array: Container {}
+</code></pre><p>Array’s existing <code>append(_:)</code> method and subscript enable Swift to infer the appropriate type to use for <code>Item</code>, just as for the generic <code>Stack</code> type above. After defining this extension, you can use any <code>Array</code> as a <code>Container</code>.</p><h3 id="Adding-Constraints-to-an-Associated-Type"><a href="#Adding-Constraints-to-an-Associated-Type">Adding Constraints to an Associated Type</a></h3><p>You can add type constraints to an associated type in a protocol to require that conforming types satisfy those constraints. For example, the following code defines a version of <code>Container</code> that requires the items in the container to be equatable.</p><pre class="swift"><code>protocol Container {
+    associatedtype Item: Equatable
+    mutating func append(_ item: Item)
+    var count: Int { get }
+    subscript(i: Int) -> Item { get }
+}
+</code></pre><p>To conform to this version of <code>Container</code>, the container’s <code>Item</code> type has to conform to the <code>Equatable</code> protocol.</p><h3 id="Using-a-Protocol-in-Its-Associated-Types-Constraints"><a href="#Using-a-Protocol-in-Its-Associated-Types-Constraints">Using a Protocol in Its Associated Type’s Constraints</a></h3><p>A protocol can appear as part of its own requirements. For example, here’s a protocol that refines the <code>Container</code> protocol, adding the requirement of a <code>suffix(_:)</code> method. The <code>suffix(_:)</code> method returns a given number of elements from the end of the container, storing them in an instance of the <code>Suffix</code> type.</p><pre class="swift"><code>protocol SuffixableContainer: Container {
+    associatedtype Suffix: SuffixableContainer where Suffix.Item == Item
+    func suffix(_ size: Int) -> Suffix
+}
+</code></pre><p>In this protocol, <code>Suffix</code> is an associated type, like the <code>Item</code> type in the <code>Container</code> example above. <code>Suffix</code> has two constraints: It must conform to the <code>SuffixableContainer</code> protocol (the protocol currently being defined), and its <code>Item</code> type must be the same as the container’s <code>Item</code> type. The constraint on <code>Item</code> is a generic <code>where</code> clause, which is discussed in Generics below.</p><p>Here’s an extension of the <code>Stack</code> type from Generics above that adds conformance to the <code>SuffixableContainer</code> protocol:</p><pre class="swift"><code>extension Stack: SuffixableContainer {
+    func suffix(_ size: Int) -> Stack {
+        var result = Stack()
+        for index in (count-size)..&lt;count {
+            result.append(self[index])
+        }
+        return result
+    }
+    // Inferred that Suffix is Stack.
+}
+var stackOfInts = Stack&lt;Int>()
+stackOfInts.append(10)
+stackOfInts.append(20)
+stackOfInts.append(30)
+let suffix = stackOfInts.suffix(2)
+// suffix contains 20 and 30
+</code></pre><p>In the example above, the <code>Suffix</code> associated type for <code>Stack</code> is also <code>Stack</code>, so the suffix operation on <code>Stack</code> returns another <code>Stack</code>. Alternatively, a type that conforms to <code>SuffixableContainer</code> can have a <code>Suffix</code> type that’s different from itself — meaning the suffix operation can return a different type. For example, here’s an extension to the nongeneric <code>IntStack</code> type that adds <code>SuffixableContainer</code> conformance, using <code>Stack&lt;Int></code> as its suffix type instead of <code>IntStack</code>:</p><pre class="swift"><code>extension IntStack: SuffixableContainer {
+    func suffix(_ size: Int) -> Stack&lt;Int> {
+        var result = Stack&lt;Int>()
+        for index in (count-size)..&lt;count {
+            result.append(self[index])
+        }
+        return result
+    }
+    // Inferred that Suffix is Stack&lt;Int>.
+}
+</code></pre><h2 id="Generic-Where-Clauses"><a href="#Generic-Where-Clauses">Generic Where Clauses</a></h2><p>Type constraints, as described in Generics, enable you to define requirements on the type parameters associated with a generic function, subscript, or type.</p><p>It can also be useful to define requirements for associated types. You do this by defining a <i>generic where clause</i>. A generic <code>where</code> clause enables you to require that an associated type must conform to a certain protocol, or that certain type parameters and associated types must be the same. A generic <code>where</code> clause starts with the <code>where</code> keyword, followed by constraints for associated types or equality relationships between types and associated types. You write a generic <code>where</code> clause right before the opening curly brace of a type or function’s body.</p><p>The example below defines a generic function called <code>allItemsMatch</code>, which checks to see if two <code>Container</code> instances contain the same items in the same order. The function returns a Boolean value of <code>true</code> if all items match and a value of <code>false</code> if they don’t.</p><p>The two containers to be checked don’t have to be the same type of container (although they can be), but they do have to hold the same type of items. This requirement is expressed through a combination of type constraints and a generic <code>where</code> clause:</p><pre class="swift"><code>func allItemsMatch&lt;C1: Container, C2: Container>
+        (_ someContainer: C1, _ anotherContainer: C2) -> Bool
+        where C1.Item == C2.Item, C1.Item: Equatable {
+
+    // Check that both containers contain the same number of items.
+    if someContainer.count != anotherContainer.count {
+        return false
+    }
+
+    // Check each pair of items to see if they're equivalent.
+    for i in 0..&lt;someContainer.count {
+        if someContainer[i] != anotherContainer[i] {
+            return false
+        }
+    }
+
+    // All items match, so return true.
+    return true
+}
+</code></pre><p>This function takes two arguments called <code>someContainer</code> and <code>anotherContainer</code>. The <code>someContainer</code> argument is of type <code>C1</code>, and the <code>anotherContainer</code> argument is of type <code>C2</code>. Both <code>C1</code> and <code>C2</code> are type parameters for two container types to be determined when the function is called.</p><p>The following requirements are placed on the function’s two type parameters:</p><ul><li><p><code>C1</code> must conform to the <code>Container</code> protocol (written as <code>C1: Container</code>).</p></li><li><p><code>C2</code> must also conform to the <code>Container</code> protocol (written as <code>C2: Container</code>).</p></li><li><p>The <code>Item</code> for <code>C1</code> must be the same as the <code>Item</code> for <code>C2</code> (written as <code>C1.Item == C2.Item</code>).</p></li><li><p>The <code>Item</code> for <code>C1</code> must conform to the <code>Equatable</code> protocol (written as <code>C1.Item: Equatable</code>).</p></li></ul><p>The first and second requirements are defined in the function’s type parameter list, and the third and fourth requirements are defined in the function’s generic <code>where</code> clause.</p><p>These requirements mean:</p><ul><li><p><code>someContainer</code> is a container of type <code>C1</code>.</p></li><li><p><code>anotherContainer</code> is a container of type <code>C2</code>.</p></li><li><p><code>someContainer</code> and <code>anotherContainer</code> contain the same type of items.</p></li><li><p>The items in <code>someContainer</code> can be checked with the not equal operator (<code>!=</code>) to see if they’re different from each other.</p></li></ul><p>The third and fourth requirements combine to mean that the items in <code>anotherContainer</code> can <i>also</i> be checked with the <code>!=</code> operator, because they’re exactly the same type as the items in <code>someContainer</code>.</p><p>These requirements enable the <code>allItemsMatch(_:_:)</code> function to compare the two containers, even if they’re of a different container type.</p><p>The <code>allItemsMatch(_:_:)</code> function starts by checking that both containers contain the same number of items. If they contain a different number of items, there’s no way that they can match, and the function returns <code>false</code>.</p><p>After making this check, the function iterates over all of the items in <code>someContainer</code> with a <code>for</code>-<code>in</code> loop and the half-open range operator (<code>..&lt;</code>). For each item, the function checks whether the item from <code>someContainer</code> isn’t equal to the corresponding item in <code>anotherContainer</code>. If the two items aren’t equal, then the two containers don’t match, and the function returns <code>false</code>.</p><p>If the loop finishes without finding a mismatch, the two containers match, and the function returns <code>true</code>.</p><p>Here’s how the <code>allItemsMatch(_:_:)</code> function looks in action:</p><pre class="swift"><code>var stackOfStrings = Stack&lt;String>()
+stackOfStrings.push("uno")
+stackOfStrings.push("dos")
+stackOfStrings.push("tres")
+
+var arrayOfStrings = ["uno", "dos", "tres"]
+
+if allItemsMatch(stackOfStrings, arrayOfStrings) {
+    print("All items match.")
+} else {
+    print("Not all items match.")
+}
+// Prints "All items match."
+</code></pre><p>The example above creates a <code>Stack</code> instance to store <code>String</code> values, and pushes three strings onto the stack. The example also creates an <code>Array</code> instance initialized with an array literal containing the same three strings as the stack. Even though the stack and the array are of a different type, they both conform to the <code>Container</code> protocol, and both contain the same type of values. You can therefore call the <code>allItemsMatch(_:_:)</code> function with these two containers as its arguments. In the example above, the <code>allItemsMatch(_:_:)</code> function correctly reports that all of the items in the two containers match.</p><h2 id="Extensions-with-a-Generic-Where-Clause"><a href="#Extensions-with-a-Generic-Where-Clause">Extensions with a Generic Where Clause</a></h2><p>You can also use a generic <code>where</code> clause as part of an extension. The example below extends the generic <code>Stack</code> structure from the previous examples to add an <code>isTop(_:)</code> method.</p><pre class="swift"><code>extension Stack where Element: Equatable {
+    func isTop(_ item: Element) -> Bool {
+        guard let topItem = items.last else {
+            return false
+        }
+        return topItem == item
+    }
+}
+</code></pre><p>This new <code>isTop(_:)</code> method first checks that the stack isn’t empty, and then compares the given item against the stack’s topmost item. If you tried to do this without a generic <code>where</code> clause, you would have a problem: The implementation of <code>isTop(_:)</code> uses the <code>==</code> operator, but the definition of <code>Stack</code> doesn’t require its items to be equatable, so using the <code>==</code> operator results in a compile-time error. Using a generic <code>where</code> clause lets you add a new requirement to the extension, so that the extension adds the <code>isTop(_:)</code> method only when the items in the stack are equatable.</p><p>Here’s how the <code>isTop(_:)</code> method looks in action:</p><pre class="swift"><code>if stackOfStrings.isTop("tres") {
+    print("Top element is tres.")
+} else {
+    print("Top element is something else.")
+}
+// Prints "Top element is tres."
+</code></pre><p>If you try to call the <code>isTop(_:)</code> method on a stack whose elements aren’t equatable, you’ll get a compile-time error.</p><pre class="swift"><code>struct NotEquatable { }
+var notEquatableStack = Stack&lt;NotEquatable>()
+let notEquatableValue = NotEquatable()
+notEquatableStack.push(notEquatableValue)
+notEquatableStack.isTop(notEquatableValue)  // Error
+</code></pre><p>You can use a generic <code>where</code> clause with extensions to a protocol. The example below extends the <code>Container</code> protocol from the previous examples to add a <code>startsWith(_:)</code> method.</p><pre class="swift"><code>extension Container where Item: Equatable {
+    func startsWith(_ item: Item) -> Bool {
+        return count >= 1 &amp;&amp; self[0] == item
+    }
+}
+</code></pre><p>The <code>startsWith(_:)</code> method first makes sure that the container has at least one item, and then it checks whether the first item in the container matches the given item. This new <code>startsWith(_:)</code> method can be used with any type that conforms to the <code>Container</code> protocol, including the stacks and arrays used above, as long as the container’s items are equatable.</p><pre class="swift"><code>if [9, 9, 9].startsWith(42) {
+    print("Starts with 42.")
+} else {
+    print("Starts with something else.")
+}
+// Prints "Starts with something else."
+</code></pre><p>The generic <code>where</code> clause in the example above requires <code>Item</code> to conform to a protocol, but you can also write a generic <code>where</code> clauses that require <code>Item</code> to be a specific type. For example:</p><pre class="swift"><code>extension Container where Item == Double {
+    func average() -> Double {
+        var sum = 0.0
+        for index in 0..&lt;count {
+            sum += self[index]
+        }
+        return sum / Double(count)
+    }
+}
+print([1260.0, 1200.0, 98.6, 37.0].average())
+// Prints "648.9".
+</code></pre><p>This example adds an <code>average()</code> method to containers whose <code>Item</code> type is <code>Double</code>. It iterates over the items in the container to add them up, and divides by the container’s count to compute the average. It explicitly converts the count from <code>Int</code> to <code>Double</code> to be able to do floating-point division.</p><p>You can include multiple requirements in a generic <code>where</code> clause that’s part of an extension, just like you can for a generic <code>where</code> clause that you write elsewhere. Separate each requirement in the list with a comma.</p><h2 id="Contextual-Where-Clauses"><a href="#Contextual-Where-Clauses">Contextual Where Clauses</a></h2><p>You can write a generic <code>where</code> clause as part of a declaration that doesn’t have its own generic type constraints, when you’re already working in the context of generic types. For example, you can write a generic <code>where</code> clause on a subscript of a generic type or on a method in an extension to a generic type. The <code>Container</code> structure is generic, and the <code>where</code> clauses in the example below specify what type constraints have to be satisfied to make these new  methods available on a container.</p><pre class="swift"><code>extension Container {
+    func average() -> Double where Item == Int {
+        var sum = 0.0
+        for index in 0..&lt;count {
+            sum += Double(self[index])
+        }
+        return sum / Double(count)
+    }
+    func endsWith(_ item: Item) -> Bool where Item: Equatable {
+        return count >= 1 &amp;&amp; self[count-1] == item
+    }
+}
+let numbers = [1260, 1200, 98, 37]
+print(numbers.average())
+// Prints "648.75".
+print(numbers.endsWith(37))
+// Prints "true".
+</code></pre><p>This example adds an <code>average()</code> method to <code>Container</code> when the items are integers, and it adds an <code>endsWith(_:)</code> method when the items are equatable. Both functions include a generic <code>where</code> clause that adds type constraints to the generic <code>Item</code> type parameter from the original declaration of <code>Container</code>.</p><p>If you want to write this code without using contextual <code>where</code> clauses, you write two extensions, one for each generic <code>where</code> clause. The example above and the example below have the same behavior.</p><pre class="swift"><code>extension Container where Item == Int {
+    func average() -> Double {
+        var sum = 0.0
+        for index in 0..&lt;count {
+            sum += Double(self[index])
+        }
+        return sum / Double(count)
+    }
+}
+extension Container where Item: Equatable {
+    func endsWith(_ item: Item) -> Bool {
+        return count >= 1 &amp;&amp; self[count-1] == item
+    }
+}
+</code></pre><p>In the version of this example that uses contextual <code>where</code> clauses, the implementation of <code>average()</code> and <code>endsWith(_:)</code> are both in the same extension because each method’s generic <code>where</code> clause states the requirements that need to be satisfied to make that method available. Moving those requirements to the extensions’ generic <code>where</code> clauses makes the methods available in the same situations, but requires one extension per requirement.</p><h2 id="Associated-Types-with-a-Generic-Where-Clause"><a href="#Associated-Types-with-a-Generic-Where-Clause">Associated Types with a Generic Where Clause</a></h2><p>You can include a generic <code>where</code> clause on an associated type. For example, suppose you want to make a version of <code>Container</code> that includes an iterator, like what the <code>Sequence</code> protocol uses in the Swift standard library. Here’s how you write that:</p><pre class="swift"><code>protocol Container {
+    associatedtype Item
+    mutating func append(_ item: Item)
+    var count: Int { get }
+    subscript(i: Int) -> Item { get }
+
+    associatedtype Iterator: IteratorProtocol where Iterator.Element == Item
+    func makeIterator() -> Iterator
+}
+</code></pre><p>The generic <code>where</code> clause on <code>Iterator</code> requires that the iterator must traverse over elements of the same item type as the container’s items, regardless of the iterator’s type. The <code>makeIterator()</code> function provides access to a container’s iterator.</p><p>For a protocol that inherits from another protocol, you add a constraint to an inherited associated type by including the generic <code>where</code> clause in the protocol declaration. For example, the following code declares a <code>ComparableContainer</code> protocol that requires <code>Item</code> to conform to <code>Comparable</code>:</p><pre class="swift"><code>protocol ComparableContainer: Container where Item: Comparable { }
+</code></pre><h2 id="Generic-Subscripts"><a href="#Generic-Subscripts">Generic Subscripts</a></h2><p>Subscripts can be generic, and they can include generic <code>where</code> clauses. You write the placeholder type name inside angle brackets after <code>subscript</code>, and you write a generic <code>where</code> clause right before the opening curly brace of the subscript’s body. For example:</p><pre class="swift"><code>extension Container {
+    subscript&lt;Indices: Sequence>(indices: Indices) -> [Item]
+            where Indices.Iterator.Element == Int {
+        var result: [Item] = []
+        for index in indices {
+            result.append(self[index])
+        }
+        return result
+    }
+}
+</code></pre><p>This extension to the <code>Container</code> protocol adds a subscript that takes a sequence of indices and returns an array containing the items at each given index. This generic subscript is constrained as follows:</p><ul><li><p>The generic parameter <code>Indices</code> in angle brackets has to be a type that conforms to the <code>Sequence</code> protocol from the Swift standard library.</p></li><li><p>The subscript takes a single parameter, <code>indices</code>, which is an instance of that <code>Indices</code> type.</p></li><li><p>The generic <code>where</code> clause requires that the iterator for the sequence must traverse over elements of type <code>Int</code>. This ensures that the indices in the sequence are the same type as the indices used for a container.</p></li></ul><p>Taken together, these constraints mean that the value passed for the <code>indices</code> parameter is a sequence of integers.</p><h2 id="Implicit-Constraints"><a href="#Implicit-Constraints">Implicit Constraints</a></h2><p>In addition to constraints you write explicitly, many places in your generic code also implicitly require conformance to some very common protocols like <a href="https://developer.apple.com/documentation/swift/copyable"><code>Copyable</code></a>.</p><p>These generic constraints that you don’t have to write are known as <i>implicit constraints</i>. For example, both of the following function declarations require <code>MyType</code> to be copyable:</p><pre class="swift"><code>function someFunction&lt;MyType> { ... }
+function someFunction&lt;MyType: Copyable> { ... }
+</code></pre><p>In the code above, the first declaration has an implicit constraint, and the second version lists the conformance explicitly. In most code, types also implicitly conform to these common protocols. For more information, see Protocols.</p><p>Because most types in Swift conform to these protocols, writing them almost everywhere would be repetitive. Instead, by marking only the exceptions, you call out the places that omit a common constraint. To suppress an implicit constraint, write the protocol name with a tilde (<code>~</code>) in front of it. You can read <code>~Copyable</code> as “maybe copyable” — this suppressed constraint allows both copyable and noncopyable types in this position. Note that <code>~Copyable</code> doesn’t <i>require</i> the type to be noncopyable. For example:</p><pre class="swift"><code>func f&lt;MyType>(x: inout MyType) {
+    let x1 = x  // The value of x1 is a copy of x's value.
+    let x2 = x  // The value of x2 is a copy of x's value.
+}
+
+func g&lt;AnotherType: ~Copyable>(y: inout AnotherType) {
+    let y1 = y  // The assignment consumes y's value.
+    let y2 = y  // Error: Value consumed more than once.
+}
+</code></pre><p>In the code above, the function <code>f()</code> implicitly requires <code>MyType</code> to be copyable. Within the function body, the value of <code>x</code> is copied to <code>x1</code> and <code>x2</code> in the assignment. In contrast, <code>g()</code> suppresses the implicit constraint on <code>AnotherType</code>, which allows you to pass either a copyable or noncopyable value. Within the function body, you can’t copy the value of <code>y</code> because <code>AnotherType</code> might be noncopyable. Assignment consumes the value of <code>y</code> and it’s an error to consume that value more than once. Noncopyable values like <code>y</code> must be passed as in-out, borrowing, or consuming parameters — for more information, see Declarations.</p><p>For details about when generic code includes an implicit constraint to a given protocol, see the reference for that protocol.</p></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

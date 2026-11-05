@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Writing a command plugin</title><meta content="Create a command plugin to provide commands that extend the package manager." name="description"><script src="../../../navigator-index-swiftpm-PackageManagerDocs.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Package Manager (SwiftPM)</a></li><li><a href="../plugins/index.html">Plugins</a></li><li>Writing a command plugin</li></ul></nav><hgroup><p>Article</p><h1>Writing a command plugin</h1></hgroup><p>Create a command plugin to provide commands that extend the package manager.</p><ul id="availability"><li aria-label="Swift 5.6+, Available on Swift 5.6 and later" title="Available on Swift 5.6 and later">Swift 5.6+</li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>The first step when writing a package plugin is to decide what kind of plugin you need.</p><p>Implement a command plugin to provide actions that users can perform at any time and that are not associated with a build.</p><aside class="note"><p class="label">Note</p><p>If your goal is to generate source files that should be part of a build, or to perform other actions at the start of every build, implement a build tool plugin. See <a href="../writingbuildtoolplugin/index.html">Writing a build tool plugin</a> for details about creating a build tool plugin.</p></aside><p>Command plugins are invoked at will by the user, by invoking <code>swift</code> <code>package</code> <code>&lt;command></code> <code>&lt;arguments></code>. They are unrelated to the build graph, and often perform their work by invoking to command line tools as subprocesses.</p><p>Command plugins are declared in a similar way to build tool plugins, except that they declare a <code>.command()</code> capability and implement a different entry point in the plugin script.</p><p>A command plugin specifies the semantic intent of the command — this might be one of the predefined intents such as “documentation generation” or “source code formatting”, or it might be a custom intent with a specialized verb that can be passed to the <code>swift</code> <code>package</code> command. A command plugin can also specify any special permissions it needs, such as the permission to modify the files under the package directory.</p><p>The command’s intent declaration provides a way of grouping command plugins by their functional categories, so that package manager — or an IDE that supports package manager packages — can show the commands that are available for a particular purpose. For example, this approach supports having different command plugins for generating documentation for a package, while still allowing those different commands to be grouped and discovered by intent.</p><p>A plugin is available to the package that defines it, and if there is a corresponding plugin product, it is also available to any other package that has a direct dependency on the package.</p><h3 id="Declaring-a-command-plugin-in-the-package-manifest"><a href="#Declaring-a-command-plugin-in-the-package-manifest">Declaring a command plugin in the package manifest</a></h3><p>The manifest of a package that declares a command plugin might look like:</p><pre class="swift"><code>import PackageDescription
+
+let package = Package(
+  name: "MyPluginPackage",
+  products: [
+    .plugin(
+      name: "MyCommandPlugin",
+      targets: [
+        "MyCommandPlugin"
+      ]
+    )
+  ],
+  dependencies: [
+    .package(
+      url: "https://github.com/example/sometool",
+      from: "0.1.0"
+    )
+  ],
+  targets: [
+    .plugin(
+      name: "MyCommandPlugin",
+      capability: .command(
+        intent: .sourceCodeFormatting(),
+        permissions: [
+          .writeToPackageDirectory(reason: "This command reformats source files")
+        ]
+      ),
+      dependencies: [
+        .product(name: "SomeTool", package: "sometool"),
+      ]
+    )
+  ]
+)
+</code></pre><p>In the above example, the plugin declares its purpose is source code formatting, and that it needs permission to modify files in the package directory. The package manager runs plugins in a sandbox that prevents network access and most file system access. Package manager allows additional permissions to allow network access or file system acess when you declare them after it receives approval from the user.</p><h3 id="Define-plugin-tool-dependencies"><a href="#Define-plugin-tool-dependencies">Define plugin tool dependencies</a></h3><p>Declare command-line tools as direct dependencies of the plugin target when the plugin needs to work in Swift Package Manager, IDEs, and other hosts. Pass an executable target’s name, an executable product’s name, or an executable artifact’s name to <code>PluginContext.tool(named:)</code>, as appropriate for the declared dependency. Executable dependencies are built for the host platform, and binary artifact bundles must provide a variant that supports the host platform.</p><p>When Package Manager invokes a command plugin from the command line and no declared dependency matches, it searches the directory containing the selected Swift compiler followed by the directories in the invoking process’s <code>PATH</code>. This fallback is specific to the Package Manager command-line interface; IDEs and other hosts may provide different search directories. If a command plugin intentionally requires a user-installed tool, document that requirement and report a clear diagnostic when <code>PluginContext.tool(named:)</code> can’t find it.</p><h3 id="Implementing-the-command-plugin-script"><a href="#Implementing-the-command-plugin-script">Implementing the command plugin script</a></h3><p>The source that implements command plugins should be located under the <code>Plugins</code> subdirectory in the package. Conform the entry point of the plugin to the <code>CommandPlugin</code> protocol:</p><pre class="swift"><code>import PackagePlugin
+import Foundation
+
+@main
+struct MyCommandPlugin: CommandPlugin {
+  func performCommand(
+    context: PluginContext,
+    arguments: [String]
+  ) throws {
+    // To invoke `sometool` to format code, start by locating it.
+    let sometool = try context.tool(named: "sometool")
+
+    // By convention, use a configuration file in the root 
+    // directory of the package. This allows package owners to 
+    // commit their format settings to their repository.
+    let configFile = context
+      .package
+      .directory
+      .appending(".sometoolconfig")
+
+    // Extract the target arguments (if there are none, assume all).
+    var argExtractor = ArgumentExtractor(arguments)
+    let targetNames = argExtractor.extractOption(named: "target")
+    let targets = targetNames.isEmpty
+      ? context.package.targets
+      : try context.package.targets(named: targetNames)
+
+    // Iterate over the provided targets to format.
+    for target in targets {
+      // Skip any type of target that doesn't have 
+      // source files.
+      // Note: This could instead emit a warning or error.
+      guard let target = target.sourceModule else { continue }
+
+      // Invoke `sometool` on the target directory, passing 
+      // a configuration file from the package directory.
+      let sometoolExec = URL(fileURLWithPath: sometool.path.string)
+      let sometoolArgs = [
+        "--config",
+        "\(configFile)",
+        "--cache", 
+        "\(context.pluginWorkDirectory.appending("cache-dir"))",
+        "\(target.directory)"
+      ]
+      let process = try Process.run(sometoolExec, 
+                                    arguments: sometoolArgs)
+      process.waitUntilExit()
+
+      // Check whether the subprocess invocation was successful.
+      if process.terminationReason == .exit 
+        &amp;&amp; process.terminationStatus == 0
+      {
+        print("Formatted the source code in \(target.directory).")
+      } else {
+        let problem = "\(process.terminationReason):\(process.terminationStatus)"
+        Diagnostics.error("Formatting invocation failed: \(problem)")
+      }
+    }
+  }
+}
+</code></pre><p>Unlike build tool plugins, which apply to a single package target, a command plugin does not necessarily operate on just a single target. The <code>context</code> parameter provides access to the inputs, including to a distilled version of the package graph rooted at the package to which the command plugin is applied.</p><p>Command plugins can accept arguments, which you use to control options for the plugin’s actions or further narrow down what the plugin operates on. This example uses the convention of passing <code>--target</code> to limit the scope of the plugin to a set of targets in the package.</p><p>Plugins can only use standard system libraries, not those from other packages such as <code>SwiftArgumentParser</code>. Consequently, the plugin example uses the built-in <code>ArgumentExtractor</code> helper in the <i>PackagePlugin</i> module to extract the argument.</p><h3 id="Diagnostics"><a href="#Diagnostics">Diagnostics</a></h3><p>Plugin entry points are marked <code>throws</code>, and any errors thrown from the entry point causes the plugin invocation to be marked as having failed. The thrown error is presented to the user, and should include a clear description of what went wrong.</p><p>Additionally, plugins can use the <code>Diagnostics</code> API in PackagePlugin to emit warnings and errors that optionally include references to file paths and line numbers in those files.</p><h3 id="Debugging-and-Testing"><a href="#Debugging-and-Testing">Debugging and Testing</a></h3><p>Package manager doesn’t currently have any specific support for debugging and testing plugins. Many plugins act as adapters that construct command lines for invoking the tools that do the real work. In the cases in which there is non-trivial code in a plugin, a good approach is to factor out that code into separate source files that can be included in unit tests using symbolic links with relative paths.</p><h3 id="Xcode-Extensions-to-the-PackagePlugin-API"><a href="#Xcode-Extensions-to-the-PackagePlugin-API">Xcode Extensions to the PackagePlugin API</a></h3><p>When you invoke a plugin in Apple’s Xcode IDE, the plugins has access to a library module provided by Xcode called <i>XcodeProjectPlugin</i>. This module extends the <i>PackagePlugin</i> APIs to let plugins work on Xcode targets in addition to packages.</p><p>In order to write a plugin that works with packages in every environment, and that conditionally works with Xcode projects when run in Xcode, the plugin should conditionally import the <i>XcodeProjectPlugin</i> module when it is available. For example:</p><pre class="swift"><code>import PackagePlugin
+
+@main
+struct MyCommandPlugin: CommandPlugin {
+    /// This entry point is called when operating on a Swift package.
+    func performCommand(context: PluginContext,
+                        arguments: [String]) throws {
+        debugPrint(context)
+    }
+}
+
+#if canImport(XcodeProjectPlugin)
+import XcodeProjectPlugin
+
+extension MyCommandPlugin: XcodeCommandPlugin {
+    /// This entry point is called when operating on an Xcode project.
+    func performCommand(context: XcodePluginContext, 
+                        arguments: [String]) throws {
+        debugPrint(context)
+    }
+}
+#endif
+</code></pre><p>The <code>XcodePluginContext</code> input structure is similar to the <code>PluginContext</code> structure, except that it provides access to an Xcode project. The Xcode project uses Xcode naming and semantics for the project model, which is somewhat different from that of package manager. Some of the underlying types, such as <code>FileList</code>, or <code>Path</code>, are the same for <code>PackagePlugin</code> and <code>XcodeProjectPlugin</code>.</p><p>If any targets are chosen in the Xcode user interface, Xcode passes their names as <code>--target</code> arguments to the plugin.</p><p>Other IDEs or custom environments that use the package manager could similarly provide modules that define new entry points and extend the functionality of the core <code>PackagePlugin</code> APIs.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Writing-Plugins"><a href="#Writing-Plugins">Writing Plugins</a></h3><ul><li><a href="../writingbuildtoolplugin/index.html"><p class="api-collection">Writing a build tool plugin</p></a><p>Create a build tool to process or generate files.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

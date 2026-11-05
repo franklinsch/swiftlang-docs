@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Protocol conformances crossing into actor-isolated code (ConformanceIsolation)</title><script src="../../../navigator-index-compiler-diagnostics.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Swift compiler diagnostics</a></li><li><a href="../diagnostic-groups/index.html">Diagnostic groups</a></li><li>Protocol conformances crossing into actor-isolated code (ConformanceIsolation)</li></ul></nav><hgroup><p>Article</p><h1>Protocol conformances crossing into actor-isolated code (ConformanceIsolation)</h1></hgroup></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Protocol conformances crossing into actor-isolated code can cause data races in your program. Resolve this error by ensuring access to isolated state is always done within the actor.</p><p>When a type conforms to a protocol, any generic code can perform operations on that type through the protocol. If the operations that the type used to satisfy the protocol requirements are actor-isolated, this may result in a diagnostic indicating that the conformance crosses into actor-isolated code. For example:</p><pre class="swift"><code>protocol P {
+  func f()
+}
+
+@MainActor
+struct MyData: P {
+  func f() { }
+}
+</code></pre><p>This code will produce an error similar to:</p><pre class="swift"><code>@MainActor
+struct MyData: P {
+            // |- error: conformance of 'MyData' to protocol 'P' crosses into main actor-isolated code and can cause data races
+            // |- note: isolate this conformance to the main actor with '@MainActor'
+            // `- note: turn data races into runtime errors with '@preconcurrency'
+  func f() { }
+    // |- note: main actor-isolated instance method 'f()' cannot satisfy nonisolated requirement
+    // `- note: mark instance method 'f()' 'nonisolated'
+}
+</code></pre><p>There are several options for resolving this error, as indicated by the notes:</p><ul><li><p>If all of the operations used to satisfy the protocol’s requirements are on the same global actor (such as the main actor), the conformance itself can be isolated to that global actor. This allows the conformance to be used inside code running on that actor, but it cannot be used concurrently. A conformance can be isolated to a global actor the same way as anything else in the language, e.g.,</p><pre class="swift"><code>@MainActor
+struct MyData: @MainActor P {
+  func f() { }
+}
+</code></pre></li><li><p>If the protocol requirements themselves are meant to always be used from the correct isolation domain (for example, the main actor) but the protocol itself did not describe that requirement, the conformance can be marked with <code>@preconcurrency</code>. This approach moves isolation checking into a run-time assertion, which will produce a fatal error if an operation is called without already being on the right actor. A <code>@preconcurrency</code> conformance can be written as follows:</p><pre class="swift"><code>@MainActor
+struct MyData: @preconcurrency P {
+  func f() { }
+}
+</code></pre></li><li><p>If the conformance needs to be usable anywhere, then each of the operations used to satisfy its requirements must be marked <code>nonisolated</code>. This means that they will not have access to any actor-specific operations or state, because these operations can be called concurrently from anywhere. The result would look like this:</p><pre class="swift"><code>@MainActor
+struct MyData: P {
+  nonisolated func f() { }
+}
+</code></pre></li></ul><h2 id="Stored-Properties"><a href="#Stored-Properties">Stored Properties</a></h2><p>When conforming to a protocol that has read only properties, there is an additional option; defining properties as <code>nonisolated let</code>. This makes them immutable and concurrently accessible. For example:</p><pre class="swift"><code>@MainActor
+class MyModel: ObservableObject, Identifiable {
+  var id = UUID()
+   // |- note: main actor-isolated property 'id' cannot satisfy nonisolated requirement
+   // `- note: change property 'id' to a 'nonisolated let' constant
+  var count = 0
+}
+</code></pre><p>By changing <code>id</code> from <code>var</code> to <code>nonisolated let</code>, any generic code that works with <code>Identifiable</code> can safely read <code>id</code> from any isolation region:</p><pre class="swift"><code>@MainActor
+class MyModel: ObservableObject, Identifiable {
+  nonisolated let id = UUID()
+  var count = 0
+}
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><ul><li><a href="../dynamic-callable-requirements/index.html"><p class="api-collection">@dynamicCallable implementation requirements (DynamicCallable)</p></a></li><li><a href="../add-preconcurrency-import/index.html"><p class="api-collection">Add @preconcurrency import (AddPreconcurrencyImport)</p></a></li><li><a href="../always-available-domain/index.html"><p class="api-collection">Always enabled availability domains (AlwaysAvailableDomain)</p></a><p>Warnings that identify <code>@available</code> attributes and <code>if #available</code> statements that reference custom availability domains which have been permanently enabled.</p></li><li><a href="../always-unsafe/index.html"><p class="api-collection">Always unsafe (AlwaysUnsafe)</p></a></li><li><a href="../trailing-closure-matching/index.html"><p class="api-collection">Argument matching for trailing closures (TrailingClosureMatching)</p></a></li><li><a href="../actor-isolated-mutating-async/index.html"><p class="api-collection">Calling a mutating async actor-isolated method (ActorIsolatedMutatingAsync)</p></a></li><li><a href="../actor-isolated-call/index.html"><p class="api-collection">Calling an actor-isolated method from a synchronous nonisolated context (ActorIsolatedCall)</p></a></li><li><a href="../sendable-closure-captures/index.html"><p class="api-collection">Captures in a `@Sendable` closure (SendableClosureCaptures)</p></a></li><li><a href="../compilation-caching/index.html"><p class="api-collection">Compilation caching (CompilationCaching)</p></a><p>Errors and warnings related to the compiler’s CAS compilation caching.</p></li><li><a href="../string-interpolation-conformance/index.html"><p class="api-collection">Conforming to `StringInterpolationProtocol` (StringInterpolationConformance)</p></a></li><li><a href="../conversion-from-isolated-any-to-synchronous/index.html"><p class="api-collection">Conversion from `@isolated(any)` function type to synchronous function type (ConversionFromIsolatedAnyToSynchronous)</p></a></li><li><a href="../region-isolation-cross-isolation-data-race/index.html"><p class="api-collection">Cross-isolation data race (RegionIsolationCrossIsolationDataRace)</p></a></li><li><a href="../deprecated-declaration/index.html"><p class="api-collection">Deprecated declaration warnings (DeprecatedDeclaration)</p></a><p>Warnings related to deprecated APIs that may be removed in future versions and should be replaced with more current alternatives.</p></li><li><a href="../implementation-only-deprecated/index.html"><p class="api-collection">Deprecated implementation-only imports (ImplementationOnlyDeprecated)</p></a><p>Warnings that identify <code>import</code> declarations with the <code>@_implementationOnly</code> attribute.</p></li><li><a href="../dynamic-exclusivity/index.html"><p class="api-collection">Dynamic exclusivity (DynamicExclusivity)</p></a><p>Experimental</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

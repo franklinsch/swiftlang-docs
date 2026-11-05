@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Enable a build plugin</title><meta content="Extend the package manager with a build plugin from another package." name="description"><script src="../../../navigator-index-swiftpm-PackageManagerDocs.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Package Manager (SwiftPM)</a></li><li><a href="../plugins/index.html">Plugins</a></li><li>Enable a build plugin</li></ul></nav><hgroup><p>Article</p><h1>Enable a build plugin</h1></hgroup><p>Extend the package manager with a build plugin from another package.</p><ul id="availability"><li aria-label="Swift 5.6+, Available on Swift 5.6 and later" title="Available on Swift 5.6 and later">Swift 5.6+</li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>A package plugin is available to the package that defines it, and if there is a corresponding plugin product, it is also available to any other package that has a direct dependency on the package that defines it.</p><h3 id="Add-a-dependency"><a href="#Add-a-dependency">Add a dependency</a></h3><p>To use a plugin defined in another package, add a package dependency on the package that defines the plugin. For example, to use the <a href="https://github.com/apple/swift-openapi-generator">swift-openapi-generator</a>, add the following dependency:</p><pre class="swift"><code>let package = Package(
+    // name, platforms, products, etc.
+    dependencies: [
+        // other dependencies
+        .package(url: "https://github.com/apple/swift-openapi-generator",
+                 from: "1.0.0"),
+    ],
+    targets: [
+        // targets
+    ]
+)
+</code></pre><p>This plugin can generate models and stubs for clients and servers from an OpenAPI definition file.</p><h3 id="Identify-the-targets-to-enable"><a href="#Identify-the-targets-to-enable">Identify the targets to enable</a></h3><p>Add the plugin to each target to which it should apply. For example, the following example enables the OpenAPI generator plugin on the executable target:</p><pre class="swift"><code>let package = Package(
+    name: "Example",
+    dependencies: [
+        .package(url: "https://github.com/apple/swift-openapi-generator",
+                 from: "1.0.0"),
+    ],
+    targets: [
+        .executableTarget(
+            name: "MyExample",
+            plugins: [
+                .plugin(name: "OpenAPIGenerator", 
+                        package: "swift-openapi-generator")
+            ]
+        )
+    ]
+)
+</code></pre><p>When package manager builds the executable target, it calls the plugin and passes it a simplified version of the package model for the target to which it is applied. Any build commands returned by the plugin are be incorporated into the build graph and run at the appropriate time during the build.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Enabling-Plugins"><a href="#Enabling-Plugins">Enabling Plugins</a></h3><ul><li><a href="../enablecommandplugin/index.html"><p class="api-collection">Enable a command plugin</p></a><p>Extend package manager commands with a command plugin from another package.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

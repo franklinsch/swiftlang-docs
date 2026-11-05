@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Visual Studio Code Dev Containers</title><meta content="Create reusable development environments using containers." name="description"><script src="../../../navigator-index-vscode-swift.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">The Swift Extension for VS Code</a></li><li>Visual Studio Code Dev Containers</li></ul></nav><hgroup><p>Article</p><h1>Visual Studio Code Dev Containers</h1></hgroup><p>Create reusable development environments using containers.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p><a href="https://code.visualstudio.com/docs/remote/containers">VS Code Dev Containers</a> allows you to run your code and environment in a container. This is especially useful for Swift when developing on macOS and deploying to Linux. You can ensure there are no compatibility issues in Foundation when running your code. The extension also works with <a href="https://github.com/features/codespaces">GitHub Codespaces</a> to allow you to write your code on the web.</p><h2 id="Requirements"><a href="#Requirements">Requirements</a></h2><p>As well as installing the Swift extension, you must install Docker on your machine to run the dev container in. See the <a href="https://code.visualstudio.com/docs/devcontainers/containers">Visual Studio Code documentation</a> for more details.</p><p>Next, install the <a href="https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.vscode-remote-extensionpack">Remote Development extension pack</a> that contains extensions for working in remote environments in VS Code. If you only want to work with dev containers (and not use the SSH or WSL containers), you may want to only install the <a href="https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers">Dev Containers extension</a> instead.</p><h2 id="Running-in-a-container"><a href="#Running-in-a-container">Running in a container</a></h2><h3 id="Manual-Setup"><a href="#Manual-Setup">Manual Setup</a></h3><p>VS Code requires a <code>.devcontainer</code> directory which defines the settings in <code>devcontainer.json</code> and optionally a <code>Dockerfile</code> defining the container to run in.</p><p>First create the directory. Next, create <code>devcontainer.json</code> and insert the following:</p><pre class="json"><code>{
+    "name": "Swift 5.5",
+    "image": "swift:5.5",
+    "extensions": [
+      "swiftlang.swift-vscode"
+    ],
+    "settings": {
+      "lldb.library": "/usr/lib/liblldb.so"
+    },
+    "forwardPorts": [8080]
+}
+</code></pre><p>This defines the minimum settings required to run a Swift package in a dev container. Here’s what each thing does:</p><ul><li><p><code>name</code>: Used to specify the name of the dev container.</p></li><li><p><code>image</code>: The Docker container image to run. You can choose whichever version of Swift you like, including <a href="https://hub.docker.com/r/swiftlang/swift">nightlies</a>.</p></li><li><p><code>extensions</code>: Extensions to install in your dev environment. You do not need to specify extensions’ dependencies, such as LLDB.</p></li><li><p><code>settings</code>: Override any settings for extensions. The above example sets the LLDB path to stop the Swift extension from attempting to set it up.</p></li><li><p><code>forwardPorts</code>: Ports to enable forwarding for. You may want to include this if building a Swift server application for example.</p></li></ul><p>That’s all you need to get a dev container working!</p><h4 id="Using-a-custom-Dockerfile"><a href="#Using-a-custom-Dockerfile">Using a custom Dockerfile</a></h4><p>You may want to use a custom Docker container that’s version controlled to make it easy to set up a development environment for you team. In <code>devcontainer.json</code> replace <code>image</code> with the following:</p><pre class="json"><code>{
+    "build": { "dockerfile": "Dockerfile" },
+    // ...
+}
+</code></pre><p>This will use the <code>Dockerfile</code> provided in <code>.devcontainer</code>. Create that file and insert your custom Dockerfile. For example:</p><pre class="docker"><code>FROM swift:5.5
+</code></pre><h3 id="Using-a-custom-Docker-Compose-File"><a href="#Using-a-custom-Docker-Compose-File">Using a custom Docker Compose File</a></h3><p>For more complex development environments you may need to use Docker Compose. The <code>devcontainer.json</code> file has three settings you need to include if you want to use Docker Compose:</p><ul><li><p><code>dockerComposeFile</code> your docker compose file</p></li><li><p><code>service</code> the service you want to run</p></li><li><p><code>workspaceFolder</code> the root folder for your project</p></li></ul><p>Your <code>devcontainer.json</code> should look something like this</p><pre class="json"><code>{
+    "name": "MyService: 5.6-focal",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "app",
+    "workspaceFolder": "/workspace",
+    "extensions": [
+      "swiftlang.swift-vscode",
+    ],
+    "settings": {
+      "lldb.library": "/usr/lib/liblldb.so"
+    },
+}
+</code></pre><p>Below is an example of a <code>docker-compose.yml</code> file that brings up a redis server</p><pre class="yaml"><code>version: "3.3"
+
+services:
+  app:
+    image: swift:5.6-focal
+    volumes:
+      - ..:/workspace
+    depends_on:
+      - redis
+    environment:
+      - REDIS_HOST=redis
+    command: sleep infinity
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+</code></pre><p>Note the <code>service</code> and <code>workspace</code> variables from the <code>devcontainer.json</code> reference the service <code>app</code> and workspace volume in the <code>docker-compose.yml</code>. The <code>app</code> service is required to run all the time you are using the devcontainer. We do this here by using the command <code>sleep infinity</code>. It is dependent on the <code>redis</code> service which can be referenced in code using the service name <code>redis</code>. I have also included a <code>REDIS_HOST</code> environment variable which can be used in your code.</p><h3 id="Automatic-Setup"><a href="#Automatic-Setup">Automatic Setup</a></h3><p>VS Code allows you to automatically configure your project with a dev container. In the command palette (<code>F1</code>) choose <b>Dev Containers: Add Development Container Configuration Files…</b> and choose Swift.</p><h3 id="Running-in-a-container"><a href="#Running-in-a-container">Running in a container</a></h3><p>Once you’ve set up your <code>.devcontainer</code>, in the command palette run <b>Dev Containers: Reopen in Container</b>. VS Code will relaunch running in your dev container!</p><p>For more details about running your project in a dev container, and the available configuration options, see the <a href="https://code.visualstudio.com/docs/remote/remote-overview">Visual Studio Code documentation</a>.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Advanced"><a href="#Advanced">Advanced</a></h3><ul><li><a href="../install-pre-release/index.html"><p class="api-collection">Installing Pre-Release Builds</p></a><p>Try out the latest updates by switching to the pre-release version.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

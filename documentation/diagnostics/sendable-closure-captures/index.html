@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Captures in a `@Sendable` closure (SendableClosureCaptures)</title><script src="../../../navigator-index-compiler-diagnostics.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Swift compiler diagnostics</a></li><li><a href="../diagnostic-groups/index.html">Diagnostic groups</a></li><li>Captures in a `@Sendable` closure (SendableClosureCaptures)</li></ul></nav><hgroup><p>Article</p><h1>Captures in a `@Sendable` closure (SendableClosureCaptures)</h1></hgroup></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p><code>@Sendable</code> closures can be called multiple times concurrently, so any captured values must also be safe to access concurrently. To prevent data races, the compiler prevents capturing mutable values in a <code>@Sendable</code> closure.</p><p>For example:</p><pre class="swift"><code>func callConcurrently(
+  _ closure: @escaping @Sendable () -> Void
+) { ... }
+
+func capture() {
+  var result = 0
+  result += 1
+
+  callConcurrently {
+    print(result)
+  }
+}
+</code></pre><p>The compiler diagnoses the capture of <code>result</code> in a <code>@Sendable</code> closure:</p><pre><code>|   callConcurrently {
+|     print(result)
+|           `- error: reference to captured var 'result' in concurrently-executing code
+|   }
+| }
+</code></pre><p>Because the closure is marked <code>@Sendable</code>, the implementation of <code>callConcurrently</code> can call <code>closure</code> multiple times concurrently. For example, multiple child tasks within a task group can call <code>closure</code> concurrently:</p><pre class="swift"><code>func callConcurrently(
+  _ closure: @escaping @Sendable () -> Void
+) {
+  Task {
+    await withDiscardingTaskGroup { group in
+      for _ in 0..&lt;10 {
+        group.addTask {
+          closure()
+        }
+      }
+    }
+  }
+}
+</code></pre><p>If the type of the capture is <code>Sendable</code> and the closure only needs the value of the variable at the point of capture, resolve the error by explicitly capturing the variable by value in the closure’s capture list:</p><pre class="swift"><code>func capture() {
+  var result = 0
+  result += 1
+
+  callConcurrently { [result] in
+    print(result)
+  }
+}
+</code></pre><p>This strategy does not apply to captures with non-<code>Sendable</code> type. Consider the following example:</p><pre class="swift"><code>class MyModel {
+  func log() { ... }
+}
+
+func capture(model: MyModel) async {
+  callConcurrently {
+    model.log()
+  }
+}
+</code></pre><p>The compiler diagnoses the capture of <code>model</code> in a <code>@Sendable</code> closure:</p><pre><code>| func capture(model: MyModel) async {
+|   callConcurrently {
+|     model.log()
+|     `- error: capture of 'model' with non-Sendable type 'MyModel' in a '@Sendable' closure
+|   }
+| }
+</code></pre><p>If a type with mutable state can be referenced concurrently, but all access to mutable state happens on the main actor, isolate the type to the main actor and mark the methods that don’t access mutable state as <code>nonisolated</code>:</p><pre class="swift"><code>@MainActor
+class MyModel {
+  nonisolated func log() { ... }
+}
+
+func capture(model: MyModel) async {
+  callConcurrently {
+    model.log()
+  }
+}
+</code></pre><p>The compiler will guarantee that the implementation of <code>log</code> does not access any main actor state.</p><p>If you manually ensure data-race safety, such as by using an external synchronization mechanism, you can use <code>nonisolated(unsafe)</code> to opt out of concurrency checking:</p><pre class="swift"><code>class MyModel {
+  func log() { ... }
+}
+
+func capture(model: MyModel) async {
+  nonisolated(unsafe) let model = model
+  callConcurrently {
+    model.log()
+  }
+}
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><ul><li><a href="../dynamic-callable-requirements/index.html"><p class="api-collection">@dynamicCallable implementation requirements (DynamicCallable)</p></a></li><li><a href="../add-preconcurrency-import/index.html"><p class="api-collection">Add @preconcurrency import (AddPreconcurrencyImport)</p></a></li><li><a href="../always-available-domain/index.html"><p class="api-collection">Always enabled availability domains (AlwaysAvailableDomain)</p></a><p>Warnings that identify <code>@available</code> attributes and <code>if #available</code> statements that reference custom availability domains which have been permanently enabled.</p></li><li><a href="../always-unsafe/index.html"><p class="api-collection">Always unsafe (AlwaysUnsafe)</p></a></li><li><a href="../trailing-closure-matching/index.html"><p class="api-collection">Argument matching for trailing closures (TrailingClosureMatching)</p></a></li><li><a href="../actor-isolated-mutating-async/index.html"><p class="api-collection">Calling a mutating async actor-isolated method (ActorIsolatedMutatingAsync)</p></a></li><li><a href="../actor-isolated-call/index.html"><p class="api-collection">Calling an actor-isolated method from a synchronous nonisolated context (ActorIsolatedCall)</p></a></li><li><a href="../compilation-caching/index.html"><p class="api-collection">Compilation caching (CompilationCaching)</p></a><p>Errors and warnings related to the compiler’s CAS compilation caching.</p></li><li><a href="../string-interpolation-conformance/index.html"><p class="api-collection">Conforming to `StringInterpolationProtocol` (StringInterpolationConformance)</p></a></li><li><a href="../conversion-from-isolated-any-to-synchronous/index.html"><p class="api-collection">Conversion from `@isolated(any)` function type to synchronous function type (ConversionFromIsolatedAnyToSynchronous)</p></a></li><li><a href="../region-isolation-cross-isolation-data-race/index.html"><p class="api-collection">Cross-isolation data race (RegionIsolationCrossIsolationDataRace)</p></a></li><li><a href="../deprecated-declaration/index.html"><p class="api-collection">Deprecated declaration warnings (DeprecatedDeclaration)</p></a><p>Warnings related to deprecated APIs that may be removed in future versions and should be replaced with more current alternatives.</p></li><li><a href="../implementation-only-deprecated/index.html"><p class="api-collection">Deprecated implementation-only imports (ImplementationOnlyDeprecated)</p></a><p>Warnings that identify <code>import</code> declarations with the <code>@_implementationOnly</code> attribute.</p></li><li><a href="../dynamic-exclusivity/index.html"><p class="api-collection">Dynamic exclusivity (DynamicExclusivity)</p></a><p>Experimental</p></li><li><a href="../embedded-restrictions/index.html"><p class="api-collection">Embedded Swift language restrictions (EmbeddedRestrictions)</p></a><p>Embedded Swift is a subset of the Swift language that that introduces some restrictions on the use of language features to eliminate the need for the Swift runtime. These restrictions are captured by the <code>EmbeddedRestrictions</code> diagnostic group.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

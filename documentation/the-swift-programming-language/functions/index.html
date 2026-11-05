@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Functions</title><meta content="Define and call functions, label their arguments, and use their return values." name="description"><script src="../../../navigator-index-swift-book.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">The Swift Programming Language (6.4)</a></li><li>Functions</li></ul></nav><hgroup><p>Article</p><h1>Functions</h1></hgroup><p>Define and call functions, label their arguments, and use their return values.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p><i>Functions</i> are self-contained chunks of code that perform a specific task. You give a function a name that identifies what it does, and this name is used to “call” the function to perform its task when needed.</p><p>Swift’s unified function syntax is flexible enough to express anything from a simple C-style function with no parameter names to a complex Objective-C-style method with names and argument labels for each parameter. Parameters can provide default values to simplify function calls and can be passed as in-out parameters, which modify a passed variable once the function has completed its execution.</p><p>Every function in Swift has a type, consisting of the function’s parameter types and return type. You can use this type like any other type in Swift, which makes it easy to pass functions as parameters to other functions, and to return functions from functions. Functions can also be written within other functions to encapsulate useful functionality within a nested function scope.</p><h2 id="Defining-and-Calling-Functions"><a href="#Defining-and-Calling-Functions">Defining and Calling Functions</a></h2><p>When you define a function, you can optionally define one or more named, typed values that the function takes as input, known as <i>parameters</i>. You can also optionally define a type of value that the function will pass back as output when it’s done, known as its <i>return type</i>.</p><p>Every function has a <i>function name</i>, which describes the task that the function performs. To use a function, you “call” that function with its name and pass it input values (known as <i>arguments</i>) that match the types of the function’s parameters. A function’s arguments must always be provided in the same order as the function’s parameter list.</p><p>The function in the example below is called <code>greet(person:)</code>, because that’s what it does — it takes a person’s name as input and returns a greeting for that person. To accomplish this, you define one input parameter — a <code>String</code> value called <code>person</code> — and a return type of <code>String</code>, which will contain a greeting for that person:</p><pre class="swift"><code>func greet(person: String) -> String {
+    let greeting = "Hello, " + person + "!"
+    return greeting
+}
+</code></pre><p>All of this information is rolled up into the function’s <i>definition</i>, which is prefixed with the <code>func</code> keyword. You indicate the function’s return type with the <i>return arrow</i> <code>-></code> (a hyphen followed by a right angle bracket), which is followed by the name of the type to return.</p><p>The definition describes what the function does, what it expects to receive, and what it returns when it’s done. The definition makes it easy for the function to be called unambiguously from elsewhere in your code:</p><pre class="swift"><code>print(greet(person: "Anna"))
+// Prints "Hello, Anna!"
+print(greet(person: "Brian"))
+// Prints "Hello, Brian!"
+</code></pre><p>You call the <code>greet(person:)</code> function by passing it a <code>String</code> value after the <code>person</code> argument label, such as <code>greet(person: "Anna")</code>. Because the function returns a <code>String</code> value, <code>greet(person:)</code> can be wrapped in a call to the <code>print(_:separator:terminator:)</code> function to print that string and see its return value, as shown above.</p><aside class="note"><p class="label">Note</p><p>The <code>print(_:separator:terminator:)</code> function doesn’t have a label for its first argument, and its other arguments are optional because they have a default value. These variations on function syntax are discussed below in Functions and Functions.</p></aside><p>The body of the <code>greet(person:)</code> function starts by defining a new <code>String</code> constant called <code>greeting</code> and setting it to a simple greeting message. This greeting is then passed back out of the function using the <code>return</code> keyword. In the line of code that says <code>return greeting</code>, the function finishes its execution and returns the current value of <code>greeting</code>.</p><p>You can call the <code>greet(person:)</code> function multiple times with different input values. The example above shows what happens if it’s called with an input value of <code>"Anna"</code>, and an input value of <code>"Brian"</code>. The function returns a tailored greeting in each case.</p><p>To make the body of this function shorter, you can combine the message creation and the return statement into one line:</p><pre class="swift"><code>func greetAgain(person: String) -> String {
+    return "Hello again, " + person + "!"
+}
+print(greetAgain(person: "Anna"))
+// Prints "Hello again, Anna!"
+</code></pre><h2 id="Function-Parameters-and-Return-Values"><a href="#Function-Parameters-and-Return-Values">Function Parameters and Return Values</a></h2><p>Function parameters and return values are extremely flexible in Swift. You can define anything from a simple utility function with a single unnamed parameter to a complex function with expressive parameter names and different parameter options.</p><h3 id="Functions-Without-Parameters"><a href="#Functions-Without-Parameters">Functions Without Parameters</a></h3><p>Functions aren’t required to define input parameters. Here’s a function with no input parameters, which always returns the same <code>String</code> message whenever it’s called:</p><pre class="swift"><code>func sayHelloWorld() -> String {
+    return "hello, world"
+}
+print(sayHelloWorld())
+// Prints "hello, world".
+</code></pre><p>The function definition still needs parentheses after the function’s name, even though it doesn’t take any parameters. The function name is also followed by an empty pair of parentheses when the function is called.</p><h3 id="Functions-With-Multiple-Parameters"><a href="#Functions-With-Multiple-Parameters">Functions With Multiple Parameters</a></h3><p>Functions can have multiple input parameters, which are written within the function’s parentheses, separated by commas.</p><p>This function takes a person’s name and whether they have already been greeted as input, and returns an appropriate greeting for that person:</p><pre class="swift"><code>func greet(person: String, alreadyGreeted: Bool) -> String {
+    if alreadyGreeted {
+        return greetAgain(person: person)
+    } else {
+        return greet(person: person)
+    }
+}
+print(greet(person: "Tim", alreadyGreeted: true))
+// Prints "Hello again, Tim!"
+</code></pre><p>You call the <code>greet(person:alreadyGreeted:)</code> function by passing it both a <code>String</code> argument value labeled <code>person</code> and a <code>Bool</code> argument value labeled <code>alreadyGreeted</code> in parentheses, separated by commas. Note that this function is distinct from the <code>greet(person:)</code> function shown in an earlier section. Although both functions have names that begin with <code>greet</code>, the <code>greet(person:alreadyGreeted:)</code> function takes two arguments but the <code>greet(person:)</code> function takes only one.</p><h3 id="Functions-Without-Return-Values"><a href="#Functions-Without-Return-Values">Functions Without Return Values</a></h3><p>Functions aren’t required to define a return type. Here’s a version of the <code>greet(person:)</code> function, which prints its own <code>String</code> value rather than returning it:</p><pre class="swift"><code>func greet(person: String) {
+    print("Hello, \(person)!")
+}
+greet(person: "Dave")
+// Prints "Hello, Dave!"
+</code></pre><p>Because it doesn’t need to return a value, the function’s definition doesn’t include the return arrow (<code>-></code>) or a return type.</p><aside class="note"><p class="label">Note</p><p>Strictly speaking, this version of the <code>greet(person:)</code> function <i>does</i> still return a value, even though no return value is defined. Functions without a defined return type return a special value of type <code>Void</code>. This is simply an empty tuple, which is written as <code>()</code>.</p></aside><p>The return value of a function can be ignored when it’s called:</p><pre class="swift"><code>func printAndCount(string: String) -> Int {
+    print(string)
+    return string.count
+}
+func printWithoutCounting(string: String) {
+    let _ = printAndCount(string: string)
+}
+printAndCount(string: "hello, world")
+// prints "hello, world" and returns a value of 12
+printWithoutCounting(string: "hello, world")
+// prints "hello, world" but doesn't return a value
+</code></pre><p>The first function, <code>printAndCount(string:)</code>, prints a string, and then returns its character count as an <code>Int</code>. The second function, <code>printWithoutCounting(string:)</code>, calls the first function, but ignores its return value. When the second function is called, the message is still printed by the first function, but the returned value isn’t used.</p><aside class="note"><p class="label">Note</p><p>Return values can be ignored, but a function that says it will return a value must always do so. A function with a defined return type can’t allow control to fall out of the bottom of the function without returning a value, and attempting to do so will result in a compile-time error.</p></aside><h3 id="Functions-with-Multiple-Return-Values"><a href="#Functions-with-Multiple-Return-Values">Functions with Multiple Return Values</a></h3><p>You can use a tuple type as the return type for a function to return multiple values as part of one compound return value.</p><p>The example below defines a function called <code>minMax(array:)</code>, which finds the smallest and largest numbers in an array of <code>Int</code> values:</p><pre class="swift"><code>func minMax(array: [Int]) -> (min: Int, max: Int) {
+    var currentMin = array[0]
+    var currentMax = array[0]
+    for value in array[1..&lt;array.count] {
+        if value &lt; currentMin {
+            currentMin = value
+        } else if value > currentMax {
+            currentMax = value
+        }
+    }
+    return (currentMin, currentMax)
+}
+</code></pre><p>The <code>minMax(array:)</code> function returns a tuple containing two <code>Int</code> values. These values are labeled <code>min</code> and <code>max</code> so that they can be accessed by name when querying the function’s return value.</p><p>The body of the <code>minMax(array:)</code> function starts by setting two working variables called <code>currentMin</code> and <code>currentMax</code> to the value of the first integer in the array. The function then iterates over the remaining values in the array and checks each value to see if it’s smaller or larger than the values of <code>currentMin</code> and <code>currentMax</code> respectively. Finally, the overall minimum and maximum values are returned as a tuple of two <code>Int</code> values.</p><p>Because the tuple’s member values are named as part of the function’s return type, they can be accessed with dot syntax to retrieve the minimum and maximum found values:</p><pre class="swift"><code>let bounds = minMax(array: [8, -6, 2, 109, 3, 71])
+print("min is \(bounds.min) and max is \(bounds.max)")
+// Prints "min is -6 and max is 109".
+</code></pre><p>Note that the tuple’s members don’t need to be named at the point that the tuple is returned from the function, because their names are already specified as part of the function’s return type.</p><h4 id="Optional-Tuple-Return-Types"><a href="#Optional-Tuple-Return-Types">Optional Tuple Return Types</a></h4><p>If the tuple type to be returned from a function has the potential to have “no value” for the entire tuple, you can use an <i>optional</i> tuple return type to reflect the fact that the entire tuple can be <code>nil</code>. You write an optional tuple return type by placing a question mark after the tuple type’s closing parenthesis, such as <code>(Int, Int)?</code> or <code>(String, Int, Bool)?</code>.</p><aside class="note"><p class="label">Note</p><p>An optional tuple type such as <code>(Int, Int)?</code> is different from a tuple that contains optional types such as <code>(Int?, Int?)</code>. With an optional tuple type, the entire tuple is optional, not just each individual value within the tuple.</p></aside><p>The <code>minMax(array:)</code> function above returns a tuple containing two <code>Int</code> values. However, the function doesn’t perform any safety checks on the array it’s passed. If the <code>array</code> argument contains an empty array, the <code>minMax(array:)</code> function, as defined above, will trigger a runtime error when attempting to access <code>array[0]</code>.</p><p>To handle an empty array safely, write the <code>minMax(array:)</code> function with an optional tuple return type and return a value of <code>nil</code> when the array is empty:</p><pre class="swift"><code>func minMax(array: [Int]) -> (min: Int, max: Int)? {
+    if array.isEmpty { return nil }
+    var currentMin = array[0]
+    var currentMax = array[0]
+    for value in array[1..&lt;array.count] {
+        if value &lt; currentMin {
+            currentMin = value
+        } else if value > currentMax {
+            currentMax = value
+        }
+    }
+    return (currentMin, currentMax)
+}
+</code></pre><p>You can use optional binding to check whether this version of the <code>minMax(array:)</code> function returns an actual tuple value or <code>nil</code>:</p><pre class="swift"><code>if let bounds = minMax(array: [8, -6, 2, 109, 3, 71]) {
+    print("min is \(bounds.min) and max is \(bounds.max)")
+}
+// Prints "min is -6 and max is 109".
+</code></pre><h3 id="Functions-With-an-Implicit-Return"><a href="#Functions-With-an-Implicit-Return">Functions With an Implicit Return</a></h3><p>If the entire body of the function is a single expression, the function implicitly returns that expression. For example, both functions below have the same behavior:</p><pre class="swift"><code>func greeting(for person: String) -> String {
+    "Hello, " + person + "!"
+}
+print(greeting(for: "Dave"))
+// Prints "Hello, Dave!"
+
+func anotherGreeting(for person: String) -> String {
+    return "Hello, " + person + "!"
+}
+print(anotherGreeting(for: "Dave"))
+// Prints "Hello, Dave!"
+</code></pre><p>The entire definition of the <code>greeting(for:)</code> function is the greeting message that it returns, which means it can use this shorter form. The <code>anotherGreeting(for:)</code> function returns the same greeting message, using the <code>return</code> keyword like a longer function. Any function that you write as just one <code>return</code> line can omit the <code>return</code>.</p><p>As you’ll see in Properties, property getters can also use an implicit return.</p><aside class="note"><p class="label">Note</p><p>The code you write as an implicit return value needs to return some value. For example, you can’t use <code>print(13)</code> as an implicit return value. However, you can use a function that never returns like <code>fatalError("Oh no!")</code> as an implicit return value, because Swift knows that the implicit return doesn’t happen.</p></aside><h2 id="Function-Argument-Labels-and-Parameter-Names"><a href="#Function-Argument-Labels-and-Parameter-Names">Function Argument Labels and Parameter Names</a></h2><p>Each function parameter has both an <i>argument label</i> and a <i>parameter name</i>. The argument label is used when calling the function; each argument is written in the function call with its argument label before it. The parameter name is used in the implementation of the function. By default, parameters use their parameter name as their argument label.</p><pre class="swift"><code>func someFunction(firstParameterName: Int, secondParameterName: Int) {
+    // In the function body, firstParameterName and secondParameterName
+    // refer to the argument values for the first and second parameters.
+}
+someFunction(firstParameterName: 1, secondParameterName: 2)
+</code></pre><p>All parameters must have unique names. Although it’s possible for multiple parameters to have the same argument label, unique argument labels help make your code more readable.</p><h3 id="Specifying-Argument-Labels"><a href="#Specifying-Argument-Labels">Specifying Argument Labels</a></h3><p>You write an argument label before the parameter name, separated by a space:</p><pre class="swift"><code>func someFunction(argumentLabel parameterName: Int) {
+    // In the function body, parameterName refers to the argument value
+    // for that parameter.
+}
+</code></pre><p>Here’s a variation of the <code>greet(person:)</code> function that takes a person’s name and hometown and returns a greeting:</p><pre class="swift"><code>func greet(person: String, from hometown: String) -> String {
+    return "Hello \(person)!  Glad you could visit from \(hometown)."
+}
+print(greet(person: "Bill", from: "Cupertino"))
+// Prints "Hello Bill!  Glad you could visit from Cupertino."
+</code></pre><p>The use of argument labels can allow a function to be called in an expressive, sentence-like manner, while still providing a function body that’s readable and clear in intent.</p><h3 id="Omitting-Argument-Labels"><a href="#Omitting-Argument-Labels">Omitting Argument Labels</a></h3><p>If you don’t want an argument label for a parameter, write an underscore (<code>_</code>) instead of an explicit argument label for that parameter.</p><pre class="swift"><code>func someFunction(_ firstParameterName: Int, secondParameterName: Int) {
+    // In the function body, firstParameterName and secondParameterName
+    // refer to the argument values for the first and second parameters.
+}
+someFunction(1, secondParameterName: 2)
+</code></pre><p>If a parameter has an argument label, the argument <i>must</i> be labeled when you call the function.</p><h3 id="Default-Parameter-Values"><a href="#Default-Parameter-Values">Default Parameter Values</a></h3><p>You can define a <i>default value</i> for any parameter in a function by assigning a value to the parameter after that parameter’s type. If a default value is defined, you can omit that parameter when calling the function.</p><pre class="swift"><code>func someFunction(parameterWithoutDefault: Int, parameterWithDefault: Int = 12) {
+    // If you omit the second argument when calling this function, then
+    // the value of parameterWithDefault is 12 inside the function body.
+}
+someFunction(parameterWithoutDefault: 3, parameterWithDefault: 6) // parameterWithDefault is 6
+someFunction(parameterWithoutDefault: 4) // parameterWithDefault is 12
+</code></pre><p>Place parameters that don’t have default values at the beginning of a function’s parameter list, before the parameters that have default values. Parameters that don’t have default values are usually more important to the function’s meaning — writing them first makes it easier to recognize that the same function is being called, regardless of whether any default parameters are omitted.</p><h3 id="Variadic-Parameters"><a href="#Variadic-Parameters">Variadic Parameters</a></h3><p>A <i>variadic parameter</i> accepts zero or more values of a specified type. You use a variadic parameter to specify that the parameter can be passed a varying number of input values when the function is called. Write variadic parameters by inserting three period characters (<code>...</code>) after the parameter’s type name.</p><p>The values passed to a variadic parameter are made available within the function’s body as an array of the appropriate type. For example, a variadic parameter with a name of <code>numbers</code> and a type of <code>Double...</code> is made available within the function’s body as a constant array called <code>numbers</code> of type <code>[Double]</code>.</p><p>The example below calculates the <i>arithmetic mean</i> (also known as the <i>average</i>) for a list of numbers of any length:</p><pre class="swift"><code>func arithmeticMean(_ numbers: Double...) -> Double {
+    var total: Double = 0
+    for number in numbers {
+        total += number
+    }
+    return total / Double(numbers.count)
+}
+arithmeticMean(1, 2, 3, 4, 5)
+// returns 3.0, which is the arithmetic mean of these five numbers
+arithmeticMean(3, 8.25, 18.75)
+// returns 10.0, which is the arithmetic mean of these three numbers
+</code></pre><p>A function can have multiple variadic parameters. The first parameter that comes after a variadic parameter must have an argument label. The argument label makes it unambiguous which arguments are passed to the variadic parameter and which arguments are passed to the parameters that come after the variadic parameter.</p><h3 id="In-Out-Parameters"><a href="#In-Out-Parameters">In-Out Parameters</a></h3><p>Function parameters are constants by default. Trying to change the value of a function parameter from within the body of that function results in a compile-time error. This means that you can’t change the value of a parameter by mistake. If you want a function to modify a parameter’s value, and you want those changes to persist after the function call has ended, define that parameter as an <i>in-out parameter</i> instead.</p><p>You write an in-out parameter by placing the <code>inout</code> keyword right before a parameter’s type. An in-out parameter has a value that’s passed <i>in</i> to the function, is modified by the function, and is passed back <i>out</i> of the function to replace the original value. For a detailed discussion of the behavior of in-out parameters and associated compiler optimizations, see Declarations.</p><p>You can only pass a variable as the argument for an in-out parameter. You can’t pass a constant or a literal value as the argument, because constants and literals can’t be modified. You place an ampersand (<code>&amp;</code>) directly before a variable’s name when you pass it as an argument to an in-out parameter, to indicate that it can be modified by the function.</p><aside class="note"><p class="label">Note</p><p>In-out parameters can’t have default values, and variadic parameters can’t be marked as <code>inout</code>.</p></aside><p>Here’s an example of a function called <code>swapTwoInts(_:_:)</code>, which has two in-out integer parameters called <code>a</code> and <code>b</code>:</p><pre class="swift"><code>func swapTwoInts(_ a: inout Int, _ b: inout Int) {
+    let temporaryA = a
+    a = b
+    b = temporaryA
+}
+</code></pre><p>The <code>swapTwoInts(_:_:)</code> function simply swaps the value of <code>b</code> into <code>a</code>, and the value of <code>a</code> into <code>b</code>. The function performs this swap by storing the value of <code>a</code> in a temporary constant called <code>temporaryA</code>, assigning the value of <code>b</code> to <code>a</code>, and then assigning <code>temporaryA</code> to <code>b</code>.</p><p>You can call the <code>swapTwoInts(_:_:)</code> function with two variables of type <code>Int</code> to swap their values. Note that the names of <code>someInt</code> and <code>anotherInt</code> are prefixed with an ampersand when they’re passed to the <code>swapTwoInts(_:_:)</code> function:</p><pre class="swift"><code>var someInt = 3
+var anotherInt = 107
+swapTwoInts(&amp;someInt, &amp;anotherInt)
+print("someInt is now \(someInt), and anotherInt is now \(anotherInt)")
+// Prints "someInt is now 107, and anotherInt is now 3".
+</code></pre><p>The example above shows that the original values of <code>someInt</code> and <code>anotherInt</code> are modified by the <code>swapTwoInts(_:_:)</code> function, even though they were originally defined outside of the function.</p><aside class="note"><p class="label">Note</p><p>In-out parameters aren’t the same as returning a value from a function. The <code>swapTwoInts</code> example above doesn’t define a return type or return a value, but it still modifies the values of <code>someInt</code> and <code>anotherInt</code>. In-out parameters are an alternative way for a function to have an effect outside of the scope of its function body.</p></aside><h2 id="Function-Types"><a href="#Function-Types">Function Types</a></h2><p>Every function has a specific <i>function type</i>, made up of the parameter types and the return type of the function.</p><p>For example:</p><pre class="swift"><code>func addTwoInts(_ a: Int, _ b: Int) -> Int {
+    return a + b
+}
+func multiplyTwoInts(_ a: Int, _ b: Int) -> Int {
+    return a * b
+}
+</code></pre><p>This example defines two simple mathematical functions called <code>addTwoInts</code> and <code>multiplyTwoInts</code>. These functions each take two <code>Int</code> values, and return an <code>Int</code> value, which is the result of performing an appropriate mathematical operation.</p><p>The type of both of these functions is <code>(Int, Int) -> Int</code>. This can be read as:</p><p>“A function that has two parameters, both of type <code>Int</code>, and that returns a value of type <code>Int</code>.”</p><p>Here’s another example, for a function with no parameters or return value:</p><pre class="swift"><code>func printHelloWorld() {
+    print("hello, world")
+}
+</code></pre><p>The type of this function is <code>() -> Void</code>, or “a function that has no parameters, and returns <code>Void</code>.”</p><h3 id="Using-Function-Types"><a href="#Using-Function-Types">Using Function Types</a></h3><p>You use function types just like any other types in Swift. For example, you can define a constant or variable to be of a function type and assign an appropriate function to that variable:</p><pre class="swift"><code>var mathFunction: (Int, Int) -> Int = addTwoInts
+</code></pre><p>This can be read as:</p><p>“Define a variable called <code>mathFunction</code>, which has a type of ‘a function that takes two <code>Int</code> values, and returns an <code>Int</code> value.’ Set this new variable to refer to the function called <code>addTwoInts</code>.”</p><p>The <code>addTwoInts(_:_:)</code> function has the same type as the <code>mathFunction</code> variable, and so this assignment is allowed by Swift’s type-checker.</p><p>You can now call the assigned function with the name <code>mathFunction</code>:</p><pre class="swift"><code>print("Result: \(mathFunction(2, 3))")
+// Prints "Result: 5".
+</code></pre><p>A different function with the same matching type can be assigned to the same variable, in the same way as for nonfunction types:</p><pre class="swift"><code>mathFunction = multiplyTwoInts
+print("Result: \(mathFunction(2, 3))")
+// Prints "Result: 6".
+</code></pre><p>As with any other type, you can leave it to Swift to infer the function type when you assign a function to a constant or variable:</p><pre class="swift"><code>let anotherMathFunction = addTwoInts
+// anotherMathFunction is inferred to be of type (Int, Int) -> Int
+</code></pre><h3 id="Function-Types-as-Parameter-Types"><a href="#Function-Types-as-Parameter-Types">Function Types as Parameter Types</a></h3><p>You can use a function type such as <code>(Int, Int) -> Int</code> as a parameter type for another function. This enables you to leave some aspects of a function’s implementation for the function’s caller to provide when the function is called.</p><p>Here’s an example to print the results of the math functions from above:</p><pre class="swift"><code>func printMathResult(_ mathFunction: (Int, Int) -> Int, _ a: Int, _ b: Int) {
+    print("Result: \(mathFunction(a, b))")
+}
+printMathResult(addTwoInts, 3, 5)
+// Prints "Result: 8".
+</code></pre><p>This example defines a function called <code>printMathResult(_:_:_:)</code>, which has three parameters. The first parameter is called <code>mathFunction</code>, and is of type <code>(Int, Int) -> Int</code>. You can pass any function of that type as the argument for this first parameter. The second and third parameters are called <code>a</code> and <code>b</code>, and are both of type <code>Int</code>. These are used as the two input values for the provided math function.</p><p>When <code>printMathResult(_:_:_:)</code> is called, it’s passed the <code>addTwoInts(_:_:)</code> function, and the integer values <code>3</code> and <code>5</code>. It calls the provided function with the values <code>3</code> and <code>5</code>, and prints the result of <code>8</code>.</p><p>The role of <code>printMathResult(_:_:_:)</code> is to print the result of a call to a math function of an appropriate type. It doesn’t matter what that function’s implementation actually does — it matters only that the function is of the correct type. This enables <code>printMathResult(_:_:_:)</code> to hand off some of its functionality to the caller of the function in a type-safe way.</p><h3 id="Function-Types-as-Return-Types"><a href="#Function-Types-as-Return-Types">Function Types as Return Types</a></h3><p>You can use a function type as the return type of another function. You do this by writing a complete function type immediately after the return arrow (<code>-></code>) of the returning function.</p><p>The next example defines two simple functions called <code>stepForward(_:)</code> and <code>stepBackward(_:)</code>. The <code>stepForward(_:)</code> function returns a value one more than its input value, and the <code>stepBackward(_:)</code> function returns a value one less than its input value. Both functions have a type of <code>(Int) -> Int</code>:</p><pre class="swift"><code>func stepForward(_ input: Int) -> Int {
+    return input + 1
+}
+func stepBackward(_ input: Int) -> Int {
+    return input - 1
+}
+</code></pre><p>Here’s a function called <code>chooseStepFunction(backward:)</code>, whose return type is <code>(Int) -> Int</code>. The <code>chooseStepFunction(backward:)</code> function returns the <code>stepForward(_:)</code> function or the <code>stepBackward(_:)</code> function based on a Boolean parameter called <code>backward</code>:</p><pre class="swift"><code>func chooseStepFunction(backward: Bool) -> (Int) -> Int {
+    return backward ? stepBackward : stepForward
+}
+</code></pre><p>You can now use <code>chooseStepFunction(backward:)</code> to obtain a function that will step in one direction or the other:</p><pre class="swift"><code>var currentValue = 3
+let moveNearerToZero = chooseStepFunction(backward: currentValue > 0)
+// moveNearerToZero now refers to the stepBackward() function
+</code></pre><p>The example above determines whether a positive or negative step is needed to move a variable called <code>currentValue</code> progressively closer to zero. <code>currentValue</code> has an initial value of <code>3</code>, which means that <code>currentValue > 0</code> returns <code>true</code>, causing <code>chooseStepFunction(backward:)</code> to return the <code>stepBackward(_:)</code> function. A reference to the returned function is stored in a constant called <code>moveNearerToZero</code>.</p><p>Now that <code>moveNearerToZero</code> refers to the correct function, it can be used to count to zero:</p><pre class="swift"><code>print("Counting to zero:")
+// Counting to zero:
+while currentValue != 0 {
+    print("\(currentValue)... ")
+    currentValue = moveNearerToZero(currentValue)
+}
+print("zero!")
+// 3...
+// 2...
+// 1...
+// zero!
+</code></pre><h2 id="Nested-Functions"><a href="#Nested-Functions">Nested Functions</a></h2><p>All of the functions you have encountered so far in this chapter have been examples of <i>global functions</i>, which are defined at a global scope. You can also define functions inside the bodies of other functions, known as <i>nested functions</i>.</p><p>Nested functions are hidden from the outside world by default, but can still be called and used by their enclosing function. An enclosing function can also return one of its nested functions to allow the nested function to be used in another scope.</p><p>You can rewrite the <code>chooseStepFunction(backward:)</code> example above to use and return nested functions:</p><pre class="swift"><code>func chooseStepFunction(backward: Bool) -> (Int) -> Int {
+    func stepForward(input: Int) -> Int { return input + 1 }
+    func stepBackward(input: Int) -> Int { return input - 1 }
+    return backward ? stepBackward : stepForward
+}
+var currentValue = -4
+let moveNearerToZero = chooseStepFunction(backward: currentValue > 0)
+// moveNearerToZero now refers to the nested stepForward() function
+while currentValue != 0 {
+    print("\(currentValue)... ")
+    currentValue = moveNearerToZero(currentValue)
+}
+print("zero!")
+// -4...
+// -3...
+// -2...
+// -1...
+// zero!
+</code></pre></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

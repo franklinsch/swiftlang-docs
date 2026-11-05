@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Implementing a Custom Distributed Actor System</title><meta content="Implement a `DistributedActorSystem` to provide a custom transport layer for distributed actors." name="description"><script src="../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Standard Library</a></li><li><a href="../distributed-collection/index.html">Distributed</a></li><li>Implementing a Custom Distributed Actor System</li></ul></nav><hgroup><p>Article</p><h1>Implementing a Custom Distributed Actor System</h1></hgroup><p>Implement a <code>DistributedActorSystem</code> to provide a custom transport layer for distributed actors.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>A <a href="../../distributed/distributedactor/index.html"><code>Distributed<wbr>Actor</code></a> is always associated with a <i>distributed actor system</i>, which determines how <code>distributed func</code> calls on a <i>remote</i> actor are executed.</p><p>To declare a distributed actor, use the <code>distributed actor</code> keywords and choose the actor system it belongs to. The actor system provides the “transport” — such as a network or interprocess channel — to an actor, regardless of where that actor runs.</p><p>Code that <i>uses</i> distributed actors doesn’t need to interact with this protocol directly — that abstraction is the point. Implement a <code>DistributedActorSystem</code> when you’re providing a new transport implementation, such as a cluster, a WebSocket client or server, or an interprocess communication (IPC) system.</p><aside class="tip"><p class="label">Tip</p><p>In other words, <a href="../../distributed/distributedactorsystem/index.html"><code>Distributed<wbr>Actor<wbr>System</code></a> provides the expected interface for your own RPC frameworks that integrate with the Swift runtime and concurrency model.</p></aside><p>An actor system manages the lifecycle and remote interactions of distributed actors. These responsibilities map to specific methods on the <code>DistributedActorSystem</code> protocol:</p><ul><li><p><b>Define</b> the actor system and its associated types.</p></li><li><p><b>Assign</b>, track, and release actor identities.</p></li><li><p><b>Resolve</b> an actor identity to either a local instance or a remote reference.</p></li><li><p><b>Call</b> a remote method on a distributed actor.</p></li><li><p><b>Encode</b> an outgoing invocation, send it to the remote peer, and await a reply.</p></li><li><p><b>Decode</b> an incoming invocation and dispatch it to the target actor.</p></li><li><p><b>Reply</b> with the results and errors.</p></li></ul><p>The rest of this article walks through each responsibility, providing examples that build to a minimal in-memory transport. For deeper coverage of the language and runtime semantics, see <a href="https://github.com/apple/swift-evolution/blob/main/proposals/0336-distributed-actor-isolation.md">SE-0336: Distributed Actor Isolation</a> and <a href="https://github.com/apple/swift-evolution/blob/main/proposals/0344-distributed-actor-runtime.md">SE-0344: Distributed Actor Runtime</a>.</p><h3 id="Define-the-actor-system-and-associated-types"><a href="#Define-the-actor-system-and-associated-types">Define the actor system and associated types</a></h3><p>A <code>DistributedActorSystem</code> is typically a final class — or a struct that wraps a class — because it holds internal state such as the mapping from identifiers to actors, and other components reference it by identity.</p><p>To implement a distributed actor system, declare a new type that conforms to the <a href="../../distributed/distributedactorsystem/index.html"><code>Distributed<wbr>Actor<wbr>System</code></a> protocol. Then provide witnesses for the five required associated types, shown below and explored in the sections that follow.</p><pre class="swift"><code>import Distributed
+
+public final class SampleActorSystem: DistributedActorSystem {
+    public typealias ActorID = SampleActorID
+    public typealias SerializationRequirement = any Codable
+    public typealias InvocationEncoder = SampleInvocationEncoder
+    public typealias InvocationDecoder = SampleInvocationDecoder
+    public typealias ResultHandler = SampleResultHandler
+
+    // Internal state filled in below.
+}
+</code></pre><h3 id="Assign-track-and-release-actor-identities"><a href="#Assign-track-and-release-actor-identities">Assign, track, and release actor identities</a></h3><p>An <code>ActorID</code> identifies a distributed actor from the moment it’s created. The actor system serializes and sends this identifier to remote peers during network calls. This identifier lets you send “references” to an actor to other nodes or processes; the recipient calls <a href="../../distributed/distributedactor/resolve(id:using:)/index.html"><code>resolve(<wbr>id:<wbr>using:)</code></a> on the identifier to obtain a <i>remote reference</i> to the actor.</p><pre class="swift"><code>public struct SampleActorID: Hashable, Sendable, Codable {
+    public let node: String
+    public let instance: UUID
+}
+</code></pre><p>Conforming <code>SampleActorID</code> to <code>Codable</code> makes it compatible with the actor system’s <code>SerializationRequirement</code>.</p><p>Because <a href="../../distributed/distributedactor/index.html"><code>Distributed<wbr>Actor</code></a> is <code>Codable</code> whenever its <code>ID</code> is, choosing a <code>Codable</code> <code>ActorID</code> makes distributed actors serializable as arguments to other distributed calls. For example, you can make a remote call like this:</p><pre class="swift"><code>distributed actor Worker {
+  distributed func introduce(another: Worker) { ... }
+}
+
+let remoteWorker: Worker = ... // A worker located in a different process.
+let charlie: Worker = Worker(actorSystem: ...) // A worker located in this process.
+
+// Remote call forwarding a reference to a local worker to a different process.
+try await remoteWorker.introduce(another: charlie)
+</code></pre><p>Three methods drive the lifecycle (<code>assignID</code>, <code>actorReady</code>, and <code>resignID</code>) of every distributed actor that your system manages.</p><p>The Swift runtime calls these methods whenever a local distributed actor is initialized or deinitialized. Implement these methods so the actor system can find actors by their identity later:</p><pre class="swift"><code>extension SampleActorSystem {
+    public func assignID&lt;Act>(_ actorType: Act.Type) -> ActorID
+      where Act: DistributedActor, Act.ID == ActorID {
+        // Produce a unique ID for a freshly initializing actor.
+        SampleActorID(node: self.node, instance: UUID())
+    }
+
+    public func actorReady&lt;Act>(_ actor: Act)
+      where Act: DistributedActor, Act.ID == ActorID {
+        // Store a weak reference so the system does not keep the actor alive.
+        activeActors.withLock { $0[actor.id] = WeakActorRef(actor) }
+    }
+
+    public func resignID(_ id: ActorID) {
+        // Called when the actor is deinitialized or fails to initialize.
+        activeActors.withLock { $0.removeValue(forKey: id) }
+    }
+}
+</code></pre><p>Hold readied actors with weak references so they deinitialize when no other reference remains. You can also hold some actors strongly if they remain valid for the entire lifetime of the actor system, but weak retention is the common practice.</p><p>The Swift runtime automatically calls <a href="../../distributed/distributedactorsystem/resignid(_:)/index.html"><code>resign<wbr>ID(<wbr>_:)</code></a> from a distributed actor’s <code>deinit</code> to notify the system.</p><p>Inside <code>resignID</code>, typical work includes tearing down unused connections and freeing per-actor resources such as caches or timers.</p><h3 id="Resolve-local-and-remote-actors"><a href="#Resolve-local-and-remote-actors">Resolve local and remote actors</a></h3><p>Resolving actor identifiers — or <i>resolving actors</i> for short — converts an <code>ActorID</code> into a distributed actor of a specific type you can call distributed methods on. The runtime resolves actors transparently when you pass distributed actor references as parameters in distributed function calls, but you can also resolve them manually.</p><p>When you call <code>try Worker.resolve(id:using:)</code>, the runtime calls the <a href="../../distributed/distributedactorsystem/resolve(id:as:)/index.html"><code>resolve(<wbr>id:<wbr>as:)</code></a> method on the actor system associated with the <code>Worker</code> type.</p><p>The user-facing <code>DistributedActor.resolve</code> function returns a local actor instance if the identifier refers to an actor in the same process, or a remote proxy object if the identifier points to a remote process. It can also throw an error if the identifier has expired, is invalid, or is otherwise illegal.</p><p>The actor system’s <code>resolve</code> implementation should return one of:</p><ul><li><p>The local instance, if the <code>ID</code> identifies an actor that this actor system created and manages.</p></li><li><p><code>nil</code>, if the actor isn’t known to the system locally. In this case, the Swift runtime constructs a remote <i>proxy object pointing at an actor identified by this <code>ID</code></i> instead.</p></li></ul><pre class="swift"><code>extension SampleActorSystem {
+    public func resolve&lt;Act>(id: ActorID, as actorType: Act.Type) throws -> Act?
+    where Act: DistributedActor, Act.ID == ActorID {
+        guard let anyActor = activeActors.withLock({ $0[id]?.actor }) else {
+            // Not local; if you have a connection to this node, form a remote reference.
+            guard knownNodes.contains(id.node) else {
+                throw SampleTransportError.unknownNode(id.node)
+            }
+            return nil
+        }
+        guard let actor = anyActor as? Act else {
+            throw SampleTransportError.typeMismatch(expected: "\(Act.self)")
+        }
+        return actor
+    }
+}
+</code></pre><p>The <code>resolve</code> function is synchronous; don’t perform long blocking operations such as communicating with a remote node to confirm the actor exists. Instead, return a reference (or <code>nil</code>) quickly. If the remote target doesn’t exist, the caller’s first remote call fails. This approach is preferable because the remote node could terminate between lookup and first call, so a preflight check provides no real safety guarantee.</p><p>You can use <code>resolve</code> to initiate a remote connection, but don’t block and wait for the connection to fully establish before returning the reference.</p><h3 id="Encode-an-outgoing-invocation"><a href="#Encode-an-outgoing-invocation">Encode an outgoing invocation</a></h3><p>When you call a <code>distributed func</code> on a remote actor reference, the Swift runtime creates a new <code>InvocationEncoder</code> by calling the system’s <a href="../../distributed/distributedactorsystem/makeinvocationencoder()/index.html"><code>make<wbr>Invocation<wbr>Encoder()</code></a> method, then encodes the arguments of the method call into it.</p><p>The runtime then passes the invocation encoder to <code>remoteCall</code>, which performs the remote procedure call.</p><p>This <a href="../../distributed/distributedtargetinvocationencoder/index.html"><code>Distributed<wbr>Target<wbr>Invocation<wbr>Encoder</code></a> must implement five recording methods that the runtime invokes to record a method invocation into the actor system’s specific serialization format.</p><p>This sample implementation serializes each argument independently with <code>JSONEncoder</code>. You can perform any kind of serialization here, including efficient binary encodings.</p><pre class="swift"><code>public struct SampleInvocationEncoder: DistributedTargetInvocationEncoder {
+    public typealias SerializationRequirement = any Codable
+
+    var genericSubstitutions: [String] = []
+    var argumentData: [Data] = []
+    var returnType: String?
+    var errorType: String?
+
+    public mutating func recordGenericSubstitution&lt;T>(_ type: T.Type) throws {
+        // You may choose to throw here to ban generic distributed calls.
+    }
+
+    public mutating func recordArgument&lt;Value: Codable>(
+        _ argument: RemoteCallArgument&lt;Value>
+    ) throws {
+        // Naive implementation — just encode every parameter independently.
+        argumentData.append(try JSONEncoder().encode(argument.value))
+    }
+
+    public mutating func recordReturnType&lt;R: Codable>(_ type: R.Type) throws {
+        // Encoding the return type isn't required, but you can validate it here.
+    }
+
+    public mutating func recordErrorType&lt;E: Error>(_ type: E.Type) throws {
+        // Encoding the error type isn't required, but you can inspect the declared thrown type of the distributed func.
+    }
+
+    public mutating func doneRecording() throws {
+        // Finalize the envelope — for example, compute a checksum or sign the payload.
+    }
+}
+</code></pre><p>You can defer all serialization until <code>doneRecording</code>, or eagerly serialize each parameter in the <code>record...</code> methods — whichever fits your serialization mechanism best. If a later step needs the encoded arguments — for example, to compute a length prefix — produce them in <code>doneRecording</code>.</p><h3 id="Call-a-remote-method"><a href="#Call-a-remote-method">Call a remote method</a></h3><p>After encoding the invocation, the runtime passes it to <a href="../../distributed/distributedactorsystem/remotecall(on:target:invocation:throwing:returning:)/index.html"><code>remote<wbr>Call(<wbr>on:<wbr>target:<wbr>invocation:<wbr>throwing:<wbr>returning:)</code></a> (or the <code>Void</code> overload, <a href="../../distributed/distributedactorsystem/remotecallvoid(on:target:invocation:throwing:)/index.html"><code>remote<wbr>Call<wbr>Void(<wbr>on:<wbr>target:<wbr>invocation:<wbr>throwing:)</code></a>).</p><p>In this method, the actor system sends the remote message and suspends the caller with a continuation until a reply arrives.</p><p>The implementation of this method depends entirely on your transport. For example, you can serialize the invocation into a WebSocket message, use an interprocess communication mechanism on the same device, or send it over any other channel. The language feature and runtime have no opinion on how you implement a remote call. You can use any networking library, as long as <code>remoteCall</code> returns once the remote call completes.</p><p>A typical implementation associates each invocation with a continuation — keyed by an invocation identifier or per-invocation stream — and resumes the continuation when a reply arrives.</p><pre class="swift"><code>extension SampleActorSystem {
+    public func remoteCall&lt;Act, Err, Res>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout InvocationEncoder,
+        throwing: Err.Type,
+        returning: Res.Type
+    ) async throws -> Res
+    where Act: DistributedActor, Act.ID == ActorID,
+          Err: Error, Res: Codable {
+        let envelope = SampleEnvelope(
+            recipient: actor.id,
+            target: target.identifier,
+            arguments: invocation.argumentData,
+            substitutions: invocation.genericSubstitutions
+        )
+
+        // Here you can do additional work, such as enforcing timeouts or
+        // propagating task-local values and distributed traces.
+
+        return try await withCheckedThrowingContinuation { cc in
+            // Your networking code here:
+            someNetworkingLibrary.lowLevelSend(envelope) { reply in
+                switch reply {
+                case .success(let response):
+                    cc.resume(returning: response.getAs(Res.self))
+
+                case .error(let error):
+                    // For example, network failures or timeouts.
+                    cc.resume(throwing: error)
+                }
+            }
+        }
+    }
+
+    // Invoked when the target 'distributed func' returns 'Void'.
+    public func remoteCallVoid&lt;Act, Err>(
+        on actor: Act,
+        target: RemoteCallTarget,
+        invocation: inout InvocationEncoder,
+        throwing: Err.Type
+    ) async throws
+    where Act: DistributedActor, Act.ID == ActorID, Err: Error {
+        let envelope = SampleEnvelope(
+            recipient: actor.id,
+            target: target.identifier,
+            arguments: invocation.argumentData,
+            substitutions: invocation.genericSubstitutions
+        )
+
+        // Here you can do additional work, such as enforcing timeouts or
+        // propagating task-local values and distributed traces.
+
+        return try await withCheckedThrowingContinuation { cc in
+            // Your networking code here:
+            someNetworkingLibrary.lowLevelSend(envelope) { reply in
+                switch reply {
+                case .success:
+                    cc.resume()
+
+                case .error(let error):
+                    // For example, network failures or timeouts.
+                    cc.resume(throwing: error)
+                }
+            }
+        }
+    }
+}
+</code></pre><p>When your actor system surfaces transport failures such as timeouts or network errors, conform those error types to <a href="../../distributed/distributedactorsystemerror/index.html"><code>Distributed<wbr>Actor<wbr>System<wbr>Error</code></a>. This marker protocol lets developers distinguish transport-level failures from errors that a distributed method throws itself, and the protocol documentation requires this conformance for failures outside the caller’s control.</p><aside class="note"><p class="label">Note</p><p>Typed throws aren’t supported in distributed function calls.</p></aside><pre class="swift"><code>public enum SampleTransportError: DistributedActorSystemError {
+    case processTerminated(node: String)
+    case versionMismatch(remote: String)
+}
+</code></pre><h3 id="Decode-and-execute-a-remote-invocation"><a href="#Decode-and-execute-a-remote-invocation">Decode and execute a remote invocation</a></h3><p>Assemble a <code>receive</code> flow that dispatches incoming invocations to local actors. On the receiving “remote” side of a call, decode the envelope into a matching <a href="../../distributed/distributedtargetinvocationdecoder/index.html"><code>Distributed<wbr>Target<wbr>Invocation<wbr>Decoder</code></a>, locate the local actor, and hand both to the runtime’s <a href="../../distributed/distributedactorsystem/executedistributedtarget(on:target:invocationdecoder:handler:)/index.html"><code>execute<wbr>Distributed<wbr>Target(<wbr>on:<wbr>target:<wbr>invocation<wbr>Decoder:<wbr>handler:)</code></a> method.</p><p>Prepare a few simple types to make the call on the local distributed actor:</p><ul><li><p>Locate the <b>local actor</b> the call targets; this is where you use a <code>resolve()</code>-style method on your managed actors.</p></li><li><p>Prepare an instance of your <code>DistributedTargetInvocationDecoder</code> type. Swift calls it when decoding the call’s parameters.</p></li><li><p>Prepare a callback wrapper <code>ResultHandler</code> that the runtime calls when the call completes.</p><ul><li><p>The runtime calls this handler with the appropriate generic type.</p></li></ul></li></ul><pre class="swift"><code>extension SampleActorSystem {
+    func receive(_ envelope: SampleEnvelope) async {
+        do {
+            // Resolve the local target actor for which the invocation was intended.
+            let actor: any DistributedActor = try self.myResolveLocal(id: envelope.actorID)
+
+            // Prepare a decoder over the network format that the Swift runtime calls.
+            var decoder = SampleInvocationDecoder(envelope: envelope)
+
+            // Prepare a handler that the runtime calls when the remote call completes.
+            let handler = SampleResultHandler(replyTo: envelope.replyID)
+
+            // Execute the 'distributed func' on the located target,
+            // identified by the target identifier encoded during 'remoteCall'.
+            try await executeDistributedTarget(
+                on: actor,
+                target: RemoteCallTarget(envelope.target),
+                invocationDecoder: &amp;decoder,
+                handler: handler
+            )
+        } catch {
+            // Send an error back if your transport supports it,
+            // or terminate the connection. The choice depends on your transport.
+            await envelope.errorChannel.fail(error)
+        }
+    }
+}
+</code></pre><p>The Swift distributed runtime calls the decoder with the appropriate generic type for each argument. A <code>distributed</code> method with <code>String</code> and <code>Int</code> parameters causes the runtime to invoke <code>decodeNextArgument</code> twice — once with <code>Argument</code> bound to <code>String</code>, and once with <code>Argument</code> bound to <code>Int</code>. This lets the implementation rely on <code>Codable</code> for decoding without unsafe casting or type guessing. You can also use any other serialization scheme here, as long as it matches how the values were originally encoded on the sending side.</p><pre class="swift"><code>public struct SampleInvocationDecoder: DistributedTargetInvocationDecoder {
+    public typealias SerializationRequirement = any Codable
+
+    let envelope: SampleEnvelope
+    var nextArgumentIndex = 0
+
+    public mutating func decodeGenericSubstitutions() throws -> [Any.Type] {
+        [] // Implement only if you plan to support generic calls.
+    }
+
+    public mutating func decodeNextArgument&lt;Argument: Codable>() throws -> Argument {
+        defer { nextArgumentIndex += 1 }
+        return try JSONDecoder().decode(Argument.self, from: envelope.arguments[nextArgumentIndex])
+    }
+
+    public mutating func decodeErrorType() throws -> Any.Type? { nil }
+    public mutating func decodeReturnType() throws -> Any.Type? { nil }
+}
+</code></pre><p>You can ignore the generic substitutions and return/error type decoding unless you support generic distributed function calls. The runtime supports them, but you need to rely on mangled type names or another mechanism to transport the intended generic arguments to the recipient.</p><aside class="tip"><p class="label">Tip</p><p>If you support generic distributed calls, don’t trust incoming types. Validate them against a known allow-list before decoding.</p></aside><h3 id="Reply-with-the-results-and-errors"><a href="#Reply-with-the-results-and-errors">Reply with the results and errors</a></h3><p>The final step of a remote call chain is the <a href="../../distributed/distributedtargetinvocationresulthandler/index.html"><code>Distributed<wbr>Target<wbr>Invocation<wbr>Result<wbr>Handler</code></a> that you use to return results and errors.</p><p>This works similarly to the encoder and decoder, and gives you a type-safe way to obtain the result with its correct <code>Success</code> type, as declared by the distributed method.</p><p>If the method returns <code>Void</code>, the runtime calls the specialized <code>onReturnVoid()</code> instead. If the target method throws an error, the handler receives that error in the <code>onThrow(error:)</code> callback, where you decide how to respond — for example, shut down the connection, or send back a “remote call failed” error.</p><pre class="swift"><code>public struct SampleResultHandler: DistributedTargetInvocationResultHandler {
+    public typealias SerializationRequirement = any Codable
+
+    let replyTo: SampleReplyChannel
+
+    public func onReturn&lt;Success: Codable>(value: Success) async throws {
+        try await replyTo.succeed(JSONEncoder().encode(value))
+    }
+
+    public func onReturnVoid() async throws {
+        try await replyTo.succeedVoid()
+    }
+
+    public func onThrow&lt;Err: Error>(error: Err) async throws {
+        // Not every Error is Codable; encode it when possible, and fall back otherwise.
+        if let codable = error as? (any Codable &amp; Error) {
+            try await replyTo.fail(encoded: JSONEncoder().encode(codable))
+        } else {
+            try await replyTo.fail(message: "\(error)")
+        }
+    }
+}
+</code></pre><h3 id="Use-the-actor-system"><a href="#Use-the-actor-system">Use the actor system</a></h3><p>The actor system abstracts the serialization and networking details so the use-site code can focus on its business domain. Specify the <code>ActorSystem</code> typealias inside a distributed actor.</p><pre class="swift"><code>distributed actor Greeter {
+    typealias ActorSystem = SampleActorSystem
+
+    distributed func hello(name: String) -> String {
+        "Hello, \(name)!"
+    }
+}
+</code></pre><p>Initialize the system and distributed actor, use <code>resolve</code> to get a reference, and make asynchronous calls that you defined on the distributed actor:</p><pre class="swift"><code>let system = SampleActorSystem(localNode: "node-a")
+let local = Greeter(actorSystem: system)
+
+// In a remote deployment, resolving an ID owned by a remote node returns a remote
+// reference. Here, both sides share one in-process system, so this example returns
+// a local instance.
+let remote = try Greeter.resolve(id: local.id, using: system)
+let reply = try await remote.hello(name: "world")
+print(reply) // "Hello, world!"
+</code></pre><p>For more information, see <a href="../../distributed/distributedactorsystem/index.html"><code>Distributed<wbr>Actor<wbr>System</code></a> and <a href="../../distributed/localtestingdistributedactorsystem/index.html"><code>Local<wbr>Testing<wbr>Distributed<wbr>Actor<wbr>System</code></a>.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Distributed-actor-system"><a href="#Distributed-actor-system">Distributed actor system</a></h3><ul><li><a href="../../distributed/distributedactorsystem/index.html"><code>protocol <span class="identifier">Distributed<wbr>Actor<wbr>System</span></code></a><p>A distributed actor system underpins and implements all functionality of distributed actors.</p></li><li><a href="../../distributed/remotecalltarget/index.html"><code>struct <span class="identifier">Remote<wbr>Call<wbr>Target</span></code></a><p>Represents a ‘target’ of a distributed call, such as a <code>distributed func</code> or <code>distributed</code> computed property. Identification schemes may vary between systems, and are subject to evolution.</p></li><li><a href="../../distributed/remotecallargument/index.html"><code>struct <span class="identifier">Remote<wbr>Call<wbr>Argument</span></code></a><p>Represents an argument passed to a distributed call target.</p></li><li><a href="../../distributed/distributedtargetinvocationencoder/index.html"><code>protocol <span class="identifier">Distributed<wbr>Target<wbr>Invocation<wbr>Encoder</span></code></a></li><li><a href="../../distributed/distributedtargetinvocationdecoder/index.html"><code>protocol <span class="identifier">Distributed<wbr>Target<wbr>Invocation<wbr>Decoder</span></code></a></li><li><a href="../../distributed/distributedtargetinvocationresulthandler/index.html"><code>protocol <span class="identifier">Distributed<wbr>Target<wbr>Invocation<wbr>Result<wbr>Handler</span></code></a></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

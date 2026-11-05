@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Calling a mutating async actor-isolated method (ActorIsolatedMutatingAsync)</title><script src="../../../navigator-index-compiler-diagnostics.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Swift compiler diagnostics</a></li><li><a href="../diagnostic-groups/index.html">Diagnostic groups</a></li><li>Calling a mutating async actor-isolated method (ActorIsolatedMutatingAsync)</li></ul></nav><hgroup><p>Article</p><h1>Calling a mutating async actor-isolated method (ActorIsolatedMutatingAsync)</h1></hgroup></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Calling a mutating async method on actor-isolated state allows concurrent access to that state during mutation, risking data races. To resolve this error, copy the state to a local variable, call the mutating async method on the copy, then write it back. This will overwrite concurrent changes.</p><p>For example:</p><pre class="swift"><code>struct Backpack {
+  var snacks = 5
+  mutating func refill() async {
+    snacks += await purchaseSnacks(current: snacks)
+  }
+}
+
+@MainActor
+class Hiker {
+  var backpack = Backpack()
+
+  func getReady() async {
+    await backpack.refill()
+  }
+
+  func eatSnack() {
+    backpack.snacks -= 1
+  }
+}
+</code></pre><p>Building the above code produces an error about calling a mutating async function on an actor-isolated property:</p><pre><code>|   func getReady() async {
+|     await backpack.refill()
+|           |        `- error: cannot call mutating async function 'refill()' on actor-isolated property 'backpack' [#ActorIsolatedMutatingAsync]
+|           `- note: 'backpack' can be concurrently accessed during mutation, risking data races
+|   }
+</code></pre><p>A <code>mutating async</code> function takes <code>self</code> as <code>inout</code>. This means that the value of <code>backpack</code> will be copied into <code>refill</code>, then copied out when the method returns. <code>inout</code> requires exclusive access for the duration of the call. While <code>refill</code> is suspended, the main actor is free to do other work. This is a data race, since <code>refill</code> is still mutating <code>backpack</code>. If <code>eatSnack</code> ran before <code>refill</code> finished, it would decrement <code>snacks</code>, but the eaten snack reappears when <code>refill</code> writes back the stale copy.</p><pre class="swift"><code>// Task 1: getReady()                  | // Task 2
+await backpack.refill()
+// copies backpack (snacks: 5)         |
+// suspends...                         |
+                                         eatSnack()
+//                                     | // backpack.snacks is now 4
+// resumes                             |
+// purchaseSnacks returns 0            |
+// writes back backpack (snacks: 5)    |
+// backpack.snacks is 5                |
+// eatSnack() was silently lost!       |
+</code></pre><p>When possible, you can structure code to avoid the need for mutating async functions by separating async computation and mutation:</p><pre class="swift"><code>func getReady() async {
+  // await the asynchronous computation
+  let refill = await backpack.computeRefill()
+  // apply the mutation synchronously
+  backpack.apply(refill)
+}
+</code></pre><p>Because the mutation is synchronous, no concurrent changes can occur between reading and writing <code>backpack</code> as part of <code>apply</code>. If <code>eatSnack</code> is called concurrently while <code>computeRefill</code> is suspended, the <code>Hiker</code> may purchase too few snacks, but the decrement from eating a snack won’t be lost.</p><p>If restructuring isn’t appropriate, copy <code>backpack</code> to a local variable to make the potential overwrite explicit at the call site. This way, the call site shows that <code>backpack</code> is overwritten after <code>await</code>, rather than happening implicitly due to <code>inout</code>. Because <code>copy</code> is a local variable, it is not shared with other tasks and can be safely mutated.</p><pre class="swift"><code>func getReady() async {
+  var copy = backpack
+  await copy.refill()
+  backpack = copy
+}
+</code></pre><h2 id="See-also"><a href="#See-also">See also</a></h2><ul><li><p><a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/declarations#In-Out-Parameters">In-Out Parameters</a></p></li><li><p><a href="exclusivity-violation.md">Overlapping accesses, but operation requires exclusive access (ExclusivityViolation)</a></p></li></ul></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><ul><li><a href="../dynamic-callable-requirements/index.html"><p class="api-collection">@dynamicCallable implementation requirements (DynamicCallable)</p></a></li><li><a href="../add-preconcurrency-import/index.html"><p class="api-collection">Add @preconcurrency import (AddPreconcurrencyImport)</p></a></li><li><a href="../always-available-domain/index.html"><p class="api-collection">Always enabled availability domains (AlwaysAvailableDomain)</p></a><p>Warnings that identify <code>@available</code> attributes and <code>if #available</code> statements that reference custom availability domains which have been permanently enabled.</p></li><li><a href="../always-unsafe/index.html"><p class="api-collection">Always unsafe (AlwaysUnsafe)</p></a></li><li><a href="../trailing-closure-matching/index.html"><p class="api-collection">Argument matching for trailing closures (TrailingClosureMatching)</p></a></li><li><a href="../actor-isolated-call/index.html"><p class="api-collection">Calling an actor-isolated method from a synchronous nonisolated context (ActorIsolatedCall)</p></a></li><li><a href="../sendable-closure-captures/index.html"><p class="api-collection">Captures in a `@Sendable` closure (SendableClosureCaptures)</p></a></li><li><a href="../compilation-caching/index.html"><p class="api-collection">Compilation caching (CompilationCaching)</p></a><p>Errors and warnings related to the compiler’s CAS compilation caching.</p></li><li><a href="../string-interpolation-conformance/index.html"><p class="api-collection">Conforming to `StringInterpolationProtocol` (StringInterpolationConformance)</p></a></li><li><a href="../conversion-from-isolated-any-to-synchronous/index.html"><p class="api-collection">Conversion from `@isolated(any)` function type to synchronous function type (ConversionFromIsolatedAnyToSynchronous)</p></a></li><li><a href="../region-isolation-cross-isolation-data-race/index.html"><p class="api-collection">Cross-isolation data race (RegionIsolationCrossIsolationDataRace)</p></a></li><li><a href="../deprecated-declaration/index.html"><p class="api-collection">Deprecated declaration warnings (DeprecatedDeclaration)</p></a><p>Warnings related to deprecated APIs that may be removed in future versions and should be replaced with more current alternatives.</p></li><li><a href="../implementation-only-deprecated/index.html"><p class="api-collection">Deprecated implementation-only imports (ImplementationOnlyDeprecated)</p></a><p>Warnings that identify <code>import</code> declarations with the <code>@_implementationOnly</code> attribute.</p></li><li><a href="../dynamic-exclusivity/index.html"><p class="api-collection">Dynamic exclusivity (DynamicExclusivity)</p></a><p>Experimental</p></li><li><a href="../embedded-restrictions/index.html"><p class="api-collection">Embedded Swift language restrictions (EmbeddedRestrictions)</p></a><p>Embedded Swift is a subset of the Swift language that that introduces some restrictions on the use of language features to eliminate the need for the Swift runtime. These restrictions are captured by the <code>EmbeddedRestrictions</code> diagnostic group.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

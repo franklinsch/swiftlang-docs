@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Describing and reflecting values</title><meta content="Add custom descriptions and mirrors to values you use in your tests." name="description"><script src="../../../navigator-index-swift-testing.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Testing</a></li><li>Describing and reflecting values</li></ul></nav><hgroup><p>Article</p><h1>Describing and reflecting values</h1></hgroup><p>Add custom descriptions and mirrors to values you use in your tests.</p><ul id="availability"><li aria-label="Swift 6.0+, Available on Swift 6.0 and later" title="Available on Swift 6.0 and later">Swift 6.0+</li><li aria-label="Xcode 16.0+, Available on Xcode 16.0 and later" title="Available on Xcode 16.0 and later">Xcode 16.0+</li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>The testing library provides two protocols, <a href="../customteststringconvertible/index.html"><code>Custom<wbr>Test<wbr>String<wbr>Convertible</code></a> and <a href="../customtestreflectable/index.html"><code>Custom<wbr>Test<wbr>Reflectable</code></a>, that you can use to customize the appearance of values in Swift. The testing library uses these protocols to describe parameterized test arguments and, if a call to <a href="../expect(_:_:sourcelocation:)/index.html"><code>expect(<wbr>_:<wbr>_:<wbr>source<wbr>Location:)</code></a> or <a href="../require(_:_:sourcelocation:)-5l63q/index.html"><code>require(<wbr>_:<wbr>_:<wbr>source<wbr>Location:)</code></a> fails, to describe any values you pass to them.</p><h2 id="Customize-the-description-of-a-value"><a href="#Customize-the-description-of-a-value">Customize the description of a value</a></h2><p>You use the <a href="../customteststringconvertible/index.html"><code>Custom<wbr>Test<wbr>String<wbr>Convertible</code></a> protocol when you want to customize the description of a value <i>during testing only</i>. Values whose types conform to this protocol use it to describe themselves when the testing library presents them as part of the output of a test. For example, this protocol affects the display of values you pass as arguments to test functions or that are elements of an expectation failure.</p><p>By default, the testing library converts values to strings using <a href="https://developer.apple.com/documentation/swift/string/init(describing:)-67ncf"><code>String(<wbr>describing:)</code></a>. The resulting string may be inappropriate for some types and their values. If you make the type of the value conform to <a href="../customteststringconvertible/index.html"><code>Custom<wbr>Test<wbr>String<wbr>Convertible</code></a>, then the testing library will use the value of its <a href="../customteststringconvertible/testdescription/index.html"><code>test<wbr>Description</code></a> property instead.</p><p>For example, consider the following type:</p><pre class="swift"><code>enum Food: CaseIterable {
+  case paella, oden, ragu
+}
+</code></pre><p>If you pass an array of cases from this enumeration to a parameterized test function:</p><pre class="swift"><code>@Test(arguments: Food.allCases)
+func isDelicious(_ food: Food) { ... }
+</code></pre><p>Then the testing library needs to present all elements in the array in its output, but the default description of these values may not be adequately descriptive:</p><pre><code>◇ Test case passing 1 argument food → .paella to isDelicious(_:) started.
+◇ Test case passing 1 argument food → .oden to isDelicious(_:) started.
+◇ Test case passing 1 argument food → .ragu to isDelicious(_:) started.
+</code></pre><p>When you adopt <a href="../customteststringconvertible/index.html"><code>Custom<wbr>Test<wbr>String<wbr>Convertible</code></a>, you can include customized descriptions in your test output instead.</p><pre class="swift"><code>extension Food: CustomTestStringConvertible {
+  var testDescription: String {
+    switch self {
+    case .paella:
+      "paella valenciana"
+    case .oden:
+      "おでん"
+    case .ragu:
+      "ragù alla bolognese"
+    }
+  }
+}
+</code></pre><p>The testing library then uses <a href="../customteststringconvertible/testdescription/index.html"><code>test<wbr>Description</code></a> to present these values:</p><pre><code>◇ Test case passing 1 argument food → paella valenciana to isDelicious(_:) started.
+◇ Test case passing 1 argument food → おでん to isDelicious(_:) started.
+◇ Test case passing 1 argument food → ragù alla bolognese to isDelicious(_:) started.
+</code></pre><h2 id="Customize-the-reflection-of-a-value"><a href="#Customize-the-reflection-of-a-value">Customize the reflection of a value</a></h2><p>When a call to <a href="../expect(_:_:sourcelocation:)/index.html"><code>expect(<wbr>_:<wbr>_:<wbr>source<wbr>Location:)</code></a> or to <a href="../require(_:_:sourcelocation:)-5l63q/index.html"><code>require(<wbr>_:<wbr>_:<wbr>source<wbr>Location:)</code></a> fails, the testing library presents the value or values you pass to these macros in its output.</p><p>The testing library uses <a href="https://developer.apple.com/documentation/swift/mirror/init(reflecting:)"><code>Mirror.init(<wbr>reflecting:)</code></a> to break down these values if they contain properties that may be of interest to you. For instance, if the <code>isDelicious(_:)</code> test fails, you might see output such as:</p><pre><code>✘ Test isDelicious(_:) recorded an issue with 1 argument food → sandwich
+↳ food.isDelicious → false
+↳   food → sandwich
+↳     sandwich → (toppings: [Food.pickles, Food.candyCorn])
+↳       toppings → [Food.pickles, Food.candyCorn]
+↳   isDelicious → false
+</code></pre><p>This output is expressive, but also contains redundant information. You can refine it further by making <code>Food</code> conform to the <a href="../customtestreflectable/index.html"><code>Custom<wbr>Test<wbr>Reflectable</code></a> protocol.</p><pre class="swift"><code>extension Food: CustomTestReflectable {
+  var customTestMirror: Mirror {
+    switch self {
+    case let .sandwich(toppings):
+      let ingredientNames = toppings.map { String(describingForTest: $0) }
+      return Mirror(
+        self,
+        children: [(label: "toppings", value: ingredientNames)]
+      )
+    default:
+      Mirror(self, children: [])
+    }
+  }
+}
+</code></pre><p>With this conformance, the output of the failed test is instead:</p><pre><code>✘ Test isDelicious(_:) recorded an issue with 1 argument food → sandwich
+↳ food.isDelicious → false
+↳   food → sandwich
+↳     toppings → ["pickles", "candy corn"]
+↳   isDelicious → false
+</code></pre><h2 id="Implement-custom-descriptions-using-private-properties"><a href="#Implement-custom-descriptions-using-private-properties">Implement custom descriptions using private properties</a></h2><p>If part or all of your type’s state is <code>private</code> or otherwise not visible to your test target, you may not be able to implement <a href="../customteststringconvertible/testdescription/index.html"><code>test<wbr>Description</code></a> or <a href="../customtestreflectable/customtestmirror/index.html"><code>custom<wbr>Test<wbr>Mirror</code></a> in your test target. You can implement these properties, without adding conformances to either protocol, in your production target, and then add empty protocol conformances in your test target. Make sure to use <code>internal</code> or <code>package</code> visibility for the properties so that your test target is able to use them.</p><pre class="swift"><code>// In your production target:
+
+extension Food {
+  package var testDescription: String { ... }
+  package var customTestMirror: Mirror { ... }
+}
+  
+// In your test target:
+
+import FoodTruck
+
+extension Food: CustomTestStringConvertible, CustomTestReflectable {}
+</code></pre><aside class="note"><p class="label">Note</p><p>If you use <code>internal</code> visibility for these properties, you must import your production target into your test target using the <code>@testable</code> attribute.</p></aside></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Value-description-and-reflection"><a href="#Value-description-and-reflection">Value description and reflection</a></h3><ul><li><a href="../customtestreflectable/index.html"><code>protocol <span class="identifier">Custom<wbr>Test<wbr>Reflectable</span></code></a><p>A protocol describing types with a custom reflection when presented as part of a test’s output.</p></li><li><a href="../customteststringconvertible/index.html"><code>protocol <span class="identifier">Custom<wbr>Test<wbr>String<wbr>Convertible</span></code></a><p>A protocol describing types with a custom string representation when presented as part of a test’s output.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

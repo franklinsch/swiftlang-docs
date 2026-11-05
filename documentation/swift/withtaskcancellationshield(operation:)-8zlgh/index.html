@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>withTaskCancellationShield(operation:)</title><meta content="Enters a scope in which a task cancellation shield is active." name="description"><script src="../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../index.html">Standard Library</a></li><li>withTaskCancellationShield(operation:)</li></ul></nav><hgroup><p>Function</p><h1>with<wbr>Task<wbr>Cancellation<wbr>Shield(<wbr>operation:)</h1></hgroup><p>Enters a scope in which a task cancellation shield is active.</p><ul id="availability"><li aria-label="iOS 27.0+, Available on iOS 27.0 and later" title="Available on iOS 27.0 and later">iOS 27.0+</li><li aria-label="iPadOS 27.0+, Available on iPadOS 27.0 and later" title="Available on iPadOS 27.0 and later">iPadOS 27.0+</li><li aria-label="Mac Catalyst 27.0+, Available on Mac Catalyst 27.0 and later" title="Available on Mac Catalyst 27.0 and later">Mac Catalyst 27.0+</li><li aria-label="macOS 27.0+, Available on macOS 27.0 and later" title="Available on macOS 27.0 and later">macOS 27.0+</li><li aria-label="tvOS 27.0+, Available on tvOS 27.0 and later" title="Available on tvOS 27.0 and later">tvOS 27.0+</li><li aria-label="visionOS 27.0+, Available on visionOS 27.0 and later" title="Available on visionOS 27.0 and later">visionOS 27.0+</li><li aria-label="watchOS 27.0+, Available on watchOS 27.0 and later" title="Available on watchOS 27.0 and later">watchOS 27.0+</li></ul><pre id="declaration"><code><span class="attribute">@export(implementation)</span> <span class="attribute">nonisolated</span>(nonsending)
+<span class="keyword">func</span> withTaskCancellationShield&lt;Value, Failure>(operation: <span class="keyword">nonisolated(nonsending)</span> () <span class="keyword">async</span> <span class="keyword">throws</span>(<span class="typeIdentifier">Failure</span>) -> <span class="typeIdentifier">Value</span>) <span class="keyword">async</span> <span class="keyword">throws</span>(<span class="typeIdentifier">Failure</span>) -> <span class="typeIdentifier">Value</span> <span class="keyword">where</span> <span class="typeIdentifier">Failure</span> : <a class="typeIdentifier" href="../error/index.html">Error</a></code></pre></section><section id="Discussion"><h2><a href="#Discussion">Discussion</a></h2><p>Cancellation shields are primarily used to ensure some cleanup code will definitely run, even if the context in which the cleanup functions are called from is a cancelled task, and the functions may otherwise return early (due to observing the cancellation of the current task).</p><p>For example, a resource cleanup function might internally check for cancellation, which could cause it to skip important cleanup work:</p><pre class="swift"><code>let resource = await makeResource()
+defer {
+  await withTaskCancellationShield {
+    await resource.finish() // runs to completion, even if task was cancelled earlier
+  }
+}
+
+struct Resource {
+  func finish() {
+    guard !Task.isCancelled() else { return } // returns early if task was cancelled!
+    // real work happens here
+  }
+</code></pre><p>While inside a cancellation shield, <code>Task.isCancelled</code> returns <code>false</code> and <code>Task.checkCancellation()</code> does not throw, even if the surrounding task has been cancelled. Similarly task cancellation handlers do not trigger while executing in a shielded block of code.</p><p>Once the shield scope exits, the task’s actual cancellation status becomes observable again. Cancellation shields to not prevent the task from becoming cancelled, but only prevent observing the cancellation while executing inside a shielded scope.</p><p>Cancellation shields also prevent cancellation from propagating to child tasks created within the shielded scope:</p><pre class="swift"><code>let task = Task {
+  withUnsafeCurrentTask { $0?.cancel() } // cancel the task
+
+  await withTaskCancellationShield {
+    // Child tasks created here do _not_ observe the parent's cancellation
+    // and therefore start as not cancelled. They can be individually cancelled though.
+    await withTaskGroup(of: Void.self) { group in
+      group.addTask {
+        print(Task.isCancelled) // false
+      }
+      for await _ in group {}
+
+      group.cancelAll() // explicitly cancelling the group does cancel child tasks of the group
+      group.addTask {
+        print(Task.isCancelled) // true
+      }
+    }
+  }
+}
+</code></pre><p>Note that shielding the <code>addTask</code> call itself does not shield the child task:</p><pre class="swift"><code>await withTaskGroup(of: Void.self) { group in
+  group.cancelAll()
+  withTaskCancellationShield {
+    group.addTask { print(Task.isCancelled) } // true - child is cancelled
+  }
+  group.addTask {
+    withTaskCancellationShield { print(Task.isCancelled) } // false - shielded inside child
+  }
+}
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Task-Cancellation"><a href="#Task-Cancellation">Task Cancellation</a></h3><ul><li><a href="../task/iscancelled-swift.type.property/index.html"><code>static var <span class="identifier">is<wbr>Cancelled</span>: Bool</code></a><p>A Boolean value that indicates whether the task should stop executing.</p></li><li><a href="../task/cancel()/index.html"><code>func <span class="identifier">cancel</span>()</code></a><p>Cancels this task.</p></li><li><a href="../task/cancel(reason:)/index.html"><code>func <span class="identifier">cancel</span>(<span class="identifier">reason</span>: Cancellation<wbr>Error.Reason)</code></a><p>Cancel this task, recording a specific <code>CancellationError.Reason</code>.</p></li><li><a href="../task/cancellationreason/index.html"><code>static var <span class="identifier">cancellation<wbr>Reason</span>: Cancellation<wbr>Error.Reason?</code></a><p>The reason for the current task’s cancellation, or <code>nil</code> if the task is not cancelled.</p></li><li><a href="../task/checkcancellation()/index.html"><code>static func <span class="identifier">check<wbr>Cancellation</span>() throws</code></a><p>Throws an error if the task was canceled.</p></li><li><a href="../cancellationerror/index.html"><code>struct <span class="identifier">Cancellation<wbr>Error</span></code></a><p>An error that indicates a task was canceled.</p></li><li><a href="../cancellationerror/reason-swift.enum/index.html"><code>enum <span class="identifier">Reason</span></code></a><p>Describes why a task was cancelled.</p></li><li><a href="../withtaskcancellationhandler(operation:oncancel:isolation:)/index.html"><code>func <span class="identifier">with<wbr>Task<wbr>Cancellation<wbr>Handler</span>&lt;<wbr>T>(<span class="identifier">operation</span>: () async throws -> T, <span class="identifier">on<wbr>Cancel</span>: () -> Void, <span class="identifier">isolation</span>: isolated (<wbr>any Actor)<wbr>?) async rethrows -> T</code></a><p>Execute an operation with a cancellation handler that’s immediately invoked if the current task is canceled.</p></li><li><a href="../withtaskcancellationshield(operation:)-2lzl8/index.html"><code>func <span class="identifier">with<wbr>Task<wbr>Cancellation<wbr>Shield</span>&lt;<wbr>Value, Failure>(<span class="identifier">operation</span>: () throws(<wbr>Failure) -> Value) throws(<wbr>Failure) -> Value</code></a><p>Enters a scope in which a task cancellation shield is active.</p></li><li><a href="../task/hasactivecancellationshield/index.html"><code>static var <span class="identifier">has<wbr>Active<wbr>Cancellation<wbr>Shield</span>: Bool</code></a><p>Checks if the current task is executing in a scope with a task cancellation shield activated by the <code>withTaskCancellationShield(operation:)</code> function.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

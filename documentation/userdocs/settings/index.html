@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Extension Settings</title><meta content="Configure the behavior of the Swift extension." name="description"><script src="../../../navigator-index-vscode-swift.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">The Swift Extension for VS Code</a></li><li>Extension Settings</li></ul></nav><hgroup><p>Article</p><h1>Extension Settings</h1></hgroup><p>Configure the behavior of the Swift extension.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><aside class="💡 tip"><p class="label">💡 Tip</p><p>The Settings Editor is common to all VS Code extensions. See the <a href="https://code.visualstudio.com/docs/getstarted/personalize-vscode">documentation about personalizing VS Code</a> for a more in-depth overview.</p></aside><p>The Swift extension comes with a number of settings you can use to control how it works. Detailed descriptions of each setting are provided in the extension settings page.</p><p>This document outlines useful configuration options not covered by the settings descriptions in the extension settings page.</p><h2 id="Workspace-Setup"><a href="#Workspace-Setup">Workspace Setup</a></h2><h3 id="Multiple-packages-in-workspace-folder"><a href="#Multiple-packages-in-workspace-folder">Multiple packages in workspace folder</a></h3><p>If the workspace folder you open in VS Code contains multiple Swift packages:</p><pre><code>&lt;workspace folder>
+    /proj1
+        /Package.swift
+    /proj2
+        /Package.swift
+    /aSubfolder
+        /proj3
+            /Package.swift
+</code></pre><p>You can enable the <code>searchSubfoldersForPackages</code> setting so the Swift extension can initializing all these projects.</p><pre class="json"><code>{
+  "swift.searchSubfoldersForPackages": true,
+}
+</code></pre><p>Additionally you can exclude individual packages from initializing:</p><pre class="json"><code>{
+  "swift.excludePathsFromActivation": {
+    "**/proj2": true,
+    "**/aSubfolder": true,
+    "**/aSubfolder/proj3": false,
+  },
+}
+</code></pre><h3 id="Multi-root-Workspaces"><a href="#Multi-root-Workspaces">Multi-root Workspaces</a></h3><p>As an alternative to opening <a href="#multiple-packages-in-workspace-folder">a single workspace folder with multiple packages in it</a>, VS Code has a concept of <a href="https://code.visualstudio.com/docs/editing/workspaces/multi-root-workspaces">multi-root workspaces</a> which the Swift extension supports.</p><p>Ex. myProj.code-workspace</p><pre class="json"><code>{
+	"folders": [
+		{
+			"name": "proj1",
+			"path": "./proj1"
+		},
+		{
+			"name": "proj3",
+			"path": "./aSubfolder/proj3"
+		},
+	],
+	"settings": {
+		"swift.autoGenerateLaunchConfigurations": false,
+		"swift.debugger.debugAdapter": "lldb-dap",
+    }
+}
+</code></pre><h2 id="Command-Plugins"><a href="#Command-Plugins">Command Plugins</a></h2><p>Swift packages can define <a href="https://github.com/swiftlang/swift-package-manager/blob/main/Documentation/Plugins.md">command plugins</a> that can perform arbitrary tasks. For example, the <a href="https://github.com/swiftlang/swift-format">swift-format</a> package exposes a <code>format-source-code</code> command which will use swift-format to format source code in a folder. These plugin commands can be invoked from VS Code using <code>> Swift: Run Command Plugin</code>.</p><p>A plugin may require permissions to perform tasks like writing to the file system or using the network. If a plugin command requires one of these permissions, you will be prompted in the integrated terminal to accept them. If you trust the command and wish to apply permissions on every command execution, you can configure the <a href="vscode://settings/swift.pluginPermissions"><code>swift.plugin<wbr>Permissions</code></a> setting in your <code>settings.json</code>.</p><pre class="json"><code>{
+  "swift.pluginPermissions": {
+    "PluginName:command": {
+      "allowWritingToPackageDirectory": true,
+      "allowWritingToDirectory": "/some/path/",
+      "allowNetworkConnections": "all",
+      "disableSandbox": true
+    }
+  }
+}
+</code></pre><p>A key of <code>PluginName:command</code> will set permissions for a specific command. A key of <code>PluginName</code> will set permissions for all commands in the plugin. If you’d like the same permissions to be applied to all plugins use <code>*</code> as the plugin name. Precedence order is determined by specificity, where more specific names take priority. The name <code>*</code> is the least specific and <code>PluginName:command</code> is the most specific.</p><p>Alternatively, you can define a task in your tasks.json and define permissions directly on the task. This will create a new entry in the list shown by <code>> Swift: Run Command Plugin</code>.</p><pre class="json"><code>{
+  "type": "swift-plugin",
+  "command": "command_plugin",
+  "args": ["--foo"],
+  "cwd": "command-plugin",
+  "problemMatcher": ["$swiftc"],
+  "label": "swift: command-plugin from tasks.json",
+
+  "allowWritingToPackageDirectory": true,
+  "allowWritingToDirectory": "/some/path/",
+  "allowNetworkConnections": "all",
+  "disableSandbox": true
+}
+</code></pre><p>If you’d like to provide specific arguments to your plugin command invocation you can  use the <code>swift.pluginArguments</code> setting. Defining an array for this setting applies the same arguments to all plugin command invocations.</p><pre class="json"><code>{
+  "swift.pluginArguments": ["-c", "release"]
+}
+</code></pre><p>Alternatively you can specify which specific command the arguments should apply to using <code>PluginName:command</code>. A key of <code>PluginName</code> will use the arguments for all commands in the plugin. If you’d like the same arguments to be used for all plugins use <code>*</code> as the plugin name.</p><pre class="json"><code>{
+  "swift.pluginArguments": {
+    "PluginName:command": ["-c", "release"]
+  }
+}
+</code></pre><h2 id="SourceKit-LSP"><a href="#SourceKit-LSP">SourceKit-LSP</a></h2><p><a href="https://github.com/apple/sourcekit-lsp">SourceKit-LSP</a> is the language server used by the Swift extension to provide symbol completion, jump to definition, etc. It is developed by Apple to provide Swift and C language support for any editor that supports the Language Server Protocol.</p><h3 id="Background-Indexing"><a href="#Background-Indexing">Background Indexing</a></h3><p>Background Indexing was added as an experimental feature in Swift toolchain version 6.0 and then enabled by default in 6.1. This feature removes the need to do a build before getting code completion and diagnostics.</p><p>On startup, SourceKit-LSP will read your project information from your <code>Package.swift</code> and begin indexing your project automatically. All indexing results are cached in the <code>.build/index-build</code> folder within your workspace.</p><p>You can enable or disable this feature with the <a href="vscode://settings/swift.sourcekit-lsp.backgroundIndexing"><code>swift.sourcekit-lsp.background<wbr>Indexing</code></a> setting.</p><h3 id="Support-for-Expand-Macro"><a href="#Support-for-Expand-Macro">Support for ‘Expand Macro’</a></h3><p>If you are using a nightly (<code>main</code>) toolchain you can enable support for the “Peek Macro” Quick Action, accessible through the light bulb icon when the cursor is on a macro.</p><p>To enable support, set the following Sourcekit-LSP server arguments in your settings.json, or add two new entries to the <a href="vscode://settings/swift.sourcekit-lsp.serverArguments"><code>swift.sourcekit-lsp.server<wbr>Arguments</code></a> setting.</p><pre class="json"><code>"swift.sourcekit-lsp.serverArguments": [
+  "--experimental-feature",
+  "show-macro-expansions"
+]
+</code></pre><h2 id="Windows-Development"><a href="#Windows-Development">Windows Development</a></h2><h3 id="Specifying-a-Visual-Studio-installation"><a href="#Specifying-a-Visual-Studio-installation">Specifying a Visual Studio installation</a></h3><p>Swift depends on a number of developer tools when running on Windows, including the C++ toolchain and the Windows SDK. Typically these are installed with <a href="https://visualstudio.microsoft.com/">Visual Studio</a>.</p><p>If you have multiple versions of Visual Studio installed you can specify the path to the desired version by setting a <code>VCToolsInstallDir</code> environment variable using the <a href="vscode://settings/swift.swiftEnvironmentVariables"><code>swift.swift<wbr>Environment<wbr>Variables</code></a> setting.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Reference"><a href="#Reference">Reference</a></h3><ul><li><a href="../commands/index.html"><p class="api-collection">Commands</p></a><p>Useful VS Code commands added by the Swift extension.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

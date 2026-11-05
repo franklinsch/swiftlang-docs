@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Blinking LEDs on NuttX RTOS with QEMU</title><meta content="Run a Swift LED-blink program on Apache NuttX RTOS, emulated on a RISC-V QEMU target." name="description"><script src="../../../navigator-index-embedded-swift.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Embedded Swift</a></li><li><a href="../examples/index.html">Examples</a></li><li>Blinking LEDs on NuttX RTOS with QEMU</li></ul></nav><hgroup><p>Article</p><h1>Blinking LEDs on NuttX RTOS with QEMU</h1></hgroup><p>Run a Swift LED-blink program on Apache NuttX RTOS, emulated on a RISC-V QEMU target.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>This example demonstrates how to build a NuttX application in Swift using CMake to drive the NuttX and NuttX-apps Makefile-based build system. The Swift code implements the <code>leds_swift</code> NuttX example app, which spawns a background task that cycles the emulated board’s user LEDs. The example targets the <code>rv-virt</code> QEMU board, so no physical hardware is required.</p><p>The Swift code provides the <code>leds_swift_main</code> entry point that NuttX invokes when the <code>leds_swift</code> command runs from the NuttX shell (NSH). It starts a background task, <code>led_daemon</code>, implemented in C, that cycles the LEDs:</p><pre class="swift"><code>@_cdecl("leds_swift_main")
+public func cMain(
+  _ argc: Int32, _ argv: UnsafeMutablePointer&lt;UnsafeMutablePointer&lt;Int8>?>
+) -> Int32 {
+  let ret = task_create(
+    "led_daemon",
+    LEDS_PRIORITY,
+    LEDS_STACKSIZE,
+    led_daemon,
+    nil)
+
+  if ret &lt; 0 {
+    print("leds_main: ERROR: Failed to start led_daemon")
+    return ret
+  }
+
+  print("leds_main: led_daemon started")
+  return 0
+}
+</code></pre><h2 id="Install-dependencies"><a href="#Install-dependencies">Install dependencies</a></h2><p>Install the following tools:</p><ul><li><p><a href="https://github.com/apache/nuttx">NuttX</a> and <a href="https://github.com/apache/nuttx-apps">NuttX-apps</a> — the CMake build fetches these automatically, so cloning them isn’t required.</p></li><li><p><a href="https://bitbucket.org/nuttx/tools">kconfig-frontends</a></p></li><li><p><a href="https://cmake.org/download/">CMake</a></p></li><li><p><a href="https://www.qemu.org/">QEMU</a></p></li><li><p><a href="https://github.com/riscv-collab/riscv-gnu-toolchain/releases">RISC-V GNU Toolchain</a></p></li></ul><h2 id="Install-Swift"><a href="#Install-Swift">Install Swift</a></h2><p>Follow the instructions in <a href="../installembeddedswift/index.html">Installing Embedded Swift</a> to install the latest Swift development snapshot with Embedded Swift support. Confirm the installation by running <code>swift --version</code> — it reports a “6.2-dev” or newer development snapshot. Swift 6.1 or newer is required.</p><h2 id="Build-the-project"><a href="#Build-the-project">Build the project</a></h2><p>Navigate to the example directory and configure the build for the <code>rv-virt</code> board with the <code>leds_swift</code> example enabled:</p><pre class="shell"><code>$ cd nuttx-riscv-blink
+$ cmake -B build -GNinja -DBOARD_CONFIG=rv-virt:leds_swift
+</code></pre><p>Build the project:</p><pre class="shell"><code>$ cmake --build build
+</code></pre><h2 id="Run-in-QEMU"><a href="#Run-in-QEMU">Run in QEMU</a></h2><p>Run the resulting <code>nuttx.elf</code> binary in QEMU:</p><pre class="shell"><code>$ qemu-system-riscv32 \
+    -semihosting \
+    -M virt,aclint=on \
+    -cpu rv32 -smp 8 \
+    -bios none \
+    -kernel build/nuttx.elf -nographic
+</code></pre><p>At the NuttX shell prompt, run the <code>leds_swift</code> command:</p><pre class="console"><code>NuttShell (NSH) NuttX-12.7.0
+nsh> leds_swift
+leds_main: led_daemon started
+
+led_daemon (pid# 4): Running
+led_daemon: Opening /dev/userleds
+led_daemon: Supported LEDs 0x7
+led_daemon: LED set 0x1
+board_userled: LED 1 set to 1
+board_userled: LED 2 set to 0
+board_userled: LED 3 set to 0
+</code></pre><p>The emulated LEDs cycle in a binary counting pattern. Quit QEMU with <code>Ctrl-a x</code>.</p><h2 id="Try-additional-CMake-targets"><a href="#Try-additional-CMake-targets">Try additional CMake targets</a></h2><p>The project’s <code>CMakeLists.txt</code> provides a few extra targets:</p><pre class="shell"><code>$ cmake -B build -DLIST_ALL_BOARDS=ON | less  # list all supported boards
+$ cmake --build build -t distclean            # clean the NuttX build
+$ cmake --build build -t nuttx-libs           # export NuttX as a library
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Other-platform-examples"><a href="#Other-platform-examples">Other platform examples</a></h3><ul><li><a href="../nrfblinkguide/index.html"><p class="api-collection">Blinking an LED on Nordic nRF with Zephyr</p></a><p>Run a Swift LED-blink program on an Arm Cortex-M nRF board using the Zephyr RTOS SDK.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

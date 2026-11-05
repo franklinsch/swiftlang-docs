@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../../reference.css" rel="stylesheet"><title>descendant(_:_:)</title><meta content="Returns a specific descendant of the reflected subject, or `nil` if no such descendant exists." name="description"><script src="../../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../../index.html">Standard Library</a></li><li><a href="../index.html">Mirror</a></li><li>descendant(_:_:)</li></ul></nav><hgroup><p>Instance Method</p><h1>descendant(<wbr>_:<wbr>_:)</h1></hgroup><p>Returns a specific descendant of the reflected subject, or <code>nil</code> if no such descendant exists.</p><ul id="availability"><li aria-label="iOS 8.0+, Available on iOS 8.0 and later" title="Available on iOS 8.0 and later">iOS 8.0+</li><li aria-label="iPadOS 8.0+, Available on iPadOS 8.0 and later" title="Available on iPadOS 8.0 and later">iPadOS 8.0+</li><li aria-label="Mac Catalyst 13.0+, Available on Mac Catalyst 13.0 and later" title="Available on Mac Catalyst 13.0 and later">Mac Catalyst 13.0+</li><li aria-label="macOS 10.10+, Available on macOS 10.10 and later" title="Available on macOS 10.10 and later">macOS 10.10+</li><li aria-label="tvOS 9.0+, Available on tvOS 9.0 and later" title="Available on tvOS 9.0 and later">tvOS 9.0+</li><li aria-label="visionOS 1.0+, Available on visionOS 1.0 and later" title="Available on visionOS 1.0 and later">visionOS 1.0+</li><li aria-label="watchOS 2.0+, Available on watchOS 2.0 and later" title="Available on watchOS 2.0 and later">watchOS 2.0+</li></ul><pre id="declaration"><code><span class="keyword">func</span> descendant(
+    _ <span class="internalParameter">first</span>: any <a class="typeIdentifier" href="../../mirrorpath/index.html">MirrorPath</a>,
+    _ <span class="internalParameter">rest</span>: any <a class="typeIdentifier" href="../../mirrorpath/index.html">MirrorPath</a>...
+) -> <span class="keyword">Any</span>?</code></pre></section><section id="Parameters"><h2><a href="#Parameters">Parameters</a></h2><dl><dt>first</dt><dd><p>The first mirror path component to access.</p></dd><dt>rest</dt><dd><p>Any remaining mirror path components.</p></dd></dl></section><section id="Return-Value"><h2><a href="#Return-Value">Return Value</a></h2><p>The descendant of this mirror specified by the given mirror path components if such a descendant exists; otherwise, <code>nil</code>.</p></section><section id="Discussion"><h2><a href="#Discussion">Discussion</a></h2><p>Pass a variadic list of string and integer arguments. Each string argument selects the first child with a matching label. Each integer argument selects the child at that offset. For example, passing <code>1, "two", 3</code> as arguments to <code>myMirror.descendant(_:_:)</code> is equivalent to:</p><pre><code>var result: Any? = nil
+let children = myMirror.children
+if let i0 = children.index(
+    children.startIndex, offsetBy: 1, limitedBy: children.endIndex),
+    i0 != children.endIndex
+{
+    let grandChildren = Mirror(reflecting: children[i0].value).children
+    if let i1 = grandChildren.firstIndex(where: { $0.label == "two" }) {
+        let greatGrandChildren =
+            Mirror(reflecting: grandChildren[i1].value).children
+        if let i2 = greatGrandChildren.index(
+            greatGrandChildren.startIndex,
+            offsetBy: 3,
+            limitedBy: greatGrandChildren.endIndex),
+            i2 != greatGrandChildren.endIndex
+        {
+            // Success!
+            result = greatGrandChildren[i2].value
+        }
+    }
+}
+</code></pre><p>This function is suitable for exploring the structure of a mirror in a REPL or playground, but is not intended to be efficient. The efficiency of finding each element in the argument list depends on the argument type and the capabilities of the each level of the mirror’s <code>children</code> collections. Each string argument requires a linear search, and unless the underlying collection supports random-access traversal, each integer argument also requires a linear operation.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Querying-Descendants"><a href="#Querying-Descendants">Querying Descendants</a></h3><ul><li><a href="../../mirrorpath/index.html"><code>protocol <span class="identifier">Mirror<wbr>Path</span></code></a><p>A protocol for legitimate arguments to <code>Mirror</code>’s <code>descendant</code> method.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

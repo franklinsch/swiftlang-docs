@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Using Imported C Structs and Unions in Swift</title><meta content="Learn how Swift represents imported C structures and unions, including types with bitfields and unnamed fields." name="description"><script src="../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Standard Library</a></li><li>Using Imported C Structs and Unions in Swift</li></ul></nav><hgroup><p>Article</p><h1>Using Imported C Structs and Unions in Swift</h1></hgroup><p>Learn how Swift represents imported C structures and unions, including types with bitfields and unnamed fields.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Swift imports any C structure declared in a C header as a Swift structure. The imported Swift structure contains a stored property for each C structure field and an initializer whose parameters correspond to the stored properties.</p><h3 id="Structures-with-Default-Values"><a href="#Structures-with-Default-Values">Structures with Default Values</a></h3><p>If all imported members have default values, Swift also provides a default initializer that takes no arguments. For example, given the following C structure:</p><pre class="occ"><code>struct Color {
+    float r, g, b;
+};
+typedef struct Color Color;
+</code></pre><p>When you import the Color structure, the Swift version is equivalent to the following:</p><pre class="swift"><code>public struct Color {
+    var r: Float
+    var g: Float
+    var b: Float
+
+    init()
+    init(r: Float, g: Float, b: Float)
+}
+</code></pre><h3 id="Unions"><a href="#Unions">Unions</a></h3><p>Swift imports C unions as Swift structures. Although Swift doesn’t support natively declared unions, a C union imported as a Swift structure still behaves like a C union. For example, consider a C union named <code>SchroedingersCat</code> that has an <code>isAlive</code> and an <code>isDead</code> field:</p><pre class="occ"><code>union SchroedingersCat {
+    bool isAlive;
+    bool isDead;
+};
+</code></pre><p>In Swift, it’s imported like this:</p><pre class="swift"><code>struct SchroedingersCat {
+    var isAlive: Bool { get set }
+    var isDead: Bool { get set }
+
+    init(isAlive: Bool)
+    init(isDead: Bool)
+
+    init()
+}
+</code></pre><p>Because unions in C use the same base memory address for all of their fields, all of the computed properties in a union imported by Swift use the same underlying memory. As a result, changing the value of a property on an instance of the imported structure changes the value of all other properties defined by that structure.</p><p>In the example below, changing the value of the <code>isAlive</code> computed property on an instance of the <code>SchroedingersCat</code> structure also changes the value of the instance’s <code>isDead</code> computed property:</p><pre class="swift"><code>var mittens = SchroedingersCat(isAlive: false)
+
+print(mittens.isAlive, mittens.isDead)
+// Prints "false false"
+
+mittens.isAlive = true
+print(mittens.isDead)
+// Prints "true"
+</code></pre><h3 id="Bit-Fields"><a href="#Bit-Fields">Bit Fields</a></h3><p>Swift imports bit fields that are declared in structures, like those found in Foundation’s <code>NSDecimal</code> type, as computed properties. When accessing a computed property corresponding to a bit field, Swift automatically converts the value to and from compatible Swift types.</p><h3 id="Unnamed-Structure-and-Union-Fields"><a href="#Unnamed-Structure-and-Union-Fields">Unnamed Structure and Union Fields</a></h3><p>C <code>struct</code> and <code>union</code> types can define fields that have no name or that are of an unnamed type. Unnamed fields consist of a nested <code>struct</code> or <code>union</code> type with named fields.</p><p>For example, consider a C structure named <code>Cake</code> that contains the fields <code>layers</code> and <code>height</code> nested within an unnamed union type, and a field <code>toppings</code> of an unnamed struct type:</p><pre class="occ"><code>struct Cake {
+    union {
+        int layers;
+        double height;
+    };
+
+    struct {
+        bool icing;
+        bool sprinkles;
+    } toppings;
+};
+</code></pre><p>After the <code>Cake</code> structure has been imported, you can use the default initializer to create an instance and use it as follows:</p><pre class="swift"><code>var simpleCake = Cake()
+simpleCake.layers = 5
+print(simpleCake.toppings.icing)
+// Prints "false"
+</code></pre><p>The imported <code>Cake</code> structure and its nested types are imported with a memberwise initializer that you can use to initialize the structure with custom values for its fields:</p><pre class="swift"><code>let cake = Cake(
+    .init(layers: 2),
+    toppings: .init(icing: true, sprinkles: false)
+)
+
+print("The cake has \(cake.layers) layers.")
+// Prints "The cake has 2 layers."
+print("Does it have sprinkles?", cake.toppings.sprinkles ? "Yes." : "No.")
+// Prints "Does it have sprinkles? No."
+</code></pre><p>Because the first field of the <code>Cake</code> structure is unnamed, its initializer’s first parameter doesn’t have a label. Because the <code>Cake</code> structure has fields with unnamed types, you use the <code>.init</code> initializers (allowed due to Swift’s type inference) to set the initial value for each of the structure’s unnamed fields.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Language-interoperability"><a href="#Language-interoperability">Language interoperability</a></h3><ul><li><a href="../c-interoperability/index.html"><p class="api-collection">C Interoperability</p></a><p>Use imported C types or call C variadic functions.</p></li><li><a href="../cxx-interoperability/index.html"><p class="api-collection">C++ Interoperability</p></a><p>Work with standard C++ types.</p></li><li><a href="../customizing-your-c-code-for-swift/index.html"><p class="api-collection">Customizing Your C Code for Swift</p></a><p>Use the <code>CF_SWIFT_NAME</code> macro to group functions that have related behavior.</p></li><li><a href="../using-imported-c-functions-in-swift/index.html"><p class="api-collection">Using Imported C Functions in Swift</p></a><p>Learn how to call imported functions that are declared in a C header.</p></li><li><a href="../using-imported-c-macros-in-swift/index.html"><p class="api-collection">Using Imported C Macros in Swift</p></a><p>Use imported C-defined macros as constants.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

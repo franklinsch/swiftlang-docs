@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Animating a Swift logo on the STM32F746G-DISCO’s LCD</title><meta content="Run a baremetal Swift program that drives the STM32F746G-DISCO’s onboard LCD panel, animating a bouncing Swift logo on a fading background." name="description"><script src="../../../navigator-index-embedded-swift.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Embedded Swift</a></li><li><a href="../examples/index.html">Examples</a></li><li>Animating a Swift logo on the STM32F746G-DISCO’s LCD</li></ul></nav><hgroup><p>Article</p><h1>Animating a Swift logo on the STM32F746G-DISCO’s LCD</h1></hgroup><p>Run a baremetal Swift program that drives the STM32F746G-DISCO’s onboard LCD panel, animating a bouncing Swift logo on a fading background.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>This example demonstrates how to configure the STM32F7’s LTDC (LCD-TFT Display Controller) peripheral directly through Swift MMIO, without depending on an SDK. It sets up a background layer with a color that fades in and out, and a foreground layer containing pixel data for a Swift logo that bounces around the screen.</p><p>The <code>Application</code> entry point configures flash wait states and the LTDC clock, then loops forever, moving the logo layer and adjusting the background color:</p><pre class="swift"><code>import STM32F7X6
+import Support
+
+@main
+struct Application {
+  static func main() {
+    configureFlash()
+    initializeLTCD()
+    ltdc.configure()
+
+    var logoPosition = Point(x: 100, y: 100)
+    var logoDelta = Point(x: 1, y: 1)
+
+    while true {
+      delay(milliseconds: 10)
+
+      if logoPosition.x &lt;= 0 || logoPosition.x >= maxLogoPosition.x {
+        logoDelta.x *= -1
+      }
+      if logoPosition.y &lt;= 0 || logoPosition.y >= maxLogoPosition.y {
+        logoDelta.y *= -1
+      }
+      logoPosition = logoPosition.offset(by: logoDelta)
+      ltdc.set(layer: 1, position: logoPosition)
+    }
+  }
+}
+</code></pre><aside class="note"><p class="label">Note</p><p>This is a baremetal example — there’s no SDK or operating system involved. See <a href="../baremetal/index.html">Using Embedded Swift in baremetal mode</a> for general guidance on baremetal Embedded Swift development. See <a href="../stm32blinkguide/index.html">Blinking an LED on the STM32F746G-DISCO</a> for a simpler baremetal STM32F746G-DISCO example that only toggles a GPIO pin.</p></aside><h2 id="Install-dependencies"><a href="#Install-dependencies">Install dependencies</a></h2><p>Install the <a href="https://github.com/stlink-org/stlink"><code>stlink</code></a> command line tools, for example with <code>brew install stlink</code>.</p><h2 id="Install-Swift"><a href="#Install-Swift">Install Swift</a></h2><p>Follow the instructions in <a href="../installembeddedswift/index.html">Installing Embedded Swift</a> to install the latest Swift development snapshot with Embedded Swift support. Confirm the installation by running <code>swift --version</code> — it reports a “6.2-dev” or newer development snapshot.</p><h2 id="Build-the-project"><a href="#Build-the-project">Build the project</a></h2><p>Navigate to the example directory and build it:</p><pre class="shell"><code>$ cd stm32-lcd-logo
+$ make
+</code></pre><h2 id="Run-on-a-device"><a href="#Run-on-a-device">Run on a device</a></h2><p>Connect the STM32F746G-DISCO board to your Mac using the ST-LINK USB port. Flash the firmware:</p><pre class="shell"><code>$ st-flash --reset write .build/armv7em-apple-none-macho/release/Application.bin 0x08000000
+</code></pre><p>The LCD display shows a bouncing, animated Swift logo on a fading background, and the user LED blinks.</p><h2 id="Check-the-binary-size"><a href="#Check-the-binary-size">Check the binary size</a></h2><p>The compiled and linked binary is around 14 KB, split between roughly 3.5 KB of code and 10 KB of pixel data for the logo:</p><pre class="console"><code>$ size -m .build/armv7em-apple-none-macho/release/Application
+Segment __TEXT: 14376
+  Section __text: 3604
+  Section __const: 10000
+  total 13604
+Segment __DATA: 8
+  Section __nl_symbol_ptr: 4
+  Section __data: 4
+  total 8
+Segment __VECTORS: 456
+  Section __text: 456
+  total 456
+Segment __LINKEDIT: 1056
+total 15896
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="STM32-examples"><a href="#STM32-examples">STM32 examples</a></h3><ul><li><a href="../stm32blinkguide/index.html"><p class="api-collection">Blinking an LED on the STM32F746G-DISCO</p></a><p>Run a baremetal Swift MMIO program that blinks an LED on the STM32F746G-DISCO board, with no vendor SDKs or external toolchains.</p></li><li><a href="../stm32uartechoguide/index.html"><p class="api-collection">Echoing UART input on the STM32F746G-DISCO</p></a><p>Run a baremetal Swift program that echoes UART1 input on the STM32F746G-DISCO board, with no vendor SDKs or external toolchains.</p></li><li><a href="../stm32neopixelguide/index.html"><p class="api-collection">Driving a NeoPixel LED strip on the STM32F746G-DISCO</p></a><p>Run a baremetal Swift program that drives a NeoPixel WS2812 LED strip from the STM32F746G-DISCO board’s SPI peripheral, using DMA.</p></li><li><a href="../stm32lvglguide/index.html"><p class="api-collection">Running LVGL on the STM32F746G-DISCO</p></a><p>Run a full graphical Swift firmware on the STM32F746G-DISCO board, driving an LVGL user interface on the onboard LCD with touch input.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

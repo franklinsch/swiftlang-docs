@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Adopting Common Protocols</title><meta content="Make your custom types easier to use by ensuring that they conform to Swift protocols." name="description"><script src="../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Standard Library</a></li><li>Adopting Common Protocols</li></ul></nav><hgroup><p>Article</p><h1>Adopting Common Protocols</h1></hgroup><p>Make your custom types easier to use by ensuring that they conform to Swift protocols.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>When using custom types to model data in your programs, you may frequently need to check whether two values are the same or different, or whether a particular value is included in a list of values. This capability, as well as the ability to store values in a set or use them as keys in a dictionary, are governed by two related standard library protocols, <a href="../equatable/index.html"><code>Equatable</code></a> and <a href="../hashable/index.html"><code>Hashable</code></a>.</p><ul><li><p>You can compare instances of an <i>equatable</i> type by using the equal-to (<code>==</code>) and not-equal-to (<code>!=</code>) operators.</p></li><li><p>An instance of a <i>hashable</i> type can reduce its value mathematically to a single integer, which is used internally by sets and dictionaries to make lookups consistently fast.</p></li></ul><p>Many standard library types are both equatable and hashable, including strings, integers, floating-point values, Boolean values, and collections of equatable and hashable types. The <code>==</code> comparison and the <code>contains(_:)</code> method call in the following example depend on strings and integers being equatable:</p><pre class="swift"><code>if username == "Arturo" {
+    print("Hi, Arturo!")
+}
+
+let favoriteNumbers = [4, 7, 8, 9]
+if favoriteNumbers.contains(todaysDate.day) {
+    print("It's a good day today!")
+}
+</code></pre><p>Conforming to the <code>Equatable</code> and <code>Hashable</code> protocols is straightforward and makes it easier to use your own types in Swift. It’s a good idea for all your custom model types to conform.</p><h3 id="Conform-Automatically-to-Equatable-and-Hashable"><a href="#Conform-Automatically-to-Equatable-and-Hashable">Conform Automatically to Equatable and Hashable</a></h3><p>You can make many custom types equatable and hashable by simply declaring these protocol conformances in the same file as the type’s original declaration. Add <code>Equatable</code> and <code>Hashable</code> to the list of adopted protocols when declaring the type, and the compiler automatically fills in the requirements for the two protocols:</p><pre class="swift"><code>/// A position in an x-y coordinate system.
+struct Position: Equatable, Hashable {
+    var x: Int
+    var y: Int
+
+    init(_ x: Int, _ y: Int) {
+        self.x = x
+        self.y = y
+    }
+}
+</code></pre><p>With <code>Equatable</code> conformance, you can use the equal-to operator (<code>==</code>) or the not-equal-to operator (<code>!=</code>) with any two instances of the <code>Position</code> type.</p><pre class="swift"><code>let availablePositions = [Position(0, 0), Position(0, 1), Position(1, 0)]
+let gemPosition = Position(1, 0)
+
+for position in availablePositions {
+    if gemPosition == position {
+        print("Gem found at (\(position.x), \(position.y))!")
+    } else {
+        print("No gem at (\(position.x), \(position.y))")
+    }
+}
+// No gem at (0, 0)
+// No gem at (0, 1)
+// Gem found at (1, 0)!
+
+</code></pre><p><code>Hashable</code> conformance means that you can store positions in a set and quickly check whether you’ve visited a position before, as shown in the following example:</p><pre class="swift"><code>var visitedPositions: Set = [Position(0, 0), Position(1, 0)]
+let currentPosition = Position(1, 3)
+
+if visitedPositions.contains(currentPosition) {
+    print("Already visited (\(currentPosition.x), \(currentPosition.y))")
+} else {
+    print("First time at (\(currentPosition.x), \(currentPosition.y))")
+    visitedPositions.insert(currentPosition)
+}
+// First time at (1, 3)
+
+</code></pre><p>In addition to simplifying your code, this automatic conformance reduces errors, because any new properties you add to your custom types are automatically included when hashing and testing for equality. A type is eligible for automatic conformance to <code>Equatable</code> and <code>Hashable</code> when it’s a structure or an enumeration that meets these criteria:</p><ul><li><p>For a structure, <i>all</i> its stored properties must conform to <code>Equatable</code> and <code>Hashable</code>.</p></li><li><p>For an enumeration, <i>all</i> its associated values must conform to <code>Equatable</code> and <code>Hashable</code>. (Enumerations without associated values have <code>Equatable</code> and <code>Hashable</code> conformance even without declaring adoption.)</p></li></ul><h3 id="Conform-Manually-to-Equatable-and-Hashable"><a href="#Conform-Manually-to-Equatable-and-Hashable">Conform Manually to Equatable and Hashable</a></h3><p>You need to manually implement <code>Equatable</code> and <code>Hashable</code> conformance for a type in these cases:</p><ul><li><p>The type doesn’t meet the criteria listed in the previous section.</p></li><li><p>You want to customize the type’s conformance.</p></li><li><p>You want to extend a type declared in another file or module to conform.</p></li></ul><pre class="swift"><code>class Player {
+    var name: String
+    var position: Position
+
+    init(name: String, position: Position) {
+        self.name = name
+        self.position = position
+    }
+}
+</code></pre><p>The <code>Player</code> type is a class, so it doesn’t qualify for automatic synthesis of the <code>Equatable</code> or <code>Hashable</code> requirements. To make this class conform to the <code>Equatable</code> protocol, declare conformance in an extension and implement the  static <code>==</code> operator method. Compare each significant property for equality in your <code>==</code> method’s implementation:</p><pre class="swift"><code>extension Player: Equatable {
+    static func ==(lhs: Player, rhs: Player) -> Bool {
+        return lhs.name == rhs.name &amp;&amp; lhs.position == rhs.position
+    }
+}
+</code></pre><p>To make <code>Player</code> conform to the <code>Hashable</code> protocol, declare conformance in another extension and implement the <code>hash(into:)</code> method. In the <code>hash(into:)</code> method, call the <code>combine(_:)</code> method on the provided hasher with each significant property:</p><pre class="swift"><code>extension Player: Hashable {
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(name)
+        hasher.combine(position)
+    }
+}
+</code></pre><h3 id="Use-All-Significant-Properties-for-Equatable-and-Hashable"><a href="#Use-All-Significant-Properties-for-Equatable-and-Hashable">Use All Significant Properties for Equatable and Hashable</a></h3><p>When implementing the <code>==</code> method and the <code>hash(into:)</code> method, use all the properties that affect whether two instances of your custom type are considered equal. In the implementations above, the <code>Player</code> type uses <code>name</code> and <code>position</code> in both methods.</p><p>If your type contains properties that don’t affect whether two instances are considered equal, exclude those properties from comparison in the <code>==</code> method and from hashing in <code>hash(into:)</code>. For example, a type might cache an expensive computed value so that it only needs to calculate it once. If you compare two instances of that type, whether or not the computed value has been cached shouldn’t affect their equality, so the cached value should be excluded from comparison and hashing.</p><aside class="important"><p class="label">Important</p><p>Always use the same properties in both your <code>==</code> and <code>hash(into:)</code> methods. Using different groups of properties in the two methods can lead to unexpected behavior or performance when using your custom type in sets and dictionaries.</p></aside></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Data-modeling"><a href="#Data-modeling">Data modeling</a></h3><ul><li><a href="../choosing-between-structures-and-classes/index.html"><p class="api-collection">Choosing Between Structures and Classes</p></a><p>Decide how to store data and model behavior.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Section</title><meta content="Displays a grouping of text, images, and tasks on a tutorial page." name="description"><script src="../../../navigator-index-docc-documentation.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../index.html">DocC</a></li><li>Section</li></ul></nav><hgroup><p>Directive</p><h1>Section</h1></hgroup><p>Displays a grouping of text, images, and tasks on a tutorial page.</p><ul id="availability"><li aria-label="Swift-DocC 5.5+, Available on Swift-DocC 5.5 and later" title="Available on Swift-DocC 5.5 and later">Swift-DocC 5.5+</li></ul><pre id="declaration"><code><span class="typeIdentifier">@Section</span>(...) {
+    ...
+}</code></pre></section><section id="Parameters"><h2><a href="#Parameters">Parameters</a></h2><dl><dt>title</dt><dd><p>The name of the section. <b>(required)</b></p></dd></dl></section><section id="Mentioned-In"><h2><a href="#Mentioned-In">Mentioned In</a></h2><ul><li><a href="../building-an-interactive-tutorial/index.html">Building an Interactive Tutorial</a></li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Use a <code>Section</code> directive to show a unit of work that consists of text, media (for example images and videos), and tasks on a tutorial page. A tutorial page must includes one or more sections.</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.docc/1@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.docc/1~dark@2x.png"><img alt="A screenshot showing a section on a tutorial page. The section includes text, an image, and coding steps." decoding="async" loading="lazy"></picture></p><p>Use the <code>title</code> parameter to provide a name for the section. Then, use the <a href="../contentandmedia/index.html"><code>Content<wbr>And<wbr>Media</code></a> directive to add text and media that introduces the tasks that the reader needs to follow. This directive must be the first directive in the section. You can optionally show additional text and media by inserting a <a href="../stack/index.html"><code>Stack</code></a> directive. A stack contains between one and three horizontally arranged <code>ContentAndMedia</code> directives. Finally, add a <a href="../steps/index.html"><code>Steps</code></a> directive to insert a set of tasks for the reader to perform.</p><pre><code>@Tutorial(time: 30) {
+    
+    ...
+    
+    @Section(title: "Add a customization view") {
+        @ContentAndMedia {
+            Add the ability for users to customize sloths and select their powers.
+            
+            @Image(source: 01-creating-section2.png, alt: "An outline of a sloth surrounded by four power type icons. The power type icons are arranged in the following order, clockwise from the top: fire, wind, lightning, and ice.")
+        }
+        
+        @Steps {
+            @Step {
+                Create a new SwiftUI View file named `CustomizedSlothView.swift`.
+                
+                @Code(name: "CustomizedSlothView.swift", file: 01-creating-code-02-01.swift) {
+                    @Image(source: preview-01-creating-code-02-01.png, alt: "A screenshot as it would appear on iPhone, with the text, Hello, World!, centered in the middle of the display.")
+                }
+            }    
+            
+            @Step {
+                
+                ...
+                
+            }    
+            
+            ...
+ 
+        }
+    }
+}
+</code></pre><h3 id="Contained-Elements"><a href="#Contained-Elements">Contained Elements</a></h3><p>A section can contain the following items:</p><ul><li><p>term <a href="../contentandmedia/index.html"><code>Content<wbr>And<wbr>Media</code></a>: A grouping that contains text and an image or video. At least one <code>ContentAndMedia</code> directive is required and must be the first element within a section. <b>(optional)</b></p></li><li><p>term <a href="../stack/index.html"><code>Stack</code></a>: A set of horizontally arranged groupings of text and media. <b>(optional)</b></p></li><li><p>term <a href="../steps/index.html"><code>Steps</code></a>: A set of tasks the reader performs. <b>(optional)</b></p></li></ul><h3 id="Containing-Elements"><a href="#Containing-Elements">Containing Elements</a></h3><p>The following pages can include sections:</p><ul><li><p><a href="../tutorial/index.html"><code>Tutorial</code></a></p></li></ul></section><section id="Topics"><h2><a href="#Topics">Topics</a></h2><h3 id="Introducing-a-Section"><a href="#Introducing-a-Section">Introducing a Section</a></h3><ul><li><a href="../contentandmedia/index.html"><code><span class="identifier">@Content<wbr>And<wbr>Media</span></code></a><p>Displays a grouping that contains text and an image or a video in a section on a tutorial page.</p></li></ul><h3 id="Displaying-Tasks"><a href="#Displaying-Tasks">Displaying Tasks</a></h3><ul><li><a href="../steps/index.html"><code><span class="identifier">@Steps</span></code></a><p>Defines a set of tasks the reader performs on a tutorial page.</p></li></ul><h3 id="Arranging-Content-and-Media"><a href="#Arranging-Content-and-Media">Arranging Content and Media</a></h3><p></p><ul><li><a href="../stack/index.html"><code><span class="identifier">@Stack</span></code></a><p>Displays set of horizontally arranged groupings that contain text and media in a section on a tutorial page.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Initialization</title><meta content="Set the initial values for a type’s stored properties and perform one-time setup." name="description"><script src="../../../navigator-index-swift-book.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">The Swift Programming Language (6.4)</a></li><li>Initialization</li></ul></nav><hgroup><p>Article</p><h1>Initialization</h1></hgroup><p>Set the initial values for a type’s stored properties and perform one-time setup.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p><i>Initialization</i> is the process of preparing an instance of a class, structure, or enumeration for use. This process involves setting an initial value for each stored property on that instance and performing any other setup or initialization that’s required before the new instance is ready for use.</p><p>You implement this initialization process by defining <i>initializers</i>, which are like special methods that can be called to create a new instance of a particular type. Unlike Objective-C initializers, Swift initializers don’t return a value. Their primary role is to ensure that new instances of a type are correctly initialized before they’re used for the first time.</p><p>Instances of class types can also implement a <i>deinitializer</i>, which performs any custom cleanup just before an instance of that class is deallocated. For more information about deinitializers, see <a href="../deinitialization/index.html">Deinitialization</a>.</p><h2 id="Setting-Initial-Values-for-Stored-Properties"><a href="#Setting-Initial-Values-for-Stored-Properties">Setting Initial Values for Stored Properties</a></h2><p>Classes and structures <i>must</i> set all of their stored properties to an appropriate initial value by the time an instance of that class or structure is created. Stored properties can’t be left in an indeterminate state.</p><p>You can set an initial value for a stored property within an initializer, or by assigning a default property value as part of the property’s definition. These actions are described in the following sections.</p><aside class="note"><p class="label">Note</p><p>When you assign a default value to a stored property, or set its value within an initializer, the value of that property is set directly, without calling any property observers.</p></aside><h3 id="Initializers"><a href="#Initializers">Initializers</a></h3><p><i>Initializers</i> are called to create a new instance of a particular type. In its simplest form, an initializer is like an instance method with no parameters, written using the <code>init</code> keyword:</p><pre class="swift"><code>init() {
+    // perform some initialization here
+}
+</code></pre><p>The example below defines a new structure called <code>Fahrenheit</code> to store temperatures expressed in the Fahrenheit scale. The <code>Fahrenheit</code> structure has one stored property, <code>temperature</code>, which is of type <code>Double</code>:</p><pre class="swift"><code>struct Fahrenheit {
+    var temperature: Double
+    init() {
+        temperature = 32.0
+    }
+}
+var f = Fahrenheit()
+print("The default temperature is \(f.temperature)° Fahrenheit")
+// Prints "The default temperature is 32.0° Fahrenheit".
+</code></pre><p>The structure defines a single initializer, <code>init</code>, with no parameters, which initializes the stored temperature with a value of <code>32.0</code> (the freezing point of water in degrees Fahrenheit).</p><h3 id="Default-Property-Values"><a href="#Default-Property-Values">Default Property Values</a></h3><p>You can set the initial value of a stored property from within an initializer, as shown above. Alternatively, specify a <i>default property value</i> as part of the property’s declaration. You specify a default property value by assigning an initial value to the property when it’s defined.</p><aside class="note"><p class="label">Note</p><p>If a property always takes the same initial value, provide a default value rather than setting a value within an initializer. The end result is the same, but the default value ties the property’s initialization more closely to its declaration. It makes for shorter, clearer initializers and enables you to infer the type of the property from its default value. The default value also makes it easier for you to take advantage of default initializers and initializer inheritance, as described later in this chapter.</p></aside><p>You can write the <code>Fahrenheit</code> structure from above in a simpler form by providing a default value for its <code>temperature</code> property at the point that the property is declared:</p><pre class="swift"><code>struct Fahrenheit {
+    var temperature = 32.0
+}
+</code></pre><h2 id="Customizing-Initialization"><a href="#Customizing-Initialization">Customizing Initialization</a></h2><p>You can customize the initialization process with input parameters and optional property types, or by assigning constant properties during initialization, as described in the following sections.</p><h3 id="Initialization-Parameters"><a href="#Initialization-Parameters">Initialization Parameters</a></h3><p>You can provide <i>initialization parameters</i> as part of an initializer’s definition, to define the types and names of values that customize the initialization process. Initialization parameters have the same capabilities and syntax as function and method parameters.</p><p>The following example defines a structure called <code>Celsius</code>, which stores temperatures expressed in degrees Celsius. The <code>Celsius</code> structure implements two custom initializers called <code>init(fromFahrenheit:)</code> and <code>init(fromKelvin:)</code>, which initialize a new instance of the structure with a value from a different temperature scale:</p><pre class="swift"><code>struct Celsius {
+    var temperatureInCelsius: Double
+    init(fromFahrenheit fahrenheit: Double) {
+        temperatureInCelsius = (fahrenheit - 32.0) / 1.8
+    }
+    init(fromKelvin kelvin: Double) {
+        temperatureInCelsius = kelvin - 273.15
+    }
+}
+let boilingPointOfWater = Celsius(fromFahrenheit: 212.0)
+// boilingPointOfWater.temperatureInCelsius is 100.0
+let freezingPointOfWater = Celsius(fromKelvin: 273.15)
+// freezingPointOfWater.temperatureInCelsius is 0.0
+</code></pre><p>The first initializer has a single initialization parameter with an argument label of <code>fromFahrenheit</code> and a parameter name of <code>fahrenheit</code>. The second initializer has a single initialization parameter with an argument label of <code>fromKelvin</code> and a parameter name of <code>kelvin</code>. Both initializers convert their single argument into the corresponding Celsius value and store this value in a property called <code>temperatureInCelsius</code>.</p><h3 id="Parameter-Names-and-Argument-Labels"><a href="#Parameter-Names-and-Argument-Labels">Parameter Names and Argument Labels</a></h3><p>As with function and method parameters, initialization parameters can have both a parameter name for use within the initializer’s body and an argument label for use when calling the initializer.</p><p>However, initializers don’t have an identifying function name before their parentheses in the way that functions and methods do. Therefore, the names and types of an initializer’s parameters play a particularly important role in identifying which initializer should be called. Because of this, Swift provides an automatic argument label for <i>every</i> parameter in an initializer if you don’t provide one.</p><p>The following example defines a structure called <code>Color</code>, with three constant properties called <code>red</code>, <code>green</code>, and <code>blue</code>. These properties store a value between <code>0.0</code> and <code>1.0</code> to indicate the amount of red, green, and blue in the color.</p><p><code>Color</code> provides an initializer with three appropriately named parameters of type <code>Double</code> for its red, green, and blue components. <code>Color</code> also provides a second initializer with a single <code>white</code> parameter, which is used to provide the same value for all three color components.</p><pre class="swift"><code>struct Color {
+    let red, green, blue: Double
+    init(red: Double, green: Double, blue: Double) {
+        self.red   = red
+        self.green = green
+        self.blue  = blue
+    }
+    init(white: Double) {
+        red   = white
+        green = white
+        blue  = white
+    }
+}
+</code></pre><p>Both initializers can be used to create a new <code>Color</code> instance, by providing named values for each initializer parameter:</p><pre class="swift"><code>let magenta = Color(red: 1.0, green: 0.0, blue: 1.0)
+let halfGray = Color(white: 0.5)
+</code></pre><p>Note that it isn’t possible to call these initializers without using argument labels. Argument labels must always be used in an initializer if they’re defined, and omitting them is a compile-time error:</p><pre class="swift"><code>let veryGreen = Color(0.0, 1.0, 0.0)
+// this reports a compile-time error - argument labels are required
+</code></pre><h3 id="Initializer-Parameters-Without-Argument-Labels"><a href="#Initializer-Parameters-Without-Argument-Labels">Initializer Parameters Without Argument Labels</a></h3><p>If you don’t want to use an argument label for an initializer parameter, write an underscore (<code>_</code>) instead of an explicit argument label for that parameter to override the default behavior.</p><p>Here’s an expanded version of the <code>Celsius</code> example from Initialization above, with an additional initializer to create a new <code>Celsius</code> instance from a <code>Double</code> value that’s already in the Celsius scale:</p><pre class="swift"><code>struct Celsius {
+    var temperatureInCelsius: Double
+    init(fromFahrenheit fahrenheit: Double) {
+        temperatureInCelsius = (fahrenheit - 32.0) / 1.8
+    }
+    init(fromKelvin kelvin: Double) {
+        temperatureInCelsius = kelvin - 273.15
+    }
+    init(_ celsius: Double) {
+        temperatureInCelsius = celsius
+    }
+}
+let bodyTemperature = Celsius(37.0)
+// bodyTemperature.temperatureInCelsius is 37.0
+</code></pre><p>The initializer call <code>Celsius(37.0)</code> is clear in its intent without the need for an argument label. It’s therefore appropriate to write this initializer as <code>init(_ celsius: Double)</code> so that it can be called by providing an unnamed <code>Double</code> value.</p><h3 id="Optional-Property-Types"><a href="#Optional-Property-Types">Optional Property Types</a></h3><p>If your custom type has a stored property that’s logically allowed to have “no value” — perhaps because its value can’t be set during initialization, or because it’s allowed to have “no value” at some later point — declare the property with an <i>optional</i> type. Properties of optional type are automatically initialized with a value of <code>nil</code>, indicating that the property is deliberately intended to have “no value yet” during initialization.</p><p>The following example defines a class called <code>SurveyQuestion</code>, with an optional <code>String</code> property called <code>response</code>:</p><pre class="swift"><code>class SurveyQuestion {
+    var text: String
+    var response: String?
+    init(text: String) {
+        self.text = text
+    }
+    func ask() {
+        print(text)
+    }
+}
+let cheeseQuestion = SurveyQuestion(text: "Do you like cheese?")
+cheeseQuestion.ask()
+// Prints "Do you like cheese?"
+cheeseQuestion.response = "Yes, I do like cheese."
+</code></pre><p>The response to a survey question can’t be known until it’s asked, and so the <code>response</code> property is declared with a type of <code>String?</code>, or “optional <code>String</code>”. It’s automatically assigned a default value of <code>nil</code>, meaning “no string yet”, when a new instance of <code>SurveyQuestion</code> is initialized.</p><h3 id="Assigning-Constant-Properties-During-Initialization"><a href="#Assigning-Constant-Properties-During-Initialization">Assigning Constant Properties During Initialization</a></h3><p>You can assign a value to a constant property at any point during initialization, as long as it’s set to a definite value by the time initialization finishes. Once a constant property is assigned a value, it can’t be further modified.</p><aside class="note"><p class="label">Note</p><p>For class instances, a constant property can be modified during initialization only by the class that introduces it. It can’t be modified by a subclass.</p></aside><p>You can revise the <code>SurveyQuestion</code> example from above to use a constant property rather than a variable property for the <code>text</code> property of the question, to indicate that the question doesn’t change once an instance of <code>SurveyQuestion</code> is created. Even though the <code>text</code> property is now a constant, it can still be set within the class’s initializer:</p><pre class="swift"><code>class SurveyQuestion {
+    let text: String
+    var response: String?
+    init(text: String) {
+        self.text = text
+    }
+    func ask() {
+        print(text)
+    }
+}
+let beetsQuestion = SurveyQuestion(text: "How about beets?")
+beetsQuestion.ask()
+// Prints "How about beets?"
+beetsQuestion.response = "I also like beets. (But not with cheese.)"
+</code></pre><h2 id="Default-Initializers"><a href="#Default-Initializers">Default Initializers</a></h2><p>Swift provides a <i>default initializer</i> for any structure or class that provides default values for all of its properties and doesn’t provide at least one initializer itself. The default initializer simply creates a new instance with all of its properties set to their default values.</p><p>This example defines a class called <code>ShoppingListItem</code>, which encapsulates the name, quantity, and purchase state of an item in a shopping list:</p><pre class="swift"><code>class ShoppingListItem {
+    var name: String?
+    var quantity = 1
+    var purchased = false
+}
+var item = ShoppingListItem()
+</code></pre><p>Because all properties of the <code>ShoppingListItem</code> class have default values, and because it’s a base class with no superclass, <code>ShoppingListItem</code> automatically gains a default initializer implementation that creates a new instance with all of its properties set to their default values. (The <code>name</code> property is an optional <code>String</code> property, and so it automatically receives a default value of <code>nil</code>, even though this value isn’t written in the code.) The example above uses the default initializer for the <code>ShoppingListItem</code> class to create a new instance of the class with initializer syntax, written as <code>ShoppingListItem()</code>, and assigns this new instance to a variable called <code>item</code>.</p><h3 id="Memberwise-Initializers-for-Structure-Types"><a href="#Memberwise-Initializers-for-Structure-Types">Memberwise Initializers for Structure Types</a></h3><p>Structure types automatically receive a <i>memberwise initializer</i> if they don’t define any of their own custom initializers. Unlike a default initializer, the structure receives a memberwise initializer even if it has stored properties that don’t have default values.</p><p>The memberwise initializer is a shorthand way to initialize the member properties of new structure instances. Initial values for the properties of the new instance can be passed to the memberwise initializer by name.</p><p>The example below defines a structure called <code>Size</code> with two properties called <code>width</code> and <code>height</code>. Both properties are inferred to be of type <code>Double</code> by assigning a default value of <code>0.0</code>.</p><p>The <code>Size</code> structure automatically receives an <code>init(width:height:)</code> memberwise initializer, which you can use to initialize a new <code>Size</code> instance:</p><pre class="swift"><code>struct Size {
+    var width = 0.0, height = 0.0
+}
+let twoByTwo = Size(width: 2.0, height: 2.0)
+</code></pre><p>When you call a memberwise initializer, you can omit values for any properties that have default values. In the example above, the <code>Size</code> structure has a default value for both its <code>height</code> and <code>width</code> properties. You can omit either property or both properties, and the initializer uses the default value for anything you omit. For example:</p><pre class="swift"><code>let zeroByTwo = Size(height: 2.0)
+print(zeroByTwo.width, zeroByTwo.height)
+// Prints "0.0 2.0".
+
+let zeroByZero = Size()
+print(zeroByZero.width, zeroByZero.height)
+// Prints "0.0 0.0".
+</code></pre><h2 id="Initializer-Delegation-for-Value-Types"><a href="#Initializer-Delegation-for-Value-Types">Initializer Delegation for Value Types</a></h2><p>Initializers can call other initializers to perform part of an instance’s initialization. This process, known as <i>initializer delegation</i>, avoids duplicating code across multiple initializers.</p><p>The rules for how initializer delegation works, and for what forms of delegation are allowed, are different for value types and class types. Value types (structures and enumerations) don’t support inheritance, and so their initializer delegation process is relatively simple, because they can only delegate to another initializer that they provide themselves. Classes, however, can inherit from other classes, as described in <a href="../inheritance/index.html">Inheritance</a>. This means that classes have additional responsibilities for ensuring that all stored properties they inherit are assigned a suitable value during initialization. These responsibilities are described in Initialization below.</p><p>For value types, you use <code>self.init</code> to refer to other initializers from the same value type when writing your own custom initializers. You can call <code>self.init</code> only from within an initializer.</p><p>Note that if you define a custom initializer for a value type, you will no longer have access to the default initializer (or the memberwise initializer, if it’s a structure) for that type. This constraint prevents a situation in which additional essential setup provided in a more complex initializer is accidentally circumvented by someone using one of the automatic initializers.</p><aside class="note"><p class="label">Note</p><p>If you want your custom value type to be initializable with the default initializer and memberwise initializer, and also with your own custom initializers, write your custom initializers in an extension rather than as part of the value type’s original implementation. For more information, see <a href="../extensions/index.html">Extensions</a>.</p></aside><p>The following example defines a custom <code>Rect</code> structure to represent a geometric rectangle. The example requires two supporting structures called <code>Size</code> and <code>Point</code>, both of which provide default values of <code>0.0</code> for all of their properties:</p><pre class="swift"><code>struct Size {
+    var width = 0.0, height = 0.0
+}
+struct Point {
+    var x = 0.0, y = 0.0
+}
+</code></pre><p>You can initialize the <code>Rect</code> structure below in one of three ways — by using its default zero-initialized <code>origin</code> and <code>size</code> property values, by providing a specific origin point and size, or by providing a specific center point and size. These initialization options are represented by three custom initializers that are part of the <code>Rect</code> structure’s definition:</p><pre class="swift"><code>struct Rect {
+    var origin = Point()
+    var size = Size()
+    init() {}
+    init(origin: Point, size: Size) {
+        self.origin = origin
+        self.size = size
+    }
+    init(center: Point, size: Size) {
+        let originX = center.x - (size.width / 2)
+        let originY = center.y - (size.height / 2)
+        self.init(origin: Point(x: originX, y: originY), size: size)
+    }
+}
+</code></pre><p>The first <code>Rect</code> initializer, <code>init()</code>, is functionally the same as the default initializer that the structure would have received if it didn’t have its own custom initializers. This initializer has an empty body, represented by an empty pair of curly braces <code>{}</code>. Calling this initializer returns a <code>Rect</code> instance whose <code>origin</code> and <code>size</code> properties are both initialized with the default values of <code>Point(x: 0.0, y: 0.0)</code> and <code>Size(width: 0.0, height: 0.0)</code> from their property definitions:</p><pre class="swift"><code>let basicRect = Rect()
+// basicRect's origin is (0.0, 0.0) and its size is (0.0, 0.0)
+</code></pre><p>The second <code>Rect</code> initializer, <code>init(origin:size:)</code>, is functionally the same as the memberwise initializer that the structure would have received if it didn’t have its own custom initializers. This initializer simply assigns the <code>origin</code> and <code>size</code> argument values to the appropriate stored properties:</p><pre class="swift"><code>let originRect = Rect(origin: Point(x: 2.0, y: 2.0),
+    size: Size(width: 5.0, height: 5.0))
+// originRect's origin is (2.0, 2.0) and its size is (5.0, 5.0)
+</code></pre><p>The third <code>Rect</code> initializer, <code>init(center:size:)</code>, is slightly more complex. It starts by calculating an appropriate origin point based on a <code>center</code> point and a <code>size</code> value. It then calls (or <i>delegates</i>) to the <code>init(origin:size:)</code> initializer, which stores the new origin and size values in the appropriate properties:</p><pre class="swift"><code>let centerRect = Rect(center: Point(x: 4.0, y: 4.0),
+    size: Size(width: 3.0, height: 3.0))
+// centerRect's origin is (2.5, 2.5) and its size is (3.0, 3.0)
+</code></pre><p>The <code>init(center:size:)</code> initializer could have assigned the new values of <code>origin</code> and <code>size</code> to the appropriate properties itself. However, it’s more convenient (and clearer in intent) for the <code>init(center:size:)</code> initializer to take advantage of an existing initializer that already provides exactly that functionality.</p><aside class="note"><p class="label">Note</p><p>For an alternative way to write this example without defining the <code>init()</code> and <code>init(origin:size:)</code> initializers yourself, see <a href="../extensions/index.html">Extensions</a>.</p></aside><h2 id="Class-Inheritance-and-Initialization"><a href="#Class-Inheritance-and-Initialization">Class Inheritance and Initialization</a></h2><p>All of a class’s stored properties — including any properties the class inherits from its superclass — <i>must</i> be assigned an initial value during initialization.</p><p>Swift defines two kinds of initializers for class types to help ensure all stored properties receive an initial value. These are known as designated initializers and convenience initializers.</p><h3 id="Designated-Initializers-and-Convenience-Initializers"><a href="#Designated-Initializers-and-Convenience-Initializers">Designated Initializers and Convenience Initializers</a></h3><p><i>Designated initializers</i> are the primary initializers for a class. A designated initializer fully initializes all properties introduced by that class and calls an appropriate superclass initializer to continue the initialization process up the superclass chain.</p><p>Classes tend to have very few designated initializers, and it’s quite common for a class to have only one. Designated initializers are “funnel” points through which initialization takes place, and through which the initialization process continues up the superclass chain.</p><p>Every class must have at least one designated initializer. In some cases, this requirement is satisfied by inheriting one or more designated initializers from a superclass, as described in Initialization below.</p><p><i>Convenience initializers</i> are secondary, supporting initializers for a class. You can define a convenience initializer to call a designated initializer from the same class as the convenience initializer with some of the designated initializer’s parameters set to default values. You can also define a convenience initializer to create an instance of that class for a specific use case or input value type.</p><p>You don’t have to provide convenience initializers if your class doesn’t require them. Create convenience initializers whenever a shortcut to a common initialization pattern will save time or make initialization of the class clearer in intent.</p><h3 id="Syntax-for-Designated-and-Convenience-Initializers"><a href="#Syntax-for-Designated-and-Convenience-Initializers">Syntax for Designated and Convenience Initializers</a></h3><p>Designated initializers for classes are written in the same way as simple initializers for value types:</p><pre class="swift"><code>init(&lt;#parameters#>) {
+   &lt;#statements#>
+}
+</code></pre><p>Convenience initializers are written in the same style, but with the <code>convenience</code> modifier placed before the <code>init</code> keyword, separated by a space:</p><pre class="swift"><code>convenience init(&lt;#parameters#>) {
+   &lt;#statements#>
+}
+</code></pre><h3 id="Initializer-Delegation-for-Class-Types"><a href="#Initializer-Delegation-for-Class-Types">Initializer Delegation for Class Types</a></h3><p>To simplify the relationships between designated and convenience initializers, Swift applies the following three rules for delegation calls between initializers:</p><ul><li><p>term <b>Rule 1</b>: A designated initializer must call a designated initializer from its immediate superclass.</p></li><li><p>term <b>Rule 2</b>: A convenience initializer must call another initializer from the <i>same</i> class.</p></li><li><p>term <b>Rule 3</b>: A convenience initializer must ultimately call a designated initializer.</p></li></ul><p>A simple way to remember this is:</p><ul><li><p>Designated initializers must always delegate <i>up</i>.</p></li><li><p>Convenience initializers must always delegate <i>across</i>.</p></li></ul><p>These rules are illustrated in the figure below:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/initializerDelegation01@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/initializerDelegation01~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>Here, the superclass has a single designated initializer and two convenience initializers. One convenience initializer calls another convenience initializer, which in turn calls the single designated initializer. This satisfies rules 2 and 3 from above. The superclass doesn’t itself have a further superclass, and so rule 1 doesn’t apply.</p><p>The subclass in this figure has two designated initializers and one convenience initializer. The convenience initializer must call one of the two designated initializers, because it can only call another initializer from the same class. This satisfies rules 2 and 3 from above. Both designated initializers must call the single designated initializer from the superclass, to satisfy rule 1 from above.</p><aside class="note"><p class="label">Note</p><p>These rules don’t affect how users of your classes <i>create</i> instances of each class. Any initializer in the diagram above can be used to create a fully initialized instance of the class they belong to. The rules only affect how you write the implementation of the class’s initializers.</p></aside><p>The figure below shows a more complex class hierarchy for four classes. It illustrates how the designated initializers in this hierarchy act as “funnel” points for class initialization, simplifying the interrelationships among classes in the chain:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/initializerDelegation02@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/initializerDelegation02~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><h3 id="Two-Phase-Initialization"><a href="#Two-Phase-Initialization">Two-Phase Initialization</a></h3><p>Class initialization in Swift is a two-phase process. In the first phase, each stored property is assigned an initial value by the class that introduced it. Once the initial state for every stored property has been determined, the second phase begins, and each class is given the opportunity to customize its stored properties further before the new instance is considered ready for use.</p><p>The use of a two-phase initialization process makes initialization safe, while still giving complete flexibility to each class in a class hierarchy. Two-phase initialization prevents property values from being accessed before they’re initialized, and prevents property values from being set to a different value by another initializer unexpectedly.</p><aside class="note"><p class="label">Note</p><p>Swift’s two-phase initialization process is similar to initialization in Objective-C. The main difference is that during phase 1, Objective-C assigns zero or null values (such as <code>0</code> or <code>nil</code>) to every property. Swift’s initialization flow is more flexible in that it lets you set custom initial values, and can cope with types for which <code>0</code> or <code>nil</code> isn’t a valid default value.</p></aside><p>Swift’s compiler performs four helpful safety-checks to make sure that two-phase initialization is completed without error:</p><ul><li><p>term <b>Safety check 1</b>: A designated initializer must ensure that all of the properties introduced by its class are initialized before it delegates up to a superclass initializer.</p></li></ul><p>As mentioned above, the memory for an object is only considered fully initialized once the initial state of all of its stored properties is known. In order for this rule to be satisfied, a designated initializer must make sure that all of its own properties are initialized before it hands off up the chain.</p><ul><li><p>term <b>Safety check 2</b>: A designated initializer must delegate up to a superclass initializer before assigning a value to an inherited property. If it doesn’t, the new value the designated initializer assigns will be overwritten by the superclass as part of its own initialization.</p></li><li><p>term <b>Safety check 3</b>: A convenience initializer must delegate to another initializer before assigning a value to <i>any</i> property (including properties defined by the same class). If it doesn’t, the new value the convenience initializer assigns will be overwritten by its own class’s designated initializer.</p></li><li><p>term <b>Safety check 4</b>: An initializer can’t call any instance methods, read the values of any instance properties, or refer to <code>self</code> as a value until after the first phase of initialization is complete.</p></li></ul><p>The class instance isn’t fully valid until the first phase ends. Properties can only be accessed, and methods can only be called, once the class instance is known to be valid at the end of the first phase.</p><p>Here’s how two-phase initialization plays out, based on the four safety checks above:</p><p><b>Phase 1</b></p><ul><li><p>A designated or convenience initializer is called on a class.</p></li><li><p>Memory for a new instance of that class is allocated. The memory isn’t yet initialized.</p></li><li><p>A designated initializer for that class confirms that all stored properties introduced by that class have a value. The memory for these stored properties is now initialized.</p></li><li><p>The designated initializer hands off to a superclass initializer to perform the same task for its own stored properties.</p></li><li><p>This continues up the class inheritance chain until the top of the chain is reached.</p></li><li><p>Once the top of the chain is reached, and the final class in the chain has ensured that all of its stored properties have a value, the instance’s memory is considered to be fully initialized, and phase 1 is complete.</p></li></ul><p><b>Phase 2</b></p><ul><li><p>Working back down from the top of the chain, each designated initializer in the chain has the option to customize the instance further. Initializers are now able to access <code>self</code> and can modify its properties, call its instance methods, and so on.</p></li><li><p>Finally, any convenience initializers in the chain have the option to customize the instance and to work with <code>self</code>.</p></li></ul><p>Here’s how phase 1 looks for an initialization call for a hypothetical subclass and superclass:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/twoPhaseInitialization01@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/twoPhaseInitialization01~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>In this example, initialization begins with a call to a convenience initializer on the subclass. This convenience initializer can’t yet modify any properties. It delegates across to a designated initializer from the same class.</p><p>The designated initializer makes sure that all of the subclass’s properties have a value, as per safety check 1. It then calls a designated initializer on its superclass to continue the initialization up the chain.</p><p>The superclass’s designated initializer makes sure that all of the superclass properties have a value. There are no further superclasses to initialize, and so no further delegation is needed.</p><p>As soon as all properties of the superclass have an initial value, its memory is considered fully initialized, and phase 1 is complete.</p><p>Here’s how phase 2 looks for the same initialization call:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/twoPhaseInitialization02@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/twoPhaseInitialization02~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>The superclass’s designated initializer now has an opportunity to customize the instance further (although it doesn’t have to).</p><p>Once the superclass’s designated initializer is finished, the subclass’s designated initializer can perform additional customization (although again, it doesn’t have to).</p><p>Finally, once the subclass’s designated initializer is finished, the convenience initializer that was originally called can perform additional customization.</p><h3 id="Initializer-Inheritance-and-Overriding"><a href="#Initializer-Inheritance-and-Overriding">Initializer Inheritance and Overriding</a></h3><p>Unlike subclasses in Objective-C, Swift subclasses don’t inherit their superclass initializers by default. Swift’s approach prevents a situation in which a simple initializer from a superclass is inherited by a more specialized subclass and is used to create a new instance of the subclass that isn’t fully or correctly initialized.</p><aside class="note"><p class="label">Note</p><p>Superclass initializers <i>are</i> inherited in certain circumstances, but only when it’s safe and appropriate to do so. For more information, see Initialization below.</p></aside><p>If you want a custom subclass to present one or more of the same initializers as its superclass, you can provide a custom implementation of those initializers within the subclass.</p><p>When you write a subclass initializer that matches a superclass <i>designated</i> initializer, you are effectively providing an override of that designated initializer. Therefore, you must write the <code>override</code> modifier before the subclass’s initializer definition. This is true even if you are overriding an automatically provided default initializer, as described in Initialization.</p><p>As with an overridden property, method or subscript, the presence of the <code>override</code> modifier prompts Swift to check that the superclass has a matching designated initializer to be overridden, and validates that the parameters for your overriding initializer have been specified as intended.</p><aside class="note"><p class="label">Note</p><p>You always write the <code>override</code> modifier when overriding a superclass designated initializer, even if your subclass’s implementation of the initializer is a convenience initializer.</p></aside><p>Conversely, if you write a subclass initializer that matches a superclass <i>convenience</i> initializer, that superclass convenience initializer can never be called directly by your subclass, as per the rules described above in Initialization. Therefore, your subclass is not (strictly speaking) providing an override of the superclass initializer. As a result, you don’t write the <code>override</code> modifier when providing a matching implementation of a superclass convenience initializer.</p><p>The example below defines a base class called <code>Vehicle</code>. This base class declares a stored property called <code>numberOfWheels</code>, with a default <code>Int</code> value of <code>0</code>. The <code>numberOfWheels</code> property is used by a computed property called <code>description</code> to create a <code>String</code> description of the vehicle’s characteristics:</p><pre class="swift"><code>class Vehicle {
+    var numberOfWheels = 0
+    var description: String {
+        return "\(numberOfWheels) wheel(s)"
+    }
+}
+</code></pre><p>The <code>Vehicle</code> class provides a default value for its only stored property, and doesn’t provide any custom initializers itself. As a result, it automatically receives a default initializer, as described in Initialization. The default initializer (when available) is always a designated initializer for a class, and can be used to create a new <code>Vehicle</code> instance with a <code>numberOfWheels</code> of <code>0</code>:</p><pre class="swift"><code>let vehicle = Vehicle()
+print("Vehicle: \(vehicle.description)")
+// Vehicle: 0 wheel(s)
+</code></pre><p>The next example defines a subclass of <code>Vehicle</code> called <code>Bicycle</code>:</p><pre class="swift"><code>class Bicycle: Vehicle {
+    override init() {
+        super.init()
+        numberOfWheels = 2
+    }
+}
+</code></pre><p>The <code>Bicycle</code> subclass defines a custom designated initializer, <code>init()</code>. This designated initializer matches a designated initializer from the superclass of <code>Bicycle</code>, and so the <code>Bicycle</code> version of this initializer is marked with the <code>override</code> modifier.</p><p>The <code>init()</code> initializer for <code>Bicycle</code> starts by calling <code>super.init()</code>, which calls the default initializer for the <code>Bicycle</code> class’s superclass, <code>Vehicle</code>. This ensures that the <code>numberOfWheels</code> inherited property is initialized by <code>Vehicle</code> before <code>Bicycle</code> has the opportunity to modify the property. After calling <code>super.init()</code>, the original value of <code>numberOfWheels</code> is replaced with a new value of <code>2</code>.</p><p>If you create an instance of <code>Bicycle</code>, you can call its inherited <code>description</code> computed property to see how its <code>numberOfWheels</code> property has been updated:</p><pre class="swift"><code>let bicycle = Bicycle()
+print("Bicycle: \(bicycle.description)")
+// Bicycle: 2 wheel(s)
+</code></pre><p>If a subclass initializer performs no customization in phase 2 of the initialization process, and the superclass has a synchronous, zero-argument designated initializer, you can omit a call to <code>super.init()</code> after assigning values to all of the subclass’s stored properties. If the superclass’s initializer is asynchronous, you need to write <code>await super.init()</code> explicitly.</p><p>This example defines another subclass of <code>Vehicle</code>, called <code>Hoverboard</code>. In its initializer, the <code>Hoverboard</code> class sets only its <code>color</code> property. Instead of making an explicit call to <code>super.init()</code>, this initializer relies on an implicit call to its superclass’s initializer to complete the process.</p><pre class="swift"><code>class Hoverboard: Vehicle {
+    var color: String
+    init(color: String) {
+        self.color = color
+        // super.init() implicitly called here
+    }
+    override var description: String {
+        return "\(super.description) in a beautiful \(color)"
+    }
+}
+</code></pre><p>An instance of <code>Hoverboard</code> uses the default number of wheels supplied by the <code>Vehicle</code> initializer.</p><pre class="swift"><code>let hoverboard = Hoverboard(color: "silver")
+print("Hoverboard: \(hoverboard.description)")
+// Hoverboard: 0 wheel(s) in a beautiful silver
+</code></pre><aside class="note"><p class="label">Note</p><p>Subclasses can modify inherited variable properties during initialization, but can’t modify inherited constant properties.</p></aside><h3 id="Automatic-Initializer-Inheritance"><a href="#Automatic-Initializer-Inheritance">Automatic Initializer Inheritance</a></h3><p>As mentioned above, subclasses don’t inherit their superclass initializers by default. However, superclass initializers <i>are</i> automatically inherited if certain conditions are met. In practice, this means that you don’t need to write initializer overrides in many common scenarios, and can inherit your superclass initializers with minimal effort whenever it’s safe to do so.</p><p>Assuming that you provide default values for any new properties you introduce in a subclass, the following two rules apply:</p><ul><li><p>term <b>Rule 1</b>: If your subclass doesn’t define any designated initializers, it automatically inherits all of its superclass designated initializers.</p></li><li><p>term <b>Rule 2</b>: If your subclass provides an implementation of <i>all</i> of its superclass designated initializers — either by inheriting them as per rule 1, or by providing a custom implementation as part of its definition — then it automatically inherits all of the superclass convenience initializers.</p></li></ul><p>These rules apply even if your subclass adds further convenience initializers.</p><aside class="note"><p class="label">Note</p><p>A subclass can implement a superclass designated initializer as a subclass convenience initializer as part of satisfying rule 2.</p></aside><h3 id="Designated-and-Convenience-Initializers-in-Action"><a href="#Designated-and-Convenience-Initializers-in-Action">Designated and Convenience Initializers in Action</a></h3><p>The following example shows designated initializers, convenience initializers, and automatic initializer inheritance in action. This example defines a hierarchy of three classes called <code>Food</code>, <code>RecipeIngredient</code>, and <code>ShoppingListItem</code>, and demonstrates how their initializers interact.</p><p>The base class in the hierarchy is called <code>Food</code>, which is a simple class to encapsulate the name of a foodstuff. The <code>Food</code> class introduces a single <code>String</code> property called <code>name</code> and provides two initializers for creating <code>Food</code> instances:</p><pre class="swift"><code>class Food {
+    var name: String
+    init(name: String) {
+        self.name = name
+    }
+    convenience init() {
+        self.init(name: "[Unnamed]")
+    }
+}
+</code></pre><p>The figure below shows the initializer chain for the <code>Food</code> class:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/initializersExample01@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/initializersExample01~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>Classes don’t have a default memberwise initializer, and so the <code>Food</code> class provides a designated initializer that takes a single argument called <code>name</code>. This initializer can be used to create a new <code>Food</code> instance with a specific name:</p><pre class="swift"><code>let namedMeat = Food(name: "Bacon")
+// namedMeat's name is "Bacon"
+</code></pre><p>The <code>init(name: String)</code> initializer from the <code>Food</code> class is provided as a <i>designated</i> initializer, because it ensures that all stored properties of a new <code>Food</code> instance are fully initialized. The <code>Food</code> class doesn’t have a superclass, and so the <code>init(name: String)</code> initializer doesn’t need to call <code>super.init()</code> to complete its initialization.</p><p>The <code>Food</code> class also provides a <i>convenience</i> initializer, <code>init()</code>, with no arguments. The <code>init()</code> initializer provides a default placeholder name for a new food by delegating across to the <code>Food</code> class’s <code>init(name: String)</code> with a <code>name</code> value of <code>[Unnamed]</code>:</p><pre class="swift"><code>let mysteryMeat = Food()
+// mysteryMeat's name is "[Unnamed]"
+</code></pre><p>The second class in the hierarchy is a subclass of <code>Food</code> called <code>RecipeIngredient</code>. The <code>RecipeIngredient</code> class models an ingredient in a cooking recipe. It introduces an <code>Int</code> property called <code>quantity</code> (in addition to the <code>name</code> property it inherits from <code>Food</code>) and defines two initializers for creating <code>RecipeIngredient</code> instances:</p><pre class="swift"><code>class RecipeIngredient: Food {
+    var quantity: Int
+    init(name: String, quantity: Int) {
+        self.quantity = quantity
+        super.init(name: name)
+    }
+    override convenience init(name: String) {
+        self.init(name: name, quantity: 1)
+    }
+}
+</code></pre><p>The figure below shows the initializer chain for the <code>RecipeIngredient</code> class:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/initializersExample02@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/initializersExample02~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>The <code>RecipeIngredient</code> class has a single designated initializer, <code>init(name: String, quantity: Int)</code>, which can be used to populate all of the properties of a new <code>RecipeIngredient</code> instance. This initializer starts by assigning the passed <code>quantity</code> argument to the <code>quantity</code> property, which is the only new property introduced by <code>RecipeIngredient</code>. After doing so, the initializer delegates up to the <code>init(name: String)</code> initializer of the <code>Food</code> class. This process satisfies safety check 1 from Initialization above.</p><p><code>RecipeIngredient</code> also defines a convenience initializer, <code>init(name: String)</code>, which is used to create a <code>RecipeIngredient</code> instance by name alone. This convenience initializer assumes a quantity of <code>1</code> for any <code>RecipeIngredient</code> instance that’s created without an explicit quantity. The definition of this convenience initializer makes <code>RecipeIngredient</code> instances quicker and more convenient to create, and avoids code duplication when creating several single-quantity <code>RecipeIngredient</code> instances. This convenience initializer simply delegates across to the class’s designated initializer, passing in a <code>quantity</code> value of <code>1</code>.</p><p>The <code>init(name: String)</code> convenience initializer provided by <code>RecipeIngredient</code> takes the same parameters as the <code>init(name: String)</code> <i>designated</i> initializer from <code>Food</code>. Because this convenience initializer overrides a designated initializer from its superclass, it must be marked with the <code>override</code> modifier (as described in Initialization).</p><p>Even though <code>RecipeIngredient</code> provides the <code>init(name: String)</code> initializer as a convenience initializer, <code>RecipeIngredient</code> has nonetheless provided an implementation of all of its superclass’s designated initializers. Therefore, <code>RecipeIngredient</code> automatically inherits all of its superclass’s convenience initializers too.</p><p>In this example, the superclass for <code>RecipeIngredient</code> is <code>Food</code>, which has a single convenience initializer called <code>init()</code>. This initializer is therefore inherited by <code>RecipeIngredient</code>. The inherited version of <code>init()</code> functions in exactly the same way as the <code>Food</code> version, except that it delegates to the <code>RecipeIngredient</code> version of <code>init(name: String)</code> rather than the <code>Food</code> version.</p><p>All three of these initializers can be used to create new <code>RecipeIngredient</code> instances:</p><pre class="swift"><code>let oneMysteryItem = RecipeIngredient()
+let oneBacon = RecipeIngredient(name: "Bacon")
+let sixEggs = RecipeIngredient(name: "Eggs", quantity: 6)
+</code></pre><p>The third and final class in the hierarchy is a subclass of <code>RecipeIngredient</code> called <code>ShoppingListItem</code>. The <code>ShoppingListItem</code> class models a recipe ingredient as it appears in a shopping list.</p><p>Every item in the shopping list starts out as “unpurchased”. To represent this fact, <code>ShoppingListItem</code> introduces a Boolean property called <code>purchased</code>, with a default value of <code>false</code>. <code>ShoppingListItem</code> also adds a computed <code>description</code> property, which provides a textual description of a <code>ShoppingListItem</code> instance:</p><pre class="swift"><code>class ShoppingListItem: RecipeIngredient {
+    var purchased = false
+    var description: String {
+        var output = "\(quantity) x \(name)"
+        output += purchased ? " ✔" : " ✘"
+        return output
+    }
+}
+</code></pre><aside class="note"><p class="label">Note</p><p><code>ShoppingListItem</code> doesn’t define an initializer to provide an initial value for <code>purchased</code>, because items in a shopping list (as modeled here) always start out unpurchased.</p></aside><p>Because it provides a default value for all of the properties it introduces and doesn’t define any initializers itself, <code>ShoppingListItem</code> automatically inherits <i>all</i> of the designated and convenience initializers from its superclass.</p><p>The figure below shows the overall initializer chain for all three classes:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/initializersExample03@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/initializersExample03~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>You can use all three of the inherited initializers to create a new <code>ShoppingListItem</code> instance:</p><pre class="swift"><code>var breakfastList = [
+    ShoppingListItem(),
+    ShoppingListItem(name: "Bacon"),
+    ShoppingListItem(name: "Eggs", quantity: 6),
+]
+breakfastList[0].name = "Orange juice"
+breakfastList[0].purchased = true
+for item in breakfastList {
+    print(item.description)
+}
+// 1 x Orange juice ✔
+// 1 x Bacon ✘
+// 6 x Eggs ✘
+</code></pre><p>Here, a new array called <code>breakfastList</code> is created from an array literal containing three new <code>ShoppingListItem</code> instances. The type of the array is inferred to be <code>[ShoppingListItem]</code>. After the array is created, the name of the <code>ShoppingListItem</code> at the start of the array is changed from <code>"[Unnamed]"</code> to <code>"Orange juice"</code> and it’s marked as having been purchased. Printing the description of each item in the array shows that their default states have been set as expected.</p><h2 id="Failable-Initializers"><a href="#Failable-Initializers">Failable Initializers</a></h2><p>It’s sometimes useful to define a class, structure, or enumeration for which initialization can fail. This failure might be triggered by invalid initialization parameter values, the absence of a required external resource, or some other condition that prevents initialization from succeeding.</p><p>To cope with initialization conditions that can fail, define one or more failable initializers as part of a class, structure, or enumeration definition. You write a failable initializer by placing a question mark after the <code>init</code> keyword (<code>init?</code>).</p><aside class="note"><p class="label">Note</p><p>You can’t define a failable and a nonfailable initializer with the same parameter types and names.</p></aside><p>A failable initializer creates an <i>optional</i> value of the type it initializes. You write <code>return nil</code> within a failable initializer to indicate a point at which initialization failure can be triggered.</p><aside class="note"><p class="label">Note</p><p>Strictly speaking, initializers don’t return a value. Rather, their role is to ensure that <code>self</code> is fully and correctly initialized by the time that initialization ends. Although you write <code>return nil</code> to trigger an initialization failure, you don’t use the <code>return</code> keyword to indicate initialization success.</p></aside><p>For instance, failable initializers are implemented for numeric type conversions. To ensure conversion between numeric types maintains the value exactly, use the <code>init(exactly:)</code> initializer. If the type conversion can’t maintain the value, the initializer fails.</p><pre class="swift"><code>let wholeNumber: Double = 12345.0
+let pi = 3.14159
+
+if let valueMaintained = Int(exactly: wholeNumber) {
+    print("\(wholeNumber) conversion to Int maintains value of \(valueMaintained)")
+}
+// Prints "12345.0 conversion to Int maintains value of 12345".
+
+let valueChanged = Int(exactly: pi)
+// valueChanged is of type Int?, not Int
+
+if valueChanged == nil {
+    print("\(pi) conversion to Int doesn't maintain value")
+}
+// Prints "3.14159 conversion to Int doesn't maintain value".
+</code></pre><p>The example below defines a structure called <code>Animal</code>, with a constant <code>String</code> property called <code>species</code>. The <code>Animal</code> structure also defines a failable initializer with a single parameter called <code>species</code>. This initializer checks if the <code>species</code> value passed to the initializer is an empty string. If an empty string is found, an initialization failure is triggered. Otherwise, the <code>species</code> property’s value is set, and initialization succeeds:</p><pre class="swift"><code>struct Animal {
+    let species: String
+    init?(species: String) {
+        if species.isEmpty { return nil }
+        self.species = species
+    }
+}
+</code></pre><p>You can use this failable initializer to try to initialize a new <code>Animal</code> instance and to check if initialization succeeded:</p><pre class="swift"><code>let someCreature = Animal(species: "Giraffe")
+// someCreature is of type Animal?, not Animal
+
+if let giraffe = someCreature {
+    print("An animal was initialized with a species of \(giraffe.species)")
+}
+// Prints "An animal was initialized with a species of Giraffe".
+</code></pre><p>If you pass an empty string value to the failable initializer’s <code>species</code> parameter, the initializer triggers an initialization failure:</p><pre class="swift"><code>let anonymousCreature = Animal(species: "")
+// anonymousCreature is of type Animal?, not Animal
+
+if anonymousCreature == nil {
+    print("The anonymous creature couldn't be initialized")
+}
+// Prints "The anonymous creature couldn't be initialized".
+</code></pre><aside class="note"><p class="label">Note</p><p>Checking for an empty string value (such as <code>""</code> rather than <code>"Giraffe"</code>) isn’t the same as checking for <code>nil</code> to indicate the absence of an <i>optional</i> <code>String</code> value. In the example above, an empty string (<code>""</code>) is a valid, non-optional <code>String</code>. However, it’s not appropriate for an animal to have an empty string as the value of its <code>species</code> property. To model this restriction, the failable initializer triggers an initialization failure if an empty string is found.</p></aside><h3 id="Failable-Initializers-for-Enumerations"><a href="#Failable-Initializers-for-Enumerations">Failable Initializers for Enumerations</a></h3><p>You can use a failable initializer to select an appropriate enumeration case based on one or more parameters. The initializer can then fail if the provided parameters don’t match an appropriate enumeration case.</p><p>The example below defines an enumeration called <code>TemperatureUnit</code>, with three possible states (<code>kelvin</code>, <code>celsius</code>, and <code>fahrenheit</code>). A failable initializer is used to find an appropriate enumeration case for a <code>Character</code> value representing a temperature symbol:</p><pre class="swift"><code>enum TemperatureUnit {
+    case kelvin, celsius, fahrenheit
+    init?(symbol: Character) {
+        switch symbol {
+        case "K":
+            self = .kelvin
+        case "C":
+            self = .celsius
+        case "F":
+            self = .fahrenheit
+        default:
+            return nil
+        }
+    }
+}
+</code></pre><p>You can use this failable initializer to choose an appropriate enumeration case for the three possible states and to cause initialization to fail if the parameter doesn’t match one of these states:</p><pre class="swift"><code>let fahrenheitUnit = TemperatureUnit(symbol: "F")
+if fahrenheitUnit != nil {
+    print("This is a defined temperature unit, so initialization succeeded.")
+}
+// Prints "This is a defined temperature unit, so initialization succeeded."
+
+let unknownUnit = TemperatureUnit(symbol: "X")
+if unknownUnit == nil {
+    print("This isn't a defined temperature unit, so initialization failed.")
+}
+// Prints "This isn't a defined temperature unit, so initialization failed."
+</code></pre><h3 id="Failable-Initializers-for-Enumerations-with-Raw-Values"><a href="#Failable-Initializers-for-Enumerations-with-Raw-Values">Failable Initializers for Enumerations with Raw Values</a></h3><p>Enumerations with raw values automatically receive a failable initializer, <code>init?(rawValue:)</code>, that takes a parameter called <code>rawValue</code> of the appropriate raw-value type and selects a matching enumeration case if one is found, or triggers an initialization failure if no matching value exists.</p><p>You can rewrite the <code>TemperatureUnit</code> example from above to use raw values of type <code>Character</code> and to take advantage of the <code>init?(rawValue:)</code> initializer:</p><pre class="swift"><code>enum TemperatureUnit: Character {
+    case kelvin = "K", celsius = "C", fahrenheit = "F"
+}
+
+let fahrenheitUnit = TemperatureUnit(rawValue: "F")
+if fahrenheitUnit != nil {
+    print("This is a defined temperature unit, so initialization succeeded.")
+}
+// Prints "This is a defined temperature unit, so initialization succeeded."
+
+let unknownUnit = TemperatureUnit(rawValue: "X")
+if unknownUnit == nil {
+    print("This isn't a defined temperature unit, so initialization failed.")
+}
+// Prints "This isn't a defined temperature unit, so initialization failed."
+</code></pre><h3 id="Propagation-of-Initialization-Failure"><a href="#Propagation-of-Initialization-Failure">Propagation of Initialization Failure</a></h3><p>A failable initializer of a class, structure, or enumeration can delegate across to another failable initializer from the same class, structure, or enumeration. Similarly, a subclass failable initializer can delegate up to a superclass failable initializer.</p><p>In either case, if you delegate to another initializer that causes initialization to fail, the entire initialization process fails immediately, and no further initialization code is executed.</p><aside class="note"><p class="label">Note</p><p>A failable initializer can also delegate to a nonfailable initializer. Use this approach if you need to add a potential failure state to an existing initialization process that doesn’t otherwise fail.</p></aside><p>The example below defines a subclass of <code>Product</code> called <code>CartItem</code>. The <code>CartItem</code> class models an item in an online shopping cart. <code>CartItem</code> introduces a stored constant property called <code>quantity</code> and ensures that this property always has a value of at least <code>1</code>:</p><pre class="swift"><code>class Product {
+    let name: String
+    init?(name: String) {
+        if name.isEmpty { return nil }
+        self.name = name
+    }
+}
+
+class CartItem: Product {
+    let quantity: Int
+    init?(name: String, quantity: Int) {
+        if quantity &lt; 1 { return nil }
+        self.quantity = quantity
+        super.init(name: name)
+    }
+}
+</code></pre><p>The failable initializer for <code>CartItem</code> starts by validating that it has received a <code>quantity</code> value of <code>1</code> or more. If the <code>quantity</code> is invalid, the entire initialization process fails immediately and no further initialization code is executed. Likewise, the failable initializer for <code>Product</code> checks the <code>name</code> value, and the initializer process fails immediately if <code>name</code> is the empty string.</p><p>If you create a <code>CartItem</code> instance with a nonempty name and a quantity of <code>1</code> or more, initialization succeeds:</p><pre class="swift"><code>if let twoSocks = CartItem(name: "sock", quantity: 2) {
+    print("Item: \(twoSocks.name), quantity: \(twoSocks.quantity)")
+}
+// Prints "Item: sock, quantity: 2".
+</code></pre><p>If you try to create a <code>CartItem</code> instance with a <code>quantity</code> value of <code>0</code>, the <code>CartItem</code> initializer causes initialization to fail:</p><pre class="swift"><code>if let zeroShirts = CartItem(name: "shirt", quantity: 0) {
+    print("Item: \(zeroShirts.name), quantity: \(zeroShirts.quantity)")
+} else {
+    print("Unable to initialize zero shirts")
+}
+// Prints "Unable to initialize zero shirts".
+</code></pre><p>Similarly, if you try to create a <code>CartItem</code> instance with an empty <code>name</code> value, the superclass <code>Product</code> initializer causes initialization to fail:</p><pre class="swift"><code>if let oneUnnamed = CartItem(name: "", quantity: 1) {
+    print("Item: \(oneUnnamed.name), quantity: \(oneUnnamed.quantity)")
+} else {
+    print("Unable to initialize one unnamed product")
+}
+// Prints "Unable to initialize one unnamed product".
+</code></pre><h3 id="Overriding-a-Failable-Initializer"><a href="#Overriding-a-Failable-Initializer">Overriding a Failable Initializer</a></h3><p>You can override a superclass failable initializer in a subclass, just like any other initializer. Alternatively, you can override a superclass failable initializer with a subclass <i>nonfailable</i> initializer. This enables you to define a subclass for which initialization can’t fail, even though initialization of the superclass is allowed to fail.</p><p>Note that if you override a failable superclass initializer with a nonfailable subclass initializer, the only way to delegate up to the superclass initializer is to force-unwrap the result of the failable superclass initializer.</p><aside class="note"><p class="label">Note</p><p>You can override a failable initializer with a nonfailable initializer but not the other way around.</p></aside><p>The example below defines a class called <code>Document</code>. This class models a document that can be initialized with a <code>name</code> property that’s either a nonempty string value or <code>nil</code>, but can’t be an empty string:</p><pre class="swift"><code>class Document {
+    var name: String?
+    // this initializer creates a document with a nil name value
+    init() {}
+    // this initializer creates a document with a nonempty name value
+    init?(name: String) {
+        if name.isEmpty { return nil }
+        self.name = name
+    }
+}
+</code></pre><p>The next example defines a subclass of <code>Document</code> called <code>AutomaticallyNamedDocument</code>. The <code>AutomaticallyNamedDocument</code> subclass overrides both of the designated initializers introduced by <code>Document</code>. These overrides ensure that an <code>AutomaticallyNamedDocument</code> instance has an initial <code>name</code> value of <code>"[Untitled]"</code> if the instance is initialized without a name, or if an empty string is passed to the <code>init(name:)</code> initializer:</p><pre class="swift"><code>class AutomaticallyNamedDocument: Document {
+    override init() {
+        super.init()
+        self.name = "[Untitled]"
+    }
+    override init(name: String) {
+        super.init()
+        if name.isEmpty {
+            self.name = "[Untitled]"
+        } else {
+            self.name = name
+        }
+    }
+}
+</code></pre><p>The <code>AutomaticallyNamedDocument</code> overrides its superclass’s failable <code>init?(name:)</code> initializer with a nonfailable <code>init(name:)</code> initializer. Because <code>AutomaticallyNamedDocument</code> copes with the empty string case in a different way than its superclass, its initializer doesn’t need to fail, and so it provides a nonfailable version of the initializer instead.</p><p>You can use forced unwrapping in an initializer to call a failable initializer from the superclass as part of the implementation of a subclass’s nonfailable initializer. For example, the <code>UntitledDocument</code> subclass below is always named <code>"[Untitled]"</code>, and it uses the failable <code>init(name:)</code> initializer from its superclass during initialization.</p><pre class="swift"><code>class UntitledDocument: Document {
+    override init() {
+        super.init(name: "[Untitled]")!
+    }
+}
+</code></pre><p>In this case, if the <code>init(name:)</code> initializer of the superclass were ever called with an empty string as the name, the forced unwrapping operation would result in a runtime error. However, because it’s called with a string literal, you can see that the initializer won’t fail, so no runtime error can occur in this case.</p><h3 id="The-init-Failable-Initializer"><a href="#The-init-Failable-Initializer">The init! Failable Initializer</a></h3><p>You typically define a failable initializer that creates an optional instance of the appropriate type by placing a question mark after the <code>init</code> keyword (<code>init?</code>). Alternatively, you can define a failable initializer that creates an implicitly unwrapped optional instance of the appropriate type. Do this by placing an exclamation point after the <code>init</code> keyword (<code>init!</code>) instead of a question mark.</p><p>You can delegate from <code>init?</code> to <code>init!</code> and vice versa, and you can override <code>init?</code> with <code>init!</code> and vice versa. You can also delegate from <code>init</code> to <code>init!</code>, although doing so will trigger an assertion if the <code>init!</code> initializer causes initialization to fail.</p><h2 id="Required-Initializers"><a href="#Required-Initializers">Required Initializers</a></h2><p>Write the <code>required</code> modifier before the definition of a class initializer to indicate that every subclass of the class must implement that initializer:</p><pre class="swift"><code>class SomeClass {
+    required init() {
+        // initializer implementation goes here
+    }
+}
+</code></pre><p>You must also write the <code>required</code> modifier before every subclass implementation of a required initializer, to indicate that the initializer requirement applies to further subclasses in the chain. You don’t write the <code>override</code> modifier when overriding a required designated initializer:</p><pre class="swift"><code>class SomeSubclass: SomeClass {
+    required init() {
+        // subclass implementation of the required initializer goes here
+    }
+}
+</code></pre><aside class="note"><p class="label">Note</p><p>You don’t have to provide an explicit implementation of a required initializer if you can satisfy the requirement with an inherited initializer.</p></aside><h2 id="Setting-a-Default-Property-Value-with-a-Closure-or-Function"><a href="#Setting-a-Default-Property-Value-with-a-Closure-or-Function">Setting a Default Property Value with a Closure or Function</a></h2><p>If a stored property’s default value requires some customization or setup, you can use a closure or global function to provide a customized default value for that property. Whenever a new instance of the type that the property belongs to is initialized, the closure or function is called, and its return value is assigned as the property’s default value.</p><p>These kinds of closures or functions typically create a temporary value of the same type as the property, tailor that value to represent the desired initial state, and then return that temporary value to be used as the property’s default value.</p><p>Here’s a skeleton outline of how a closure can be used to provide a default property value:</p><pre class="swift"><code>class SomeClass {
+    let someProperty: SomeType = {
+        // create a default value for someProperty inside this closure
+        // someValue must be of the same type as SomeType
+        return someValue
+    }()
+}
+</code></pre><p>Note that the closure’s end curly brace is followed by an empty pair of parentheses. This tells Swift to execute the closure immediately. If you omit these parentheses, you are trying to assign the closure itself to the property, and not the return value of the closure.</p><aside class="note"><p class="label">Note</p><p>If you use a closure to initialize a property, remember that the rest of the instance hasn’t yet been initialized at the point that the closure is executed. This means that you can’t access any other property values from within your closure, even if those properties have default values. You also can’t use the implicit <code>self</code> property, or call any of the instance’s methods.</p></aside><p>The example below defines a structure called <code>Chessboard</code>, which models a board for the game of chess. Chess is played on an 8 x 8 board, with alternating black and white squares.</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/chessBoard@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/chessBoard~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>To represent this game board, the <code>Chessboard</code> structure has a single property called <code>boardColors</code>, which is an array of 64 <code>Bool</code> values. A value of <code>true</code> in the array represents a black square and a value of <code>false</code> represents a white square. The first item in the array represents the top left square on the board and the last item in the array represents the bottom right square on the board.</p><p>The <code>boardColors</code> array is initialized with a closure to set up its color values:</p><pre class="swift"><code>struct Chessboard {
+    let boardColors: [Bool] = {
+        var temporaryBoard: [Bool] = []
+        var isBlack = false
+        for i in 1...8 {
+            for j in 1...8 {
+                temporaryBoard.append(isBlack)
+                isBlack = !isBlack
+            }
+            isBlack = !isBlack
+        }
+        return temporaryBoard
+    }()
+    func squareIsBlackAt(row: Int, column: Int) -> Bool {
+        return boardColors[(row * 8) + column]
+    }
+}
+</code></pre><p>Whenever a new <code>Chessboard</code> instance is created, the closure is executed, and the default value of <code>boardColors</code> is calculated and returned. The closure in the example above calculates and sets the appropriate color for each square on the board in a temporary array called <code>temporaryBoard</code>, and returns this temporary array as the closure’s return value once its setup is complete. The returned array value is stored in <code>boardColors</code> and can be queried with the <code>squareIsBlackAt(row:column:)</code> utility function:</p><pre class="swift"><code>let board = Chessboard()
+print(board.squareIsBlackAt(row: 0, column: 1))
+// Prints "true".
+print(board.squareIsBlackAt(row: 7, column: 7))
+// Prints "false".
+</code></pre></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

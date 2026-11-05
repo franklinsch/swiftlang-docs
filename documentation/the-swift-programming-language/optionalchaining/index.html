@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Optional Chaining</title><meta content="Access members of an optional value without unwrapping." name="description"><script src="../../../navigator-index-swift-book.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">The Swift Programming Language (6.4)</a></li><li>Optional Chaining</li></ul></nav><hgroup><p>Article</p><h1>Optional Chaining</h1></hgroup><p>Access members of an optional value without unwrapping.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p><i>Optional chaining</i> is a process for querying and calling properties, methods, and subscripts on an optional that might currently be <code>nil</code>. If the optional contains a value, the property, method, or subscript call succeeds; if the optional is <code>nil</code>, the property, method, or subscript call returns <code>nil</code>. Multiple queries can be chained together, and the entire chain fails gracefully if any link in the chain is <code>nil</code>.</p><aside class="note"><p class="label">Note</p><p>Optional chaining in Swift is similar to messaging <code>nil</code> in Objective-C, but in a way that works for any type, and that can be checked for success or failure.</p></aside><h2 id="Optional-Chaining-as-an-Alternative-to-Forced-Unwrapping"><a href="#Optional-Chaining-as-an-Alternative-to-Forced-Unwrapping">Optional Chaining as an Alternative to Forced Unwrapping</a></h2><p>You specify optional chaining by placing a question mark (<code>?</code>) after the optional value on which you wish to call a property, method or subscript if the optional is non-<code>nil</code>. This is very similar to placing an exclamation point (<code>!</code>) after an optional value to force the unwrapping of its value. The main difference is that optional chaining fails gracefully when the optional is <code>nil</code>, whereas forced unwrapping triggers a runtime error when the optional is <code>nil</code>.</p><p>To reflect the fact that optional chaining can be called on a <code>nil</code> value, the result of an optional chaining call is always an optional value, even if the property, method, or subscript you are querying returns a non-optional value. You can use this optional return value to check whether the optional chaining call was successful (the returned optional contains a value), or didn’t succeed due to a <code>nil</code> value in the chain (the returned optional value is <code>nil</code>).</p><p>Specifically, the result of an optional chaining call is of the same type as the expected return value, but wrapped in an optional. A property that normally returns an <code>Int</code> will return an <code>Int?</code> when accessed through optional chaining.</p><p>The next several code snippets demonstrate how optional chaining differs from forced unwrapping and enables you to check for success.</p><p>First, two classes called <code>Person</code> and <code>Residence</code> are defined:</p><pre class="swift"><code>class Person {
+    var residence: Residence?
+}
+
+class Residence {
+    var numberOfRooms = 1
+}
+</code></pre><p><code>Residence</code> instances have a single <code>Int</code> property called <code>numberOfRooms</code>, with a default value of <code>1</code>. <code>Person</code> instances have an optional <code>residence</code> property of type <code>Residence?</code>.</p><p>If you create a new <code>Person</code> instance, its <code>residence</code> property is default initialized to <code>nil</code>, by virtue of being optional. In the code below, <code>john</code> has a <code>residence</code> property value of <code>nil</code>:</p><pre class="swift"><code>let john = Person()
+</code></pre><p>If you try to access the <code>numberOfRooms</code> property of this person’s <code>residence</code>, by placing an exclamation point after <code>residence</code> to force the unwrapping of its value, you trigger a runtime error, because there’s no <code>residence</code> value to unwrap:</p><pre class="swift"><code>let roomCount = john.residence!.numberOfRooms
+// this triggers a runtime error
+</code></pre><p>The code above succeeds when <code>john.residence</code> has a non-<code>nil</code> value and will set <code>roomCount</code> to an <code>Int</code> value containing the appropriate number of rooms. However, this code always triggers a runtime error when <code>residence</code> is <code>nil</code>, as illustrated above.</p><p>Optional chaining provides an alternative way to access the value of <code>numberOfRooms</code>. To use optional chaining, use a question mark in place of the exclamation point:</p><pre class="swift"><code>if let roomCount = john.residence?.numberOfRooms {
+    print("John's residence has \(roomCount) room(s).")
+} else {
+    print("Unable to retrieve the number of rooms.")
+}
+// Prints "Unable to retrieve the number of rooms."
+</code></pre><p>This tells Swift to “chain” on the optional <code>residence</code> property and to retrieve the value of <code>numberOfRooms</code> if <code>residence</code> exists.</p><p>Because the attempt to access <code>numberOfRooms</code> has the potential to fail, the optional chaining attempt returns a value of type <code>Int?</code>, or “optional <code>Int</code>”. When <code>residence</code> is <code>nil</code>, as in the example above, this optional <code>Int</code> will also be <code>nil</code>, to reflect the fact that it was not possible to access <code>numberOfRooms</code>. The optional <code>Int</code> is accessed through optional binding to unwrap the integer and assign the non-optional value to the <code>roomCount</code> constant.</p><p>Note that this is true even though <code>numberOfRooms</code> is a non-optional <code>Int</code>. The fact that it’s queried through an optional chain means that the call to <code>numberOfRooms</code> will always return an <code>Int?</code> instead of an <code>Int</code>.</p><p>You can assign a <code>Residence</code> instance to <code>john.residence</code>, so that it no longer has a <code>nil</code> value:</p><pre class="swift"><code>john.residence = Residence()
+</code></pre><p><code>john.residence</code> now contains an actual <code>Residence</code> instance, rather than <code>nil</code>. If you try to access <code>numberOfRooms</code> with the same optional chaining as before, it will now return an <code>Int?</code> that contains the default <code>numberOfRooms</code> value of <code>1</code>:</p><pre class="swift"><code>if let roomCount = john.residence?.numberOfRooms {
+    print("John's residence has \(roomCount) room(s).")
+} else {
+    print("Unable to retrieve the number of rooms.")
+}
+// Prints "John's residence has 1 room(s)."
+</code></pre><h2 id="Defining-Model-Classes-for-Optional-Chaining"><a href="#Defining-Model-Classes-for-Optional-Chaining">Defining Model Classes for Optional Chaining</a></h2><p>You can use optional chaining with calls to properties, methods, and subscripts that are more than one level deep. This enables you to drill down into subproperties within complex models of interrelated types, and to check whether it’s possible to access properties, methods, and subscripts on those subproperties.</p><p>The code snippets below define four model classes for use in several subsequent examples, including examples of multilevel optional chaining. These classes expand upon the <code>Person</code> and <code>Residence</code> model from above by adding a <code>Room</code> and <code>Address</code> class, with associated properties, methods, and subscripts.</p><p>The <code>Person</code> class is defined in the same way as before:</p><pre class="swift"><code>class Person {
+    var residence: Residence?
+}
+</code></pre><p>The <code>Residence</code> class is more complex than before. This time, the <code>Residence</code> class defines a variable property called <code>rooms</code>, which is initialized with an empty array of type <code>[Room]</code>:</p><pre class="swift"><code>class Residence {
+    var rooms: [Room] = []
+    var numberOfRooms: Int {
+        return rooms.count
+    }
+    subscript(i: Int) -> Room {
+        get {
+            return rooms[i]
+        }
+        set {
+            rooms[i] = newValue
+        }
+    }
+    func printNumberOfRooms() {
+        print("The number of rooms is \(numberOfRooms)")
+    }
+    var address: Address?
+}
+</code></pre><p>Because this version of <code>Residence</code> stores an array of <code>Room</code> instances, its <code>numberOfRooms</code> property is implemented as a computed property, not a stored property. The computed <code>numberOfRooms</code> property simply returns the value of the <code>count</code> property from the <code>rooms</code> array.</p><p>As a shortcut to accessing its <code>rooms</code> array, this version of <code>Residence</code> provides a read-write subscript that provides access to the room at the requested index in the <code>rooms</code> array.</p><p>This version of <code>Residence</code> also provides a method called <code>printNumberOfRooms</code>, which simply prints the number of rooms in the residence.</p><p>Finally, <code>Residence</code> defines an optional property called <code>address</code>, with a type of <code>Address?</code>. The <code>Address</code> class type for this property is defined below.</p><p>The <code>Room</code> class used for the <code>rooms</code> array is a simple class with one property called <code>name</code>, and an initializer to set that property to a suitable room name:</p><pre class="swift"><code>class Room {
+    let name: String
+    init(name: String) { self.name = name }
+}
+</code></pre><p>The final class in this model is called <code>Address</code>. This class has three optional properties of type <code>String?</code>. The first two properties, <code>buildingName</code> and <code>buildingNumber</code>, are alternative ways to identify a particular building as part of an address. The third property, <code>street</code>, is used to name the street for that address:</p><pre class="swift"><code>class Address {
+    var buildingName: String?
+    var buildingNumber: String?
+    var street: String?
+    func buildingIdentifier() -> String? {
+        if let buildingNumber = buildingNumber, let street = street {
+            return "\(buildingNumber) \(street)"
+        } else if buildingName != nil {
+            return buildingName
+        } else {
+            return nil
+        }
+    }
+}
+</code></pre><p>The <code>Address</code> class also provides a method called <code>buildingIdentifier()</code>, which has a return type of <code>String?</code>. This method checks the properties of the address and returns <code>buildingName</code> if it has a value, or <code>buildingNumber</code> concatenated with <code>street</code> if both have values, or <code>nil</code> otherwise.</p><h2 id="Accessing-Properties-Through-Optional-Chaining"><a href="#Accessing-Properties-Through-Optional-Chaining">Accessing Properties Through Optional Chaining</a></h2><p>As demonstrated in OptionalChaining, you can use optional chaining to access a property on an optional value, and to check if that property access is successful.</p><p>Use the classes defined above to create a new <code>Person</code> instance, and try to access its <code>numberOfRooms</code> property as before:</p><pre class="swift"><code>let john = Person()
+if let roomCount = john.residence?.numberOfRooms {
+    print("John's residence has \(roomCount) room(s).")
+} else {
+    print("Unable to retrieve the number of rooms.")
+}
+// Prints "Unable to retrieve the number of rooms."
+</code></pre><p>Because <code>john.residence</code> is <code>nil</code>, this optional chaining call fails in the same way as before.</p><p>You can also attempt to set a property’s value through optional chaining:</p><pre class="swift"><code>let someAddress = Address()
+someAddress.buildingNumber = "29"
+someAddress.street = "Acacia Road"
+john.residence?.address = someAddress
+</code></pre><p>In this example, the attempt to set the <code>address</code> property of <code>john.residence</code> will fail, because <code>john.residence</code> is currently <code>nil</code>.</p><p>The assignment is part of the optional chaining, which means none of the code on the right-hand side of the <code>=</code> operator is evaluated. In the previous example, it’s not easy to see that <code>someAddress</code> is never evaluated, because accessing a constant doesn’t have any side effects. The listing below does the same assignment, but it uses a function to create the address. The function prints “Function was called” before returning a value, which lets you see whether the right-hand side of the <code>=</code> operator was evaluated.</p><pre class="swift"><code>func createAddress() -> Address {
+    print("Function was called.")
+
+    let someAddress = Address()
+    someAddress.buildingNumber = "29"
+    someAddress.street = "Acacia Road"
+
+    return someAddress
+}
+john.residence?.address = createAddress()
+</code></pre><p>You can tell that the <code>createAddress()</code> function isn’t called, because nothing is printed.</p><h2 id="Calling-Methods-Through-Optional-Chaining"><a href="#Calling-Methods-Through-Optional-Chaining">Calling Methods Through Optional Chaining</a></h2><p>You can use optional chaining to call a method on an optional value, and to check whether that method call is successful. You can do this even if that method doesn’t define a return value.</p><p>The <code>printNumberOfRooms()</code> method on the <code>Residence</code> class prints the current value of <code>numberOfRooms</code>. Here’s how the method looks:</p><pre class="swift"><code>func printNumberOfRooms() {
+    print("The number of rooms is \(numberOfRooms)")
+}
+</code></pre><p>This method doesn’t specify a return type. However, functions and methods with no return type have an implicit return type of <code>Void</code>, as described in Functions. This means that they return a value of <code>()</code>, or an empty tuple.</p><p>If you call this method on an optional value with optional chaining, the method’s return type will be <code>Void?</code>, not <code>Void</code>, because return values are always of an optional type when called through optional chaining. This enables you to use an <code>if</code> statement to check whether it was possible to call the <code>printNumberOfRooms()</code> method, even though the method doesn’t itself define a return value. Compare the return value from the <code>printNumberOfRooms</code> call against <code>nil</code> to see if the method call was successful:</p><pre class="swift"><code>if john.residence?.printNumberOfRooms() != nil {
+    print("It was possible to print the number of rooms.")
+} else {
+    print("It was not possible to print the number of rooms.")
+}
+// Prints "It was not possible to print the number of rooms."
+</code></pre><p>The same is true if you attempt to set a property through optional chaining. The example above in OptionalChaining attempts to set an <code>address</code> value for <code>john.residence</code>, even though the <code>residence</code> property is <code>nil</code>. Any attempt to set a property through optional chaining returns a value of type <code>Void?</code>, which enables you to compare against <code>nil</code> to see if the property was set successfully:</p><pre class="swift"><code>if (john.residence?.address = someAddress) != nil {
+    print("It was possible to set the address.")
+} else {
+    print("It was not possible to set the address.")
+}
+// Prints "It was not possible to set the address."
+</code></pre><h2 id="Accessing-Subscripts-Through-Optional-Chaining"><a href="#Accessing-Subscripts-Through-Optional-Chaining">Accessing Subscripts Through Optional Chaining</a></h2><p>You can use optional chaining to try to retrieve and set a value from a subscript on an optional value, and to check whether that subscript call is successful.</p><aside class="note"><p class="label">Note</p><p>When you access a subscript on an optional value through optional chaining, you place the question mark <i>before</i> the subscript’s brackets, not after. The optional chaining question mark always follows immediately after the part of the expression that’s optional.</p></aside><p>The example below tries to retrieve the name of the first room in the <code>rooms</code> array of the <code>john.residence</code> property using the subscript defined on the <code>Residence</code> class. Because <code>john.residence</code> is currently <code>nil</code>, the subscript call fails:</p><pre class="swift"><code>if let firstRoomName = john.residence?[0].name {
+    print("The first room name is \(firstRoomName).")
+} else {
+    print("Unable to retrieve the first room name.")
+}
+// Prints "Unable to retrieve the first room name."
+</code></pre><p>The optional chaining question mark in this subscript call is placed immediately after <code>john.residence</code>, before the subscript brackets, because <code>john.residence</code> is the optional value on which optional chaining is being attempted.</p><p>Similarly, you can try to set a new value through a subscript with optional chaining:</p><pre class="swift"><code>john.residence?[0] = Room(name: "Bathroom")
+</code></pre><p>This subscript setting attempt also fails, because <code>residence</code> is currently <code>nil</code>.</p><p>If you create and assign an actual <code>Residence</code> instance to <code>john.residence</code>, with one or more <code>Room</code> instances in its <code>rooms</code> array, you can use the <code>Residence</code> subscript to access the actual items in the <code>rooms</code> array through optional chaining:</p><pre class="swift"><code>let johnsHouse = Residence()
+johnsHouse.rooms.append(Room(name: "Living Room"))
+johnsHouse.rooms.append(Room(name: "Kitchen"))
+john.residence = johnsHouse
+
+if let firstRoomName = john.residence?[0].name {
+    print("The first room name is \(firstRoomName).")
+} else {
+    print("Unable to retrieve the first room name.")
+}
+// Prints "The first room name is Living Room."
+</code></pre><h3 id="Accessing-Subscripts-of-Optional-Type"><a href="#Accessing-Subscripts-of-Optional-Type">Accessing Subscripts of Optional Type</a></h3><p>If a subscript returns a value of optional type — such as the key subscript of Swift’s <code>Dictionary</code> type — place a question mark <i>after</i> the subscript’s closing bracket to chain on its optional return value:</p><pre class="swift"><code>var testScores = ["Dave": [86, 82, 84], "Bev": [79, 94, 81]]
+testScores["Dave"]?[0] = 91
+testScores["Bev"]?[0] += 1
+testScores["Brian"]?[0] = 72
+// the "Dave" array is now [91, 82, 84] and the "Bev" array is now [80, 94, 81]
+</code></pre><p>The example above defines a dictionary called <code>testScores</code>, which contains two key-value pairs that map a <code>String</code> key to an array of <code>Int</code> values. The example uses optional chaining to set the first item in the <code>"Dave"</code> array to <code>91</code>; to increment the first item in the <code>"Bev"</code> array by <code>1</code>; and to try to set the first item in an array for a key of <code>"Brian"</code>. The first two calls succeed, because the <code>testScores</code> dictionary contains keys for <code>"Dave"</code> and <code>"Bev"</code>. The third call fails, because the <code>testScores</code> dictionary doesn’t contain a key for <code>"Brian"</code>.</p><h2 id="Linking-Multiple-Levels-of-Chaining"><a href="#Linking-Multiple-Levels-of-Chaining">Linking Multiple Levels of Chaining</a></h2><p>You can link together multiple levels of optional chaining to drill down to properties, methods, and subscripts deeper within a model. However, multiple levels of optional chaining don’t add more levels of optionality to the returned value.</p><p>To put it another way:</p><ul><li><p>If the type you are trying to retrieve isn’t optional, it will become optional because of the optional chaining.</p></li><li><p>If the type you are trying to retrieve is <i>already</i> optional, it will not become <i>more</i> optional because of the chaining.</p></li></ul><p>Therefore:</p><ul><li><p>If you try to retrieve an <code>Int</code> value through optional chaining, an <code>Int?</code> is always returned, no matter how many levels of chaining are used.</p></li><li><p>Similarly, if you try to retrieve an <code>Int?</code> value through optional chaining, an <code>Int?</code> is always returned, no matter how many levels of chaining are used.</p></li></ul><p>The example below tries to access the <code>street</code> property of the <code>address</code> property of the <code>residence</code> property of <code>john</code>. There are <i>two</i> levels of optional chaining in use here, to chain through the <code>residence</code> and <code>address</code> properties, both of which are of optional type:</p><pre class="swift"><code>if let johnsStreet = john.residence?.address?.street {
+    print("John's street name is \(johnsStreet).")
+} else {
+    print("Unable to retrieve the address.")
+}
+// Prints "Unable to retrieve the address."
+</code></pre><p>The value of <code>john.residence</code> currently contains a valid <code>Residence</code> instance. However, the value of <code>john.residence.address</code> is currently <code>nil</code>. Because of this, the call to <code>john.residence?.address?.street</code> fails.</p><p>Note that in the example above, you are trying to retrieve the value of the <code>street</code> property. The type of this property is <code>String?</code>. The return value of <code>john.residence?.address?.street</code> is therefore also <code>String?</code>, even though two levels of optional chaining are applied in addition to the underlying optional type of the property.</p><p>If you set an actual <code>Address</code> instance as the value for <code>john.residence.address</code>, and set an actual value for the address’s <code>street</code> property, you can access the value of the <code>street</code> property through multilevel optional chaining:</p><pre class="swift"><code>let johnsAddress = Address()
+johnsAddress.buildingName = "The Larches"
+johnsAddress.street = "Laurel Street"
+john.residence?.address = johnsAddress
+
+if let johnsStreet = john.residence?.address?.street {
+    print("John's street name is \(johnsStreet).")
+} else {
+    print("Unable to retrieve the address.")
+}
+// Prints "John's street name is Laurel Street."
+</code></pre><p>In this example, the attempt to set the <code>address</code> property of <code>john.residence</code> will succeed, because the value of <code>john.residence</code> currently contains a valid <code>Residence</code> instance.</p><h2 id="Chaining-on-Methods-with-Optional-Return-Values"><a href="#Chaining-on-Methods-with-Optional-Return-Values">Chaining on Methods with Optional Return Values</a></h2><p>The previous example shows how to retrieve the value of a property of optional type through optional chaining. You can also use optional chaining to call a method that returns a value of optional type, and to chain on that method’s return value if needed.</p><p>The example below calls the <code>Address</code> class’s <code>buildingIdentifier()</code> method through optional chaining. This method returns a value of type <code>String?</code>. As described above, the ultimate return type of this method call after optional chaining is also <code>String?</code>:</p><pre class="swift"><code>if let buildingIdentifier = john.residence?.address?.buildingIdentifier() {
+    print("John's building identifier is \(buildingIdentifier).")
+}
+// Prints "John's building identifier is The Larches."
+</code></pre><p>If you want to perform further optional chaining on this method’s return value, place the optional chaining question mark <i>after</i> the method’s parentheses:</p><pre class="swift"><code>if let beginsWithThe =
+    john.residence?.address?.buildingIdentifier()?.hasPrefix("The") {
+    if beginsWithThe {
+        print("John's building identifier begins with \"The\".")
+    } else {
+        print("John's building identifier doesn't begin with \"The\".")
+    }
+}
+// Prints "John's building identifier begins with "The"."
+</code></pre><aside class="note"><p class="label">Note</p><p>In the example above, you place the optional chaining question mark <i>after</i> the parentheses, because the optional value you are chaining on is the <code>buildingIdentifier()</code> method’s return value, and not the <code>buildingIdentifier()</code> method itself.</p></aside></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

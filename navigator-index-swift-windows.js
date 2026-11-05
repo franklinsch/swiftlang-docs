@@ -1,0 +1,1 @@
+window.doccNavigatorIndex = {"includedArchiveIdentifiers":["SwiftWindows"],"interfaceLanguages":{"swift":[{"path":"\/documentation\/swiftwindows","title":"Windows","type":"module"}]},"schemaVersion":{"major":0,"minor":1,"patch":2}};

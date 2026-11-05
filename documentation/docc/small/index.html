@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Small</title><meta content="A directive for specifying small print text like legal, license, or copyright text that should be rendered in a smaller font size." name="description"><script src="../../../navigator-index-docc-documentation.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../index.html">DocC</a></li><li>Small</li></ul></nav><hgroup><p>Directive</p><h1>Small</h1></hgroup><p>A directive for specifying small print text like legal, license, or copyright text that should be rendered in a smaller font size.</p><ul id="availability"><li aria-label="Swift-DocC 5.8+, Available on Swift-DocC 5.8 and later" title="Available on Swift-DocC 5.8 and later">Swift-DocC 5.8+</li></ul><pre id="declaration"><code><span class="typeIdentifier">@Small</span> {
+    ...
+}</code></pre></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>The <code>@Small</code> directive is based on HTML’s small tag (<code>&lt;small></code>). It supports any inline markup formatting like bold and italics but does not support more structured markup like <a href="../row/index.html"><code>Row</code></a> and <code>Column</code>.</p><pre class="md"><code>You can create a sloth using the ``init(name:color:power:)``
+initializer, or create randomly generated sloth using a
+``SlothGenerator``:
+   
+   let slothGenerator = MySlothGenerator(seed: randomSeed())
+   let habitat = Habitat(isHumid: false, isWarm: true)
+
+   // ...
+
+@Small {
+    _Licensed under Apache License v2.0 with Runtime Library Exception._
+}
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Creating-Custom-Page-Layouts"><a href="#Creating-Custom-Page-Layouts">Creating Custom Page Layouts</a></h3><ul><li><a href="../row/index.html"><code><span class="identifier">@Row</span>(<span class="identifier">number<wbr>Of<wbr>Columns</span>: Int)</code></a><p>A container directive that arranges content into a grid-based row and column layout.</p></li><li><a href="../tabnavigator/index.html"><code><span class="identifier">@Tab<wbr>Navigator</span></code></a><p>A container directive that arranges content into a tab-based layout.</p></li><li><a href="../links/index.html"><code><span class="identifier">@Links</span>(<span class="identifier">visual<wbr>Style</span>: Visual<wbr>Style)</code></a><p>A directive for authoring authoring embedded previews of documentation links (similar to how links are currently rendered in Topics sections) anywhere on the page without affecting page curation behavior.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

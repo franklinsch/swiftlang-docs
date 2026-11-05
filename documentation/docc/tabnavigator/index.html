@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>TabNavigator</title><meta content="A container directive that arranges content into a tab-based layout." name="description"><script src="../../../navigator-index-docc-documentation.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../index.html">DocC</a></li><li>TabNavigator</li></ul></nav><hgroup><p>Directive</p><h1>Tab<wbr>Navigator</h1></hgroup><p>A container directive that arranges content into a tab-based layout.</p><ul id="availability"><li aria-label="Swift-DocC 5.8+, Available on Swift-DocC 5.8 and later" title="Available on Swift-DocC 5.8 and later">Swift-DocC 5.8+</li></ul><pre id="declaration"><code><span class="typeIdentifier">@TabNavigator</span> {
+    <span class="typeIdentifier">@Tab</span>(_ title: <span class="typeIdentifier">String</span>) { ... }
+}</code></pre></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Create a new tab navigator by writing a <code>@TabNavigator</code> directive that contains child <code>@Tab</code> directives.</p><pre class="md"><code>@TabNavigator {
+   @Tab("Powers") {
+      ![A diagram with the five sloth power types.](sloth-powers)
+   }
+
+   @Tab("Exercise routines") {
+      ![A sloth relaxing and enjoying a good book.](sloth-exercise)
+   }
+
+   @Tab("Hats") {
+      ![A sloth discovering newfound confidence after donning a fedora.](sloth-hats)
+   }
+}
+</code></pre></section><section id="Topics"><h2><a href="#Topics">Topics</a></h2><ul><li><a href="../tab/index.html"><code><span class="identifier">@Tab</span>(<wbr>_ <span class="identifier">title</span>: String)</code></a><p>A container directive that holds general markup content describing an individual tab within a tab-based layout.</p></li></ul></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Creating-Custom-Page-Layouts"><a href="#Creating-Custom-Page-Layouts">Creating Custom Page Layouts</a></h3><ul><li><a href="../row/index.html"><code><span class="identifier">@Row</span>(<span class="identifier">number<wbr>Of<wbr>Columns</span>: Int)</code></a><p>A container directive that arranges content into a grid-based row and column layout.</p></li><li><a href="../links/index.html"><code><span class="identifier">@Links</span>(<span class="identifier">visual<wbr>Style</span>: Visual<wbr>Style)</code></a><p>A directive for authoring authoring embedded previews of documentation links (similar to how links are currently rendered in Topics sections) anywhere on the page without affecting page curation behavior.</p></li><li><a href="../small/index.html"><code><span class="identifier">@Small</span></code></a><p>A directive for specifying small print text like legal, license, or copyright text that should be rendered in a smaller font size.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

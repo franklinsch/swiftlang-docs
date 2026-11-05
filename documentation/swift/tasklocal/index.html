@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>TaskLocal</title><meta content="Wrapper type that defines a task-local value key." name="description"><script src="../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../index.html">Standard Library</a></li><li>TaskLocal</li></ul></nav><hgroup><p>Class</p><h1>Task<wbr>Local</h1></hgroup><p>Wrapper type that defines a task-local value key.</p><ul id="availability"><li aria-label="iOS 13.0+, Available on iOS 13.0 and later" title="Available on iOS 13.0 and later">iOS 13.0+</li><li aria-label="iPadOS 13.0+, Available on iPadOS 13.0 and later" title="Available on iPadOS 13.0 and later">iPadOS 13.0+</li><li aria-label="Mac Catalyst 13.0+, Available on Mac Catalyst 13.0 and later" title="Available on Mac Catalyst 13.0 and later">Mac Catalyst 13.0+</li><li aria-label="macOS 10.15+, Available on macOS 10.15 and later" title="Available on macOS 10.15 and later">macOS 10.15+</li><li aria-label="tvOS 13.0+, Available on tvOS 13.0 and later" title="Available on tvOS 13.0 and later">tvOS 13.0+</li><li aria-label="visionOS 1.0+, Available on visionOS 1.0 and later" title="Available on visionOS 1.0 and later">visionOS 1.0+</li><li aria-label="watchOS 6.0+, Available on watchOS 6.0 and later" title="Available on watchOS 6.0 and later">watchOS 6.0+</li></ul><pre id="declaration"><code><span class="keyword">final</span> <span class="keyword">class</span> TaskLocal&lt;Value> <span class="keyword">where</span> <span class="typeIdentifier">Value</span> : <a class="typeIdentifier" href="../sendable/index.html">Sendable</a></code></pre></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>A task-local value is a value that can be bound and read in the context of a <a href="../task/index.html"><code>Task</code></a>. It is implicitly carried with the task, and is accessible by any child tasks it creates (such as TaskGroup or <code>async let</code> created tasks).</p><h3 id="Task-local-declarations"><a href="#Task-local-declarations">Task-local declarations</a></h3><p>Task locals must be declared as static properties or global properties, like this:</p><pre><code>enum Example {
+    @TaskLocal
+    static var traceID: TraceID?
+}
+
+// Global task local properties are supported since Swift 6.0:
+@TaskLocal
+var contextualNumber: Int = 12
+</code></pre><h3 id="Default-values"><a href="#Default-values">Default values</a></h3><p>Reading a task local value when no value was bound to it results in returning its default value. For a task local declared as optional (such as e.g. <code>TraceID?</code>), this defaults to nil, however a different default value may be defined at declaration site of the task local, like this:</p><pre><code>enum Example { 
+    @TaskLocal
+    static var traceID: TraceID = TraceID.default
+}
+</code></pre><p>The default value is returned whenever the task-local is read from a context which either: has no task available to read the value from (e.g. a synchronous function, called without any asynchronous function in its call stack), or no value was bound within the scope of the current task or any of its parent tasks.</p><h3 id="Reading-task-local-values"><a href="#Reading-task-local-values">Reading task-local values</a></h3><p>Reading task local values is simple and looks the same as-if reading a normal static property:</p><pre><code>guard let traceID = Example.traceID else {
+  print("no trace id")
+  return
+}
+print(traceID)
+</code></pre><p>It is possible to perform task-local value reads from either asynchronous or synchronous functions.</p><h3 id="Binding-task-local-values"><a href="#Binding-task-local-values">Binding task-local values</a></h3><p>Task local values cannot be <code>set</code> directly and must instead be bound using the scoped <code>$traceID.withValue() { ... }</code> operation. The value is only bound for the duration of that scope, and is available to any child tasks which are created within that scope.</p><p>Detached tasks do not inherit task-local values, however tasks created using the <code>Task { ... }</code> initializer do inherit task-locals by copying them to the new asynchronous task, even though it is an un-structured task.</p><h3 id="Using-task-local-values-outside-of-tasks"><a href="#Using-task-local-values-outside-of-tasks">Using task local values outside of tasks</a></h3><p>It is possible to bind and read task local values outside of tasks.</p><p>This comes in handy within synchronous functions which are not guaranteed to be called from within a task. When binding a task-local value from outside of a task, the runtime will set a thread-local in which the same storage mechanism as used within tasks will be used. This means that you can reliably bind and read task local values without having to worry about the specific calling context, e.g.:</p><pre><code>func enter() {
+    Example.$traceID.withValue("1234") {
+        read() // always "1234", regardless if enter() was called from inside a task or not:
+    }    
+}
+
+func read() -> String {
+    if let value = Self.traceID {
+        "\(value)" 
+    } else { 
+        "&lt;no value>"
+    }
+}
+
+// 1) Call `enter` from non-Task code
+//    e.g. synchronous main() or non-Task thread (e.g. a plain pthread)
+enter()
+
+// 2) Call 'enter' from Task
+Task { 
+    enter()
+}
+</code></pre><p>In either cases listed above, the binding and reading of the task-local value works as expected.</p><h3 id="Task-local-values-without-tasks"><a href="#Task-local-values-without-tasks">Task local values, without tasks</a></h3><p>If a task local value is bound in a context executing outside of a task (e.g. on a plain old Thread), the task local will fall-back to managing a thread-local value for the scope of the <code>withValue</code> function. In other words, this task locals work as expected even if used in a context without an active swift concurrency task.</p><h3 id="Examples"><a href="#Examples">Examples</a></h3><pre><code>enum Example {
+    @TaskLocal
+    static var traceID: TraceID?
+}
+
+func read() -> String {
+    if let value = Self.traceID {
+        "\(value)" 
+    } else { 
+        "&lt;no value>"
+    }
+}
+
+await Example.$traceID.withValue(1234) { // bind the value
+  print("traceID: \(Example.traceID)") // traceID: 1234
+  read() // traceID: 1234
+
+  async let id = read() // async let child task, traceID: 1234
+
+  await withTaskGroup(of: String.self) { group in 
+      group.addTask { read() } // task group child task, traceID: 1234
+      return await group.next()!
+  }
+
+  Task { // unstructured tasks do inherit task locals by copying
+    read() // traceID: 1234
+  }
+
+  Task.detached { // detached tasks do not inherit task-local values
+    read() // traceID: nil
+  }
+}
+</code></pre><aside class="seealso"><p class="label">See Also</p><p><a href="../tasklocal()/index.html"><code>Task<wbr>Local()</code></a></p></aside></section><section id="Topics"><h2><a href="#Topics">Topics</a></h2><h3 id="Initializers"><a href="#Initializers">Initializers</a></h3><ul><li><a href="init(wrappedvalue:)/index.html"><code><span class="identifier">init</span>(<span class="identifier">wrapped<wbr>Value</span>: Value)</code></a></li></ul><h3 id="Instance-Properties"><a href="#Instance-Properties">Instance Properties</a></h3><ul><li><a href="description/index.html"><code>var <span class="identifier">description</span>: String</code></a><p>A textual representation of this instance.</p></li><li><a href="projectedvalue/index.html"><code>var <span class="identifier">projected<wbr>Value</span>: Task<wbr>Local&lt;<wbr>Value></code></a></li><li><a href="wrappedvalue/index.html"><code>var <span class="identifier">wrapped<wbr>Value</span>: Value</code></a></li></ul><h3 id="Instance-Methods"><a href="#Instance-Methods">Instance Methods</a></h3><ul><li><a href="get()/index.html"><code>func <span class="identifier">get</span>() -> Value</code></a><p>Gets the value currently bound to this task-local from the current task.</p></li><li><a href="withvalue(_:operation:file:line:)-79atg/index.html"><code>func <span class="identifier">with<wbr>Value</span>&lt;<wbr>R>(<wbr>Value, <span class="identifier">operation</span>: () throws -> R, <span class="identifier">file</span>: String, <span class="identifier">line</span>: UInt) rethrows -> R</code></a><p>Binds the task-local to the specific value for the duration of the synchronous operation.</p></li><li><a href="withvalue(_:operation:file:line:)-ozih/index.html"><code>func <span class="identifier">with<wbr>Value</span>&lt;<wbr>R>(<wbr>Value, <span class="identifier">operation</span>: nonisolated(<wbr>nonsending) () async throws -> R, <span class="identifier">file</span>: String, <span class="identifier">line</span>: UInt) async rethrows -> R</code></a><p>Binds the task-local to the specific value for the duration of the asynchronous operation.</p></li><li><a href="withvalue(_:operation:file:line:)-wunp/index.html"><code>func <span class="identifier">with<wbr>Value</span>&lt;<wbr>R>(<wbr>Value, <span class="identifier">operation</span>: () throws -> R, <span class="identifier">file</span>: String, <span class="identifier">line</span>: UInt) rethrows -> R</code></a><p>Binds the task-local to the specific value for the duration of the synchronous operation.</p></li><li><a href="withvalue(_:operation:isolation:file:line:)/index.html"><code>func <span class="identifier">with<wbr>Value</span>&lt;<wbr>R>(<wbr>Value, <span class="identifier">operation</span>: () async throws -> R, <span class="identifier">isolation</span>: isolated (<wbr>any Actor)<wbr>?, <span class="identifier">file</span>: String, <span class="identifier">line</span>: UInt) async rethrows -> R</code></a></li></ul></section><section id="Relationships"><h2><a href="#Relationships">Relationships</a></h2><h3 id="Conforms-To"><a href="#Conforms-To">Conforms To</a></h3><ul><li><a href="../sendablemetatype/index.html"><code>Sendable<wbr>Metatype</code></a></li><li><a href="../sendable/index.html"><code>Sendable</code></a></li><li><a href="../customstringconvertible/index.html"><code>Custom<wbr>String<wbr>Convertible</code></a></li></ul></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Task-Local-Storage"><a href="#Task-Local-Storage">Task-Local Storage</a></h3><ul><li><a href="../tasklocal()/index.html"><code>macro <span class="identifier">Task<wbr>Local</span>()</code></a><p>Macro that introduces a <a href="."><code>Task<wbr>Local</code></a> binding.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

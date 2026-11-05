@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Module Aliasing</title><meta content="Create aliased names for modules to avoid collisions between targets in your package or its dependencies." name="description"><script src="../../../navigator-index-swiftpm-PackageManagerDocs.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Package Manager (SwiftPM)</a></li><li>Module Aliasing</li></ul></nav><hgroup><p>Article</p><h1>Module Aliasing</h1></hgroup><p>Create aliased names for modules to avoid collisions between targets in your package or its dependencies.</p><ul id="availability"><li aria-label="Swift 5.7+, Available on Swift 5.7 and later" title="Available on Swift 5.7 and later">Swift 5.7+</li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>As you add dependencies to your package, a name collision can occur among modules from different packages. Module names such as <code>Logging</code> or <code>Utils</code> are common examples. In order to resolve the collision, package manager, <b>from Swift 5.7 or later</b>, provides the parameter <code>moduleAliases</code> when defining dependencies for targets. You define new unique names for the modules that would otherwise conflict, without requiring any source code changes.</p><p>Note the following additional requirements:</p><ul><li><p>A module being aliased needs to be a pure Swift module only: no ObjC/C/C++/Asm are supported due to a likely symbol collision. Similarly, use of <code>@objc(name)</code> should be avoided.</p></li><li><p>A module being aliased cannot be a prebuilt binary due to the impact on mangling and serialization, i.e. source-based only.</p></li><li><p>A module being aliased should not be passed to a runtime call such as <code>NSClassFromString(...)</code> that converts (directly or indirectly) String to a type in a module since such call will fail.</p></li><li><p>If a target mapped to a module being aliased contains resources, they should be asset catalogs, localized strings, or resources that do not require explicit module names.</p></li><li><p>If a product that a module being aliased belongs to has a conflicting name with another product, at most one of the products can be a non-automatic library type.</p></li></ul><h3 id="How-to-Use"><a href="#How-to-Use">How to Use</a></h3><p>Module aliases are defined as a dictionary parameter in a target’s dependencies where the key is the original module name in conflict and the value is a user-defined new unique name:</p><pre class="swift"><code>    targets: [ 
+        .target(
+            name: "MyTarget",
+            dependencies: [ 
+                .product(
+                    name: "Utils",
+                    package: "MyPackage",
+                    moduleAliases: ["Utils": "MyPackageUtils"]
+                )
+            ]
+        )
+    ]
+</code></pre><p>This will rename the <code>Utils</code> module in the <code>MyPackage</code> package to the new user-defined unique name, in this case <code>MyPackageUtils</code>; the name of the binary will be <code>MyPackageUtils.swiftmodule</code>. No source or manifest changes are required by the dependency package.</p><p>To use the aliased module your root package can use the new unique name, i.e. <code>import MyPackageUtils</code>, and make it clear that it is importing the utilities module from <code>MyPackage</code>.</p><p>Consider the following example to go over how module aliasing can be used in more detail.</p><h4 id="Example"><a href="#Example">Example</a></h4><p>The following example of a package <code>App</code> imports the modules <code>Utils</code> and <code>Logging</code> from a package <code>swift-draw</code>. It wants to add another package dependency <code>swift-game</code> and imports the modules <code>Utils</code> and <code>Game</code> vended from the package. The <code>Game</code> module imports <code>Logging</code> from the same package.</p><pre><code> App
+   |— Module Utils (from package ‘swift-draw’)
+   |— Module Logging (from package ‘swift-draw’)
+   |— Module Utils (from package ‘swift-game’)
+   |— Module Game (from package ‘swift-game’)
+        |— Module Logging (from package ‘swift-game’)
+</code></pre><p>Package manifest <code>swift-game</code></p><pre><code>{
+    name: "swift-game",
+    products: [
+        .library(name: "Utils", targets: ["Utils"]),
+        .library(name: "Game", targets: ["Game"]),
+    ],
+    targets: [
+        .target(name: "Game", dependencies: ["Logging"]),
+        .target(name: "Utils", dependencies: []),
+        .target(name: "Logging", dependencies: [])
+    ]
+}
+</code></pre><p>Package manifest <code>swift-draw</code></p><pre><code>{
+    name: "swift-draw",
+    products: [
+        .library(name: "Utils", targets: ["Utils"]),
+        .library(name: "Logging", targets: ["Logging"]),
+    ],
+    targets: [
+        .target(name: "Utils", dependencies: []),
+        .target(name: "Logging", dependencies: []),
+    ]
+}
+</code></pre><h5 id="Analyzing-the-conflicts"><a href="#Analyzing-the-conflicts">Analyzing the conflicts</a></h5><h6 id="Utils-modules"><a href="#Utils-modules">Utils modules</a></h6><p>Both <code>swift-draw</code> and <code>swift-game</code> vend modules with the same name <code>Utils</code>, thus causing a conflict. To resolve the collision, a new parameter <code>moduleAliases</code> can now be used to disambiguate them.</p><p>Package manifest <code>App</code></p><pre><code>    targets: [
+        .executableTarget(
+            name: "App",
+            dependencies: [
+                .product(name: "Utils",
+                         package: "swift-draw"),
+                .product(name: "Utils",
+                         package: "swift-game",
+                         moduleAliases: ["Utils": "SwiftGameUtils"]),
+            ])
+    ]
+</code></pre><p>This will rename the <code>Utils</code> module in package <code>swift-game</code> as <code>SwiftGameUtils</code>; the name of the binary will be <code>SwiftGameUtils.swiftmodule</code>.</p><p>To use the aliased module, <code>App</code> can reference the new package-qualified name, i.e. <code>import SwiftGameUtils</code>. Its existing <code>import Utils</code> statement will continue to reference the <code>Utils</code> module from package <code>swift-draw</code>, as expected.</p><p>Note that the dependency product names are duplicate, i.e. both have the same name <code>Utils</code>, which is by default not allowed. However, this is allowed when module aliasing is used as long as no files with the same product name are created. This means they must all be automatic library types, or at most one of them can be a static library, dylib, an executable, or any other type that creates a file or a directory with the product name.</p><h6 id="Transitive-Logging-modules"><a href="#Transitive-Logging-modules">Transitive Logging modules</a></h6><p>Similar to the prior conflict with <code>Utils</code>, both the <code>swift-draw</code> and <code>swift-game</code> packages contain modules with the same name <code>Logging</code>, thus causing a conflict. Although <code>App</code> does not directly import <code>Logging</code> from <code>swift-game</code>, the conflicting module still needs to be disambiguated.</p><p>We can use <code>moduleAliases</code> again, as follows.</p><p>Package manifest <code>App</code></p><pre><code>    targets: [
+        .executableTarget(
+            name: "App",
+            dependencies: [
+                // Utils module aliasing:
+                .product(name: "Utils",
+                         package: "swift-draw"),
+                .product(name: "Utils",
+                         package: "swift-game",
+                         moduleAliases: ["Utils": "SwiftGameUtils"]),
+                // Logging module aliasing:
+                .product(name: "Logging",
+                         package: "swift-draw"),
+                .product(name: "Game",
+                         package: "swift-game",
+                         moduleAliases: ["Logging": "SwiftGameLogging"]),
+            ])
+    ]
+</code></pre><p>The <code>Logging</code> module from <code>swift-game</code> is renamed as <code>SwiftGameLogging</code>, and all the references to <code>Logging</code> in source files of <code>Game</code> are compiled as <code>SwiftGameLogging</code>. Similar to before, no source or manifest changes are required by the <code>swift-game</code> package.</p><p>If more aliases need to be defined, they can be added with a comma delimiter, per below.</p><pre><code>    moduleAliases: ["Utils": "SwiftGameUtils", "Logging": "SwiftGameLogging"]),
+</code></pre><h3 id="Override-Module-Aliases"><a href="#Override-Module-Aliases">Override Module Aliases</a></h3><p>If module alias values defined upstream are conflicting downstream, they can be overridden by chaining; add an entry to the <code>moduleAliases</code> parameter downstream using the conflicting alias value as a key and provide a unique value. Since the package identifier is unique to the package, using it as the prefix for the new module alias as a convention should help to prevent more collisions since it can be a generally agreed unique name for the module.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Targets"><a href="#Targets">Targets</a></h3><ul><li><a href="../creatingclanguagetargets/index.html"><p class="api-collection">Creating C language targets</p></a><p>Include C language code as a target in your Swift package.</p></li><li><a href="../creatingmixedlanguagetargets/index.html"><p class="api-collection">Creating Mixed Language Targets</p></a><p>Combine Swift and C/C++/Objective-C sources in a single target.</p></li><li><a href="../modulemaps/index.html"><p class="api-collection">Creating Module Maps</p></a><p>Define how C and C++ headers are exposed to Swift for system library targets, precompiled libraries, or C Language targets.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

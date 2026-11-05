@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Control Flow</title><meta content="Structure code with branches, loops, and early exits." name="description"><script src="../../../navigator-index-swift-book.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">The Swift Programming Language (6.4)</a></li><li>Control Flow</li></ul></nav><hgroup><p>Article</p><h1>Control Flow</h1></hgroup><p>Structure code with branches, loops, and early exits.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Swift provides a variety of control flow statements. These include <code>while</code> loops to perform a task multiple times; <code>if</code>, <code>guard</code>, and <code>switch</code> statements to execute different branches of code based on certain conditions; and statements such as <code>break</code> and <code>continue</code> to transfer the flow of execution to another point in your code. Swift provides a <code>for</code>-<code>in</code> loop that makes it easy to iterate over arrays, dictionaries, ranges, strings, and other sequences. Swift also provides <code>defer</code> statements, which wrap code to be executed when leaving the current scope.</p><p>Swift’s <code>switch</code> statement is considerably more powerful than its counterpart in many C-like languages. Cases can match many different patterns, including interval matches, tuples, and casts to a specific type. Matched values in a <code>switch</code> case can be bound to temporary constants or variables for use within the case’s body, and complex matching conditions can be expressed with a <code>where</code> clause for each case.</p><h2 id="For-In-Loops"><a href="#For-In-Loops">For-In Loops</a></h2><p>You use the <code>for</code>-<code>in</code> loop to iterate over a sequence, such as items in an array, ranges of numbers, or characters in a string.</p><p>This example uses a <code>for</code>-<code>in</code> loop to iterate over the items in an array:</p><pre class="swift"><code>let names = ["Anna", "Alex", "Brian", "Jack"]
+for name in names {
+    print("Hello, \(name)!")
+}
+// Hello, Anna!
+// Hello, Alex!
+// Hello, Brian!
+// Hello, Jack!
+</code></pre><p>You can also iterate over a dictionary to access its key-value pairs. Each item in the dictionary is returned as a <code>(key, value)</code> tuple when the dictionary is iterated, and you can decompose the <code>(key, value)</code> tuple’s members as explicitly named constants for use within the body of the <code>for</code>-<code>in</code> loop. In the code example below, the dictionary’s keys are decomposed into a constant called <code>animalName</code>, and the dictionary’s values are decomposed into a constant called <code>legCount</code>.</p><pre class="swift"><code>let numberOfLegs = ["spider": 8, "ant": 6, "cat": 4]
+for (animalName, legCount) in numberOfLegs {
+    print("\(animalName)s have \(legCount) legs")
+}
+// cats have 4 legs
+// ants have 6 legs
+// spiders have 8 legs
+</code></pre><p>The contents of a <code>Dictionary</code> are inherently unordered, and iterating over them doesn’t guarantee the order in which they will be retrieved. In particular, the order you insert items into a <code>Dictionary</code> doesn’t define the order they’re iterated. For more about arrays and dictionaries, see <a href="../collectiontypes/index.html">Collection Types</a>.</p><p>You can also use <code>for</code>-<code>in</code> loops with numeric ranges. This example prints the first few entries in a five-times table:</p><pre class="swift"><code>for index in 1...5 {
+    print("\(index) times 5 is \(index * 5)")
+}
+// 1 times 5 is 5
+// 2 times 5 is 10
+// 3 times 5 is 15
+// 4 times 5 is 20
+// 5 times 5 is 25
+</code></pre><p>The sequence being iterated over is a range of numbers from <code>1</code> to <code>5</code>, inclusive, as indicated by the use of the closed range operator (<code>...</code>). The value of <code>index</code> is set to the first number in the range (<code>1</code>), and the statements inside the loop are executed. In this case, the loop contains only one statement, which prints an entry from the five-times table for the current value of <code>index</code>. After the statement is executed, the value of <code>index</code> is updated to contain the second value in the range (<code>2</code>), and the <code>print(_:separator:terminator:)</code> function is called again. This process continues until the end of the range is reached.</p><p>In the example above, <code>index</code> is a constant whose value is automatically set at the start of each iteration of the loop. As such, <code>index</code> doesn’t have to be declared before it’s used. It’s implicitly declared simply by its inclusion in the loop declaration, without the need for a <code>let</code> declaration keyword.</p><p>If you don’t need each value from a sequence, you can ignore the values by using an underscore in place of a variable name.</p><pre class="swift"><code>let base = 3
+let power = 10
+var answer = 1
+for _ in 1...power {
+    answer *= base
+}
+print("\(base) to the power of \(power) is \(answer)")
+// Prints "3 to the power of 10 is 59049".
+</code></pre><p>The example above calculates the value of one number to the power of another (in this case, <code>3</code> to the power of <code>10</code>). It multiplies a starting value of <code>1</code> (that is, <code>3</code> to the power of <code>0</code>) by <code>3</code>, ten times, using a closed range that starts with <code>1</code> and ends with <code>10</code>. For this calculation, the individual counter values each time through the loop are unnecessary — the code simply executes the loop the correct number of times. The underscore character (<code>_</code>) used in place of a loop variable causes the individual values to be ignored and doesn’t provide access to the current value during each iteration of the loop.</p><p>In some situations, you might not want to use closed ranges, which include both endpoints. Consider drawing the tick marks for every minute on a watch face. You want to draw <code>60</code> tick marks, starting with the <code>0</code> minute. Use the half-open range operator (<code>..&lt;</code>) to include the lower bound but not the upper bound. For more about ranges, see BasicOperators.</p><pre class="swift"><code>let minutes = 60
+for tickMark in 0..&lt;minutes {
+    // render the tick mark each minute (60 times)
+}
+</code></pre><p>Some users might want fewer tick marks in their UI. They could prefer one mark every <code>5</code> minutes instead. Use the <code>stride(from:to:by:)</code> function to skip the unwanted marks.</p><pre class="swift"><code>let minuteInterval = 5
+for tickMark in stride(from: 0, to: minutes, by: minuteInterval) {
+    // render the tick mark every 5 minutes (0, 5, 10, 15 ... 45, 50, 55)
+}
+</code></pre><p>Closed ranges are also available, by using <code>stride(from:through:by:)</code> instead:</p><pre class="swift"><code>let hours = 12
+let hourInterval = 3
+for tickMark in stride(from: 3, through: hours, by: hourInterval) {
+    // render the tick mark every 3 hours (3, 6, 9, 12)
+}
+</code></pre><p>The examples above use a <code>for</code>-<code>in</code> loop to iterate ranges, arrays, dictionaries, and strings. However, you can use this syntax to iterate <i>any</i> collection, including your own classes and collection types, as long as those types conform to the <a href="https://developer.apple.com/documentation/swift/sequence"><code>Sequence</code></a> protocol.</p><h2 id="While-Loops"><a href="#While-Loops">While Loops</a></h2><p>A <code>while</code> loop performs a set of statements until a condition becomes <code>false</code>. These kinds of loops are best used when the number of iterations isn’t known before the first iteration begins. Swift provides two kinds of <code>while</code> loops:</p><ul><li><p><code>while</code> evaluates its condition at the start of each pass through the loop.</p></li><li><p><code>repeat</code>-<code>while</code> evaluates its condition at the end of each pass through the loop.</p></li></ul><h3 id="While"><a href="#While">While</a></h3><p>A <code>while</code> loop starts by evaluating a single condition. If the condition is <code>true</code>, a set of statements is repeated until the condition becomes <code>false</code>.</p><p>Here’s the general form of a <code>while</code> loop:</p><pre class="swift"><code>while &lt;#condition#> {
+   &lt;#statements#>
+}
+</code></pre><p>This example plays a simple game of <i>Snakes and Ladders</i> (also known as <i>Chutes and Ladders</i>):</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/snakesAndLadders@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/snakesAndLadders~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>The rules of the game are as follows:</p><ul><li><p>The board has 25 squares, and the aim is to land on or beyond square 25.</p></li><li><p>The player’s starting square is “square zero”, which is just off the bottom-left corner of the board.</p></li><li><p>Each turn, you roll a six-sided dice and move by that number of squares, following the horizontal path indicated by the dotted arrow above.</p></li><li><p>If your turn ends at the bottom of a ladder, you move up that ladder.</p></li><li><p>If your turn ends at the head of a snake, you move down that snake.</p></li></ul><p>The game board is represented by an array of <code>Int</code> values. Its size is based on a constant called <code>finalSquare</code>, which is used to initialize the array and also to check for a win condition later in the example. Because the players start off the board, on “square zero”, the board is initialized with 26 zero <code>Int</code> values, not 25.</p><pre class="swift"><code>let finalSquare = 25
+var board = [Int](repeating: 0, count: finalSquare + 1)
+</code></pre><p>Some squares are then set to have more specific values for the snakes and ladders. Squares with a ladder base have a positive number to move you up the board, whereas squares with a snake head have a negative number to move you back down the board.</p><pre class="swift"><code>board[03] = +08; board[06] = +11; board[09] = +09; board[10] = +02
+board[14] = -10; board[19] = -11; board[22] = -02; board[24] = -08
+</code></pre><p>Square 3 contains the bottom of a ladder that moves you up to square 11. To represent this, <code>board[03]</code> is equal to <code>+08</code>, which is equivalent to an integer value of <code>8</code> (the difference between <code>3</code> and <code>11</code>). To align the values and statements, the unary plus operator (<code>+i</code>) is explicitly used with the unary minus operator (<code>-i</code>) and numbers lower than <code>10</code> are padded with zeros. (Neither stylistic technique is strictly necessary, but they lead to neater code.)</p><pre class="swift"><code>var square = 0
+var diceRoll = 0
+while square &lt; finalSquare {
+    // roll the dice
+    diceRoll += 1
+    if diceRoll == 7 { diceRoll = 1 }
+    // move by the rolled amount
+    square += diceRoll
+    if square &lt; board.count {
+        // if we're still on the board, move up or down for a snake or a ladder
+        square += board[square]
+    }
+}
+print("Game over!")
+</code></pre><p>The example above uses a very simple approach to dice rolling. Instead of generating a random number, it starts with a <code>diceRoll</code> value of <code>0</code>. Each time through the <code>while</code> loop, <code>diceRoll</code> is incremented by one and is then checked to see whether it has become too large. Whenever this return value equals <code>7</code>, the dice roll has become too large and is reset to a value of <code>1</code>. The result is a sequence of <code>diceRoll</code> values that’s always <code>1</code>, <code>2</code>, <code>3</code>, <code>4</code>, <code>5</code>, <code>6</code>, <code>1</code>, <code>2</code> and so on.</p><p>After rolling the dice, the player moves forward by <code>diceRoll</code> squares. It’s possible that the dice roll may have moved the player beyond square 25, in which case the game is over. To cope with this scenario, the code checks that <code>square</code> is less than the <code>board</code> array’s <code>count</code> property. If <code>square</code> is valid, the value stored in <code>board[square]</code> is added to the current <code>square</code> value to move the player up or down any ladders or snakes.</p><aside class="note"><p class="label">Note</p><p>If this check isn’t performed, <code>board[square]</code> might try to access a value outside the bounds of the <code>board</code> array, which would trigger a runtime error.</p></aside><p>The current <code>while</code> loop execution then ends, and the loop’s condition is checked to see if the loop should be executed again. If the player has moved on or beyond square number <code>25</code>, the loop’s condition evaluates to <code>false</code> and the game ends.</p><p>A <code>while</code> loop is appropriate in this case, because the length of the game isn’t clear at the start of the <code>while</code> loop. Instead, the loop is executed until a particular condition is satisfied.</p><h3 id="Repeat-While"><a href="#Repeat-While">Repeat-While</a></h3><p>The other variation of the <code>while</code> loop, known as the <code>repeat</code>-<code>while</code> loop, performs a single pass through the loop block first, <i>before</i> considering the loop’s condition. It then continues to repeat the loop until the condition is <code>false</code>.</p><aside class="note"><p class="label">Note</p><p>The <code>repeat</code>-<code>while</code> loop in Swift is analogous to a <code>do</code>-<code>while</code> loop in other languages.</p></aside><p>Here’s the general form of a <code>repeat</code>-<code>while</code> loop:</p><pre class="swift"><code>repeat {
+   &lt;#statements#>
+} while &lt;#condition#>
+</code></pre><p>Here’s the <i>Snakes and Ladders</i> example again, written as a <code>repeat</code>-<code>while</code> loop rather than a <code>while</code> loop. The values of <code>finalSquare</code>, <code>board</code>, <code>square</code>, and <code>diceRoll</code> are initialized in exactly the same way as with a <code>while</code> loop.</p><pre class="swift"><code>let finalSquare = 25
+var board = [Int](repeating: 0, count: finalSquare + 1)
+board[03] = +08; board[06] = +11; board[09] = +09; board[10] = +02
+board[14] = -10; board[19] = -11; board[22] = -02; board[24] = -08
+var square = 0
+var diceRoll = 0
+</code></pre><p>In this version of the game, the <i>first</i> action in the loop is to check for a ladder or a snake. No ladder on the board takes the player straight to square 25, and so it isn’t possible to win the game by moving up a ladder. Therefore, it’s safe to check for a snake or a ladder as the first action in the loop.</p><p>At the start of the game, the player is on “square zero”. <code>board[0]</code> always equals <code>0</code> and has no effect.</p><pre class="swift"><code>repeat {
+    // move up or down for a snake or ladder
+    square += board[square]
+    // roll the dice
+    diceRoll += 1
+    if diceRoll == 7 { diceRoll = 1 }
+    // move by the rolled amount
+    square += diceRoll
+} while square &lt; finalSquare
+print("Game over!")
+</code></pre><p>After the code checks for snakes and ladders, the dice is rolled and the player is moved forward by <code>diceRoll</code> squares. The current loop execution then ends.</p><p>The loop’s condition (<code>while square &lt; finalSquare</code>) is the same as before, but this time it’s not evaluated until the <i>end</i> of the first run through the loop. The structure of the <code>repeat</code>-<code>while</code> loop is better suited to this game than the <code>while</code> loop in the previous example. In the <code>repeat</code>-<code>while</code> loop above, <code>square += board[square]</code> is always executed <i>immediately after</i> the loop’s <code>while</code> condition confirms that <code>square</code> is still on the board. This behavior removes the need for the array bounds check seen in the <code>while</code> loop version of the game described earlier.</p><h2 id="Conditional-Statements"><a href="#Conditional-Statements">Conditional Statements</a></h2><p>It’s often useful to execute different pieces of code based on certain conditions. You might want to run an extra piece of code when an error occurs, or to display a message when a value becomes too high or too low. To do this, you make parts of your code <i>conditional</i>.</p><p>Swift provides two ways to add conditional branches to your code: the <code>if</code> statement and the <code>switch</code> statement. Typically, you use the <code>if</code> statement to evaluate simple conditions with only a few possible outcomes. The <code>switch</code> statement is better suited to more complex conditions with multiple possible permutations and is useful in situations where pattern matching can help select an appropriate code branch to execute.</p><h3 id="If"><a href="#If">If</a></h3><p>In its simplest form, the <code>if</code> statement has a single <code>if</code> condition. It executes a set of statements only if that condition is <code>true</code>.</p><pre class="swift"><code>var temperatureInFahrenheit = 30
+if temperatureInFahrenheit &lt;= 32 {
+    print("It's very cold. Consider wearing a scarf.")
+}
+// Prints "It's very cold. Consider wearing a scarf."
+</code></pre><p>The example above checks whether the temperature is less than or equal to 32 degrees Fahrenheit (the freezing point of water). If it is, a message is printed. Otherwise, no message is printed, and code execution continues after the <code>if</code> statement’s closing brace.</p><p>The <code>if</code> statement can provide an alternative set of statements, known as an <i>else clause</i>, for situations when the <code>if</code> condition is <code>false</code>. These statements are indicated by the <code>else</code> keyword.</p><pre class="swift"><code>temperatureInFahrenheit = 40
+if temperatureInFahrenheit &lt;= 32 {
+    print("It's very cold. Consider wearing a scarf.")
+} else {
+    print("It's not that cold. Wear a T-shirt.")
+}
+// Prints "It's not that cold. Wear a T-shirt."
+</code></pre><p>One of these two branches is always executed. Because the temperature has increased to <code>40</code> degrees Fahrenheit, it’s no longer cold enough to advise wearing a scarf and so the <code>else</code> branch is triggered instead.</p><p>You can chain multiple <code>if</code> statements together to consider additional clauses.</p><pre class="swift"><code>temperatureInFahrenheit = 90
+if temperatureInFahrenheit &lt;= 32 {
+    print("It's very cold. Consider wearing a scarf.")
+} else if temperatureInFahrenheit >= 86 {
+    print("It's really warm. Don't forget to wear sunscreen.")
+} else {
+    print("It's not that cold. Wear a T-shirt.")
+}
+// Prints "It's really warm. Don't forget to wear sunscreen."
+</code></pre><p>Here, an additional <code>if</code> statement was added to respond to particularly warm temperatures. The final <code>else</code> clause remains, and it prints a response for any temperatures that aren’t too warm or too cold.</p><p>The final <code>else</code> clause is optional, however, and can be excluded if the set of conditions doesn’t need to be complete.</p><pre class="swift"><code>temperatureInFahrenheit = 72
+if temperatureInFahrenheit &lt;= 32 {
+    print("It's very cold. Consider wearing a scarf.")
+} else if temperatureInFahrenheit >= 86 {
+    print("It's really warm. Don't forget to wear sunscreen.")
+}
+</code></pre><p>Because the temperature isn’t cold enough to trigger the <code>if</code> condition or warm enough to trigger the <code>else if</code> condition, no message is printed.</p><p>Swift provides a shorthand spelling of <code>if</code> that you can use when setting values. For example, consider the following code:</p><pre class="swift"><code>let temperatureInCelsius = 25
+let weatherAdvice: String
+
+if temperatureInCelsius &lt;= 0 {
+    weatherAdvice = "It's very cold. Consider wearing a scarf."
+} else if temperatureInCelsius >= 30 {
+    weatherAdvice = "It's really warm. Don't forget to wear sunscreen."
+} else {
+    weatherAdvice = "It's not that cold. Wear a T-shirt."
+}
+
+print(weatherAdvice)
+// Prints "It's not that cold. Wear a T-shirt."
+</code></pre><p>Here, each of the branches sets a value for the <code>weatherAdvice</code> constant, which is printed after the <code>if</code> statement.</p><p>Using the alternate syntax, known as an <code>if</code> expression, you can write this code more concisely:</p><pre class="swift"><code>let weatherAdvice = if temperatureInCelsius &lt;= 0 {
+    "It's very cold. Consider wearing a scarf."
+} else if temperatureInCelsius >= 30 {
+    "It's really warm. Don't forget to wear sunscreen."
+} else {
+    "It's not that cold. Wear a T-shirt."
+}
+
+print(weatherAdvice)
+// Prints "It's not that cold. Wear a T-shirt."
+</code></pre><p>In this <code>if</code> expression version, each branch contains a single value. If a branch’s condition is true, then that branch’s value is used as the value for the whole <code>if</code> expression in the assignment of <code>weatherAdvice</code>. Every <code>if</code> branch has a corresponding <code>else if</code> branch or <code>else</code> branch, ensuring that one of the branches always matches and that the <code>if</code> expression always produces a value, regardless of which conditions are true.</p><p>Because the syntax for the assignment starts outside the <code>if</code> expression, there’s no need to repeat <code>weatherAdvice =</code> inside each branch. Instead, each branch of the <code>if</code> expression produces one of the three possible values for <code>weatherAdvice</code>, and the assignment uses that value.</p><p>All of the branches of an <code>if</code> expression need to contain values of the same type. Because Swift checks the type of each branch separately, values like <code>nil</code> that can be used with more than one type prevent Swift from determining the <code>if</code> expression’s type automatically. Instead, you need to specify the type explicitly — for example:</p><pre class="swift"><code>let freezeWarning: String? = if temperatureInCelsius &lt;= 0 {
+    "It's below freezing. Watch for ice!"
+} else {
+    nil
+}
+</code></pre><p>In the code above, one branch of the <code>if</code> expression has a string value and the other branch has a <code>nil</code> value. The <code>nil</code> value could be used as a value for any optional type, so you have to explicitly write that <code>freezeWarning</code> is an optional string, as described in TheBasics.</p><p>An alternate way to provide this type information is to provide an explicit type for <code>nil</code>, instead of providing an explicit type for <code>freezeWarning</code>:</p><pre class="swift"><code>let freezeWarning = if temperatureInCelsius &lt;= 0 {
+    "It's below freezing. Watch for ice!"
+} else {
+    nil as String?
+}
+</code></pre><p>An <code>if</code> expression can respond to unexpected failures by throwing an error or calling a function like <code>fatalError(_:file:line:)</code> that never returns. For example:</p><pre class="swift"><code>let weatherAdvice = if temperatureInCelsius > 100 {
+    throw TemperatureError.boiling
+} else {
+    "It's a reasonable temperature."
+}
+</code></pre><p>In this example, the <code>if</code> expression checks whether the forecast temperature is hotter than 100° C — the boiling point of water. A temperature this hot causes the <code>if</code> expression to throw a <code>.boiling</code> error instead of returning a textual summary. Even though this <code>if</code> expression can throw an error, you don’t write <code>try</code> before it. For information about working with errors, see <a href="../errorhandling/index.html">Error Handling</a>.</p><p>In addition to using <code>if</code> expressions on the right-hand side of an assignment, as shown in the examples above, you can also use them as the value that a function or closure returns.</p><h3 id="Switch"><a href="#Switch">Switch</a></h3><p>A <code>switch</code> statement considers a value and compares it against several possible matching patterns. It then executes an appropriate block of code, based on the first pattern that matches successfully. A <code>switch</code> statement provides an alternative to the <code>if</code> statement for responding to multiple potential states.</p><p>In its simplest form, a <code>switch</code> statement compares a value against one or more values of the same type.</p><pre class="swift"><code>switch &lt;#some value to consider#> {
+case &lt;#value 1#>:
+    &lt;#respond to value 1#>
+case &lt;#value 2#>,
+    &lt;#value 3#>:
+    &lt;#respond to value 2 or 3#>
+default:
+    &lt;#otherwise, do something else#>
+}
+</code></pre><p>Every <code>switch</code> statement consists of multiple possible <i>cases</i>, each of which begins with the <code>case</code> keyword. In addition to comparing against specific values, Swift provides several ways for each case to specify more complex matching patterns. These options are described later in this chapter.</p><p>Like the body of an <code>if</code> statement, each <code>case</code> is a separate branch of code execution. The <code>switch</code> statement determines which branch should be selected. This procedure is known as <i>switching</i> on the value that’s being considered.</p><p>Every <code>switch</code> statement must be <i>exhaustive</i>. That is, every possible value of the type being considered must be matched by one of the <code>switch</code> cases. If it’s not appropriate to provide a case for every possible value, you can define a default case to cover any values that aren’t addressed explicitly. This default case is indicated by the <code>default</code> keyword, and must always appear last.</p><p>This example uses a <code>switch</code> statement to consider a single lowercase character called <code>someCharacter</code>:</p><pre class="swift"><code>let someCharacter: Character = "z"
+switch someCharacter {
+case "a":
+    print("The first letter of the Latin alphabet")
+case "z":
+    print("The last letter of the Latin alphabet")
+default:
+    print("Some other character")
+}
+// Prints "The last letter of the Latin alphabet".
+</code></pre><p>The <code>switch</code> statement’s first case matches the first letter of the English alphabet, <code>a</code>, and its second case matches the last letter, <code>z</code>. Because the <code>switch</code> must have a case for every possible character, not just every alphabetic character, this <code>switch</code> statement uses a <code>default</code> case to match all characters other than <code>a</code> and <code>z</code>. This provision ensures that the <code>switch</code> statement is exhaustive.</p><p>Like <code>if</code> statements, <code>switch</code> statements also have an expression form:</p><pre class="swift"><code>let anotherCharacter: Character = "a"
+let message = switch anotherCharacter {
+case "a":
+    "The first letter of the Latin alphabet"
+case "z":
+    "The last letter of the Latin alphabet"
+default:
+    "Some other character"
+}
+
+print(message)
+// Prints "The first letter of the Latin alphabet".
+</code></pre><p>In this example, each case in the <code>switch</code> expression contains the value for <code>message</code> to be used when that case matches <code>anotherCharacter</code>. Because <code>switch</code> is always exhaustive, there is always a value to assign.</p><p>As with <code>if</code> expressions, you can throw an error or call a function like <code>fatalError(_:file:line:)</code> that never returns instead of providing a value for a given case. You can use <code>switch</code> expressions on the right-hand side of an assignment, as shown in the example above, and as the value that a function or closure returns.</p><h4 id="No-Implicit-Fallthrough"><a href="#No-Implicit-Fallthrough">No Implicit Fallthrough</a></h4><p>In contrast with <code>switch</code> statements in C and Objective-C, <code>switch</code> statements in Swift don’t fall through the bottom of each case and into the next one by default. Instead, the entire <code>switch</code> statement finishes its execution as soon as the first matching <code>switch</code> case is completed, without requiring an explicit <code>break</code> statement. This makes the <code>switch</code> statement safer and easier to use than the one in C and avoids executing more than one <code>switch</code> case by mistake.</p><aside class="note"><p class="label">Note</p><p>Although <code>break</code> isn’t required in Swift, you can use a <code>break</code> statement to match and ignore a particular case or to break out of a matched case before that case has completed its execution. For details, see ControlFlow.</p></aside><p>The body of each case <i>must</i> contain at least one executable statement. It isn’t valid to write the following code, because the first case is empty:</p><pre class="swift"><code>let anotherCharacter: Character = "a"
+switch anotherCharacter {
+case "a": // Invalid, the case has an empty body
+case "A":
+    print("The letter A")
+default:
+    print("Not the letter A")
+}
+// This will report a compile-time error.
+</code></pre><p>Unlike a <code>switch</code> statement in C, this <code>switch</code> statement doesn’t match both <code>"a"</code> and <code>"A"</code>. Rather, it reports a compile-time error that <code>case "a":</code> doesn’t contain any executable statements. This approach avoids accidental fallthrough from one case to another and makes for safer code that’s clearer in its intent.</p><p>To make a <code>switch</code> with a single case that matches both <code>"a"</code> and <code>"A"</code>, combine the two values into a compound case, separating the values with commas.</p><pre class="swift"><code>let anotherCharacter: Character = "a"
+switch anotherCharacter {
+case "a", "A":
+    print("The letter A")
+default:
+    print("Not the letter A")
+}
+// Prints "The letter A".
+</code></pre><p>For readability, a compound case can also be written over multiple lines. For more information about compound cases, see ControlFlow.</p><aside class="note"><p class="label">Note</p><p>To explicitly fall through at the end of a particular <code>switch</code> case, use the <code>fallthrough</code> keyword, as described in ControlFlow.</p></aside><h4 id="Interval-Matching"><a href="#Interval-Matching">Interval Matching</a></h4><p>Values in <code>switch</code> cases can be checked for their inclusion in an interval. This example uses number intervals to provide a natural-language count for numbers of any size:</p><pre class="swift"><code>let approximateCount = 62
+let countedThings = "moons orbiting Saturn"
+let naturalCount: String
+switch approximateCount {
+case 0:
+    naturalCount = "no"
+case 1..&lt;5:
+    naturalCount = "a few"
+case 5..&lt;12:
+    naturalCount = "several"
+case 12..&lt;100:
+    naturalCount = "dozens of"
+case 100..&lt;1000:
+    naturalCount = "hundreds of"
+default:
+    naturalCount = "many"
+}
+print("There are \(naturalCount) \(countedThings).")
+// Prints "There are dozens of moons orbiting Saturn."
+</code></pre><p>In the above example, <code>approximateCount</code> is evaluated in a <code>switch</code> statement. Each <code>case</code> compares that value to a number or interval. Because the value of <code>approximateCount</code> falls between 12 and 100, <code>naturalCount</code> is assigned the value <code>"dozens of"</code>, and execution is transferred out of the <code>switch</code> statement.</p><h4 id="Tuples"><a href="#Tuples">Tuples</a></h4><p>You can use tuples to test multiple values in the same <code>switch</code> statement. Each element of the tuple can be tested against a different value or interval of values. Alternatively, use the underscore character (<code>_</code>), also known as the wildcard pattern, to match any possible value.</p><p>The example below takes an (x, y) point, expressed as a simple tuple of type <code>(Int, Int)</code>, and categorizes it on the graph that follows the example.</p><pre class="swift"><code>let somePoint = (1, 1)
+switch somePoint {
+case (0, 0):
+    print("\(somePoint) is at the origin")
+case (_, 0):
+    print("\(somePoint) is on the x-axis")
+case (0, _):
+    print("\(somePoint) is on the y-axis")
+case (-2...2, -2...2):
+    print("\(somePoint) is inside the box")
+default:
+    print("\(somePoint) is outside of the box")
+}
+// Prints "(1, 1) is inside the box".
+</code></pre><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/coordinateGraphSimple@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/coordinateGraphSimple~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>The <code>switch</code> statement determines whether the point is at the origin (0, 0), on the red x-axis, on the green y-axis, inside the blue 4-by-4 box centered on the origin, or outside of the box.</p><p>Unlike C, Swift allows multiple <code>switch</code> cases to consider the same value or values. In fact, the point (0, 0) could match all <i>four</i> of the cases in this example. However, if multiple matches are possible, the first matching case is always used. The point (0, 0) would match <code>case (0, 0)</code> first, and so all other matching cases would be ignored.</p><h4 id="Value-Bindings"><a href="#Value-Bindings">Value Bindings</a></h4><p>A <code>switch</code> case can name the value or values it matches to temporary constants or variables, for use in the body of the case. This behavior is known as <i>value binding</i>, because the values are bound to temporary constants or variables within the case’s body.</p><p>The example below takes an (x, y) point, expressed as a tuple of type <code>(Int, Int)</code>, and categorizes it on the graph that follows:</p><pre class="swift"><code>let anotherPoint = (2, 0)
+switch anotherPoint {
+case (let x, 0):
+    print("on the x-axis with an x value of \(x)")
+case (0, let y):
+    print("on the y-axis with a y value of \(y)")
+case let (x, y):
+    print("somewhere else at (\(x), \(y))")
+}
+// Prints "on the x-axis with an x value of 2".
+</code></pre><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/coordinateGraphMedium@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/coordinateGraphMedium~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>The <code>switch</code> statement determines whether the point is on the red x-axis, on the green y-axis, or elsewhere (on neither axis).</p><p>The three <code>switch</code> cases declare placeholder constants <code>x</code> and <code>y</code>, which temporarily take on one or both tuple values from <code>anotherPoint</code>. The first case, <code>case (let x, 0)</code>, matches any point with a <code>y</code> value of <code>0</code> and assigns the point’s <code>x</code> value to the temporary constant <code>x</code>. Similarly, the second case, <code>case (0, let y)</code>, matches any point with an <code>x</code> value of <code>0</code> and assigns the point’s <code>y</code> value to the temporary constant <code>y</code>.</p><p>After the temporary constants are declared, they can be used within the case’s code block. Here, they’re used to print the categorization of the point.</p><p>This <code>switch</code> statement doesn’t have a <code>default</code> case. The final case, <code>case let (x, y)</code>, declares a tuple of two placeholder constants that can match any value. Because <code>anotherPoint</code> is always a tuple of two values, this case matches all possible remaining values, and a <code>default</code> case isn’t needed to make the <code>switch</code> statement exhaustive.</p><h4 id="Where"><a href="#Where">Where</a></h4><p>A <code>switch</code> case can use a <code>where</code> clause to check for additional conditions.</p><p>The example below categorizes an (x, y) point on the following graph:</p><pre class="swift"><code>let yetAnotherPoint = (1, -1)
+switch yetAnotherPoint {
+case let (x, y) where x == y:
+    print("(\(x), \(y)) is on the line x == y")
+case let (x, y) where x == -y:
+    print("(\(x), \(y)) is on the line x == -y")
+case let (x, y):
+    print("(\(x), \(y)) is just some arbitrary point")
+}
+// Prints "(1, -1) is on the line x == -y".
+</code></pre><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/coordinateGraphComplex@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/coordinateGraphComplex~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>The <code>switch</code> statement determines whether the point is on the green diagonal line where <code>x == y</code>, on the purple diagonal line where <code>x == -y</code>, or neither.</p><p>The three <code>switch</code> cases declare placeholder constants <code>x</code> and <code>y</code>, which temporarily take on the two tuple values from <code>yetAnotherPoint</code>. These constants are used as part of a <code>where</code> clause, to create a dynamic filter. The <code>switch</code> case matches the current value of <code>point</code> only if the <code>where</code> clause’s condition evaluates to <code>true</code> for that value.</p><p>As in the previous example, the final case matches all possible remaining values, and so a <code>default</code> case isn’t needed to make the <code>switch</code> statement exhaustive.</p><h4 id="Compound-Cases"><a href="#Compound-Cases">Compound Cases</a></h4><p>Multiple switch cases that share the same body can be combined by writing several patterns after <code>case</code>, with a comma between each of the patterns. If any of the patterns match, then the case is considered to match. The patterns can be written over multiple lines if the list is long. For example:</p><pre class="swift"><code>let someCharacter: Character = "e"
+switch someCharacter {
+case "a", "e", "i", "o", "u":
+    print("\(someCharacter) is a vowel")
+case "b", "c", "d", "f", "g", "h", "j", "k", "l", "m",
+    "n", "p", "q", "r", "s", "t", "v", "w", "x", "y", "z":
+    print("\(someCharacter) is a consonant")
+default:
+    print("\(someCharacter) isn't a vowel or a consonant")
+}
+// Prints "e is a vowel".
+</code></pre><p>The <code>switch</code> statement’s first case matches all five lowercase vowels in the English language. Similarly, its second case matches all lowercase English consonants. Finally, the <code>default</code> case matches any other character.</p><p>Compound cases can also include value bindings. All of the patterns of a compound case have to include the same set of value bindings, and each binding has to get a value of the same type from all of the patterns in the compound case. This ensures that, no matter which part of the compound case matched, the code in the body of the case can always access a value for the bindings and that the value always has the same type.</p><pre class="swift"><code>let stillAnotherPoint = (9, 0)
+switch stillAnotherPoint {
+case (let distance, 0), (0, let distance):
+    print("On an axis, \(distance) from the origin")
+default:
+    print("Not on an axis")
+}
+// Prints "On an axis, 9 from the origin".
+</code></pre><p>The <code>case</code> above has two patterns: <code>(let distance, 0)</code> matches points on the x-axis and <code>(0, let distance)</code> matches points on the y-axis. Both patterns include a binding for <code>distance</code> and <code>distance</code> is an integer in both patterns — which means that the code in the body of the <code>case</code> can always access a value for <code>distance</code>.</p><h2 id="Patterns"><a href="#Patterns">Patterns</a></h2><p>In the previous examples, each switch case includes a pattern that indicates what values match that case. You can also use a pattern as the condition for an <code>if</code> statement. Here’s what that looks like:</p><pre class="swift"><code>let somePoint = (12, 100)
+if case (let x, 100) = somePoint {
+    print("Found a point on the y=100 line, at \(x)")
+}
+// Prints "Found a point on the y=100 line, at 12".
+</code></pre><p>In this code, the condition for the <code>if</code> statement starts with <code>case</code>, indicating that the condition is a pattern instead of a Boolean value. If the pattern matches, then the condition for the <code>if</code> is considered to be true, and so the code in the body of the <code>if</code> statement runs. The patterns you can write after <code>if case</code> are the same as the patterns you can write in a switch case.</p><p>In a <code>for</code>-<code>in</code> loop, you can give names to parts of the value using a value binding pattern, even without writing <code>case</code> in your code:</p><pre class="swift"><code>let points = [(10, 0), (30, -30), (-20, 0)]
+
+for (x, y) in points {
+    if y == 0 {
+        print("Found a point on the x-axis at \(x)")
+    }
+}
+// Prints "Found a point on the x-axis at 10".
+// Prints "Found a point on the x-axis at -20".
+</code></pre><p>The <code>for</code>-<code>in</code> loop above iterates over an array of tuples, binding the first and second elements of the tuples to the <code>x</code> and <code>y</code> constants. The statements inside the loop can use those constants, such as the <code>if</code> statement that checks whether the point lies on the x-axis. A more concise way to write this code is to combine the value bindings and condition using a <code>for</code>-<code>case</code>-<code>in</code> loop. The code below has the same behavior as the <code>for</code>-<code>in</code> loop above:</p><pre class="swift"><code>for case (let x, 0) in points {
+    print("Found a point on the x-axis at \(x)")
+}
+// Prints "Found a point on the x-axis at 10".
+// Prints "Found a point on the x-axis at -20".
+</code></pre><p>In this code, the condition is integrated into the <code>for</code>-<code>case</code>-<code>in</code> loop as part of the pattern. The statements in the <code>for</code>-<code>case</code>-<code>in</code> loop run only for points on the x-axis. This code produces the same result as the <code>for</code>-<code>in</code> loop above, but is a more compact way to iterate over only certain elements in a collection.</p><p>A <code>for</code>-<code>case</code>-<code>in</code> loop can also include a <code>where</code> clause, to check for an additional condition. The statements inside the loop run only when <code>where</code> clause matches the current element. For example:</p><pre class="swift"><code>for case let (x, y) in points where x == y || x == -y  {
+    print("Found (\(x), \(y)) along a line through the origin")
+}
+// Prints "Found (30, -30) along a line through the origin".
+</code></pre><p>This code binds the first and second elements of the tuple to <code>x</code> and <code>y</code> as constants, and then checks their values in the <code>where</code> clause. If the <code>where</code> clause is <code>true</code>, then the code in the body of the <code>for</code> loop runs; otherwise, iteration continues with the next element.</p><p>Because patterns can bind values, <code>if</code>-<code>case</code> statements and <code>for</code>-<code>case</code>-<code>in</code> loops are useful for working with enumerations that have associated values, as described in Enumerations.</p><h2 id="Control-Transfer-Statements"><a href="#Control-Transfer-Statements">Control Transfer Statements</a></h2><p><i>Control transfer statements</i> change the order in which your code is executed, by transferring control from one piece of code to another. Swift has five control transfer statements:</p><ul><li><p><code>continue</code></p></li><li><p><code>break</code></p></li><li><p><code>fallthrough</code></p></li><li><p><code>return</code></p></li><li><p><code>throw</code></p></li></ul><p>The <code>continue</code>, <code>break</code>, and <code>fallthrough</code> statements are described below. The <code>return</code> statement is described in <a href="../functions/index.html">Functions</a>, and the <code>throw</code> statement is described in ErrorHandling.</p><h3 id="Continue"><a href="#Continue">Continue</a></h3><p>The <code>continue</code> statement tells a loop to stop what it’s doing and start again at the beginning of the next iteration through the loop. It says “I am done with the current loop iteration” without leaving the loop altogether.</p><p>The following example removes all vowels and spaces from a lowercase string to create a cryptic puzzle phrase:</p><pre class="swift"><code>let puzzleInput = "great minds think alike"
+var puzzleOutput = ""
+let charactersToRemove: [Character] = ["a", "e", "i", "o", "u", " "]
+for character in puzzleInput {
+    if charactersToRemove.contains(character) {
+        continue
+    }
+    puzzleOutput.append(character)
+}
+print(puzzleOutput)
+// Prints "grtmndsthnklk".
+</code></pre><p>The code above calls the <code>continue</code> keyword whenever it matches a vowel or a space, causing the current iteration of the loop to end immediately and to jump straight to the start of the next iteration.</p><h3 id="Break"><a href="#Break">Break</a></h3><p>The <code>break</code> statement ends execution of an entire control flow statement immediately. The <code>break</code> statement can be used inside a <code>switch</code> or loop statement when you want to terminate the execution of the <code>switch</code> or loop statement earlier than would otherwise be the case.</p><h4 id="Break-in-a-Loop-Statement"><a href="#Break-in-a-Loop-Statement">Break in a Loop Statement</a></h4><p>When used inside a loop statement, <code>break</code> ends the loop’s execution immediately and transfers control to the code after the loop’s closing brace (<code>}</code>). No further code from the current iteration of the loop is executed, and no further iterations of the loop are started.</p><h4 id="Break-in-a-Switch-Statement"><a href="#Break-in-a-Switch-Statement">Break in a Switch Statement</a></h4><p>When used inside a <code>switch</code> statement, <code>break</code> causes the <code>switch</code> statement to end its execution immediately and to transfer control to the code after the <code>switch</code> statement’s closing brace (<code>}</code>).</p><p>This behavior can be used to match and ignore one or more cases in a <code>switch</code> statement. Because Swift’s <code>switch</code> statement is exhaustive and doesn’t allow empty cases, it’s sometimes necessary to deliberately match and ignore a case in order to make your intentions explicit. You do this by writing the <code>break</code> statement as the entire body of the case you want to ignore. When that case is matched by the <code>switch</code> statement, the <code>break</code> statement inside the case ends the <code>switch</code> statement’s execution immediately.</p><aside class="note"><p class="label">Note</p><p>A <code>switch</code> case that contains only a comment is reported as a compile-time error. Comments aren’t statements and don’t cause a <code>switch</code> case to be ignored. Always use a <code>break</code> statement to ignore a <code>switch</code> case.</p></aside><p>The following example switches on a <code>Character</code> value and determines whether it represents a number symbol in one of four languages. For brevity, multiple values are covered in a single <code>switch</code> case.</p><pre class="swift"><code>let numberSymbol: Character = "三"  // Chinese symbol for the number 3
+var possibleIntegerValue: Int?
+switch numberSymbol {
+case "1", "١", "一", "๑":
+    possibleIntegerValue = 1
+case "2", "٢", "二", "๒":
+    possibleIntegerValue = 2
+case "3", "٣", "三", "๓":
+    possibleIntegerValue = 3
+case "4", "٤", "四", "๔":
+    possibleIntegerValue = 4
+default:
+    break
+}
+if let integerValue = possibleIntegerValue {
+    print("The integer value of \(numberSymbol) is \(integerValue).")
+} else {
+    print("An integer value couldn't be found for \(numberSymbol).")
+}
+// Prints "The integer value of 三 is 3."
+</code></pre><p>This example checks <code>numberSymbol</code> to determine whether it’s a Latin, Arabic, Chinese, or Thai symbol for the numbers <code>1</code> to <code>4</code>. If a match is found, one of the <code>switch</code> statement’s cases sets an optional <code>Int?</code> variable called <code>possibleIntegerValue</code> to an appropriate integer value.</p><p>After the <code>switch</code> statement completes its execution, the example uses optional binding to determine whether a value was found. The <code>possibleIntegerValue</code> variable has an implicit initial value of <code>nil</code> by virtue of being an optional type, and so the optional binding will succeed only if <code>possibleIntegerValue</code> was set to an actual value by one of the <code>switch</code> statement’s first four cases.</p><p>Because it’s not practical to list every possible <code>Character</code> value in the example above, a <code>default</code> case handles any characters that aren’t matched. This <code>default</code> case doesn’t need to perform any action, and so it’s written with a single <code>break</code> statement as its body. As soon as the <code>default</code> case is matched, the <code>break</code> statement ends the <code>switch</code> statement’s execution, and code execution continues from the <code>if let</code> statement.</p><h3 id="Fallthrough"><a href="#Fallthrough">Fallthrough</a></h3><p>In Swift, <code>switch</code> statements don’t fall through the bottom of each case and into the next one. That is, the entire <code>switch</code> statement completes its execution as soon as the first matching case is completed. By contrast, C requires you to insert an explicit <code>break</code> statement at the end of every <code>switch</code> case to prevent fallthrough. Avoiding default fallthrough means that Swift <code>switch</code> statements are much more concise and predictable than their counterparts in C, and thus they avoid executing multiple <code>switch</code> cases by mistake.</p><p>If you need C-style fallthrough behavior, you can opt in to this behavior on a case-by-case basis with the <code>fallthrough</code> keyword. The example below uses <code>fallthrough</code> to create a textual description of a number.</p><pre class="swift"><code>let integerToDescribe = 5
+var description = "The number \(integerToDescribe) is"
+switch integerToDescribe {
+case 2, 3, 5, 7, 11, 13, 17, 19:
+    description += " a prime number, and also"
+    fallthrough
+default:
+    description += " an integer."
+}
+print(description)
+// Prints "The number 5 is a prime number, and also an integer."
+</code></pre><p>This example declares a new <code>String</code> variable called <code>description</code> and assigns it an initial value. The function then considers the value of <code>integerToDescribe</code> using a <code>switch</code> statement. If the value of <code>integerToDescribe</code> is one of the prime numbers in the list, the function appends text to the end of <code>description</code>, to note that the number is prime. It then uses the <code>fallthrough</code> keyword to “fall into” the <code>default</code> case as well. The <code>default</code> case adds some extra text to the end of the description, and the <code>switch</code> statement is complete.</p><p>Unless the value of <code>integerToDescribe</code> is in the list of known prime numbers, it isn’t matched by the first <code>switch</code> case at all. Because there are no other specific cases, <code>integerToDescribe</code> is matched by the <code>default</code> case.</p><p>After the <code>switch</code> statement has finished executing, the number’s description is printed using the <code>print(_:separator:terminator:)</code> function. In this example, the number <code>5</code> is correctly identified as a prime number.</p><aside class="note"><p class="label">Note</p><p>The <code>fallthrough</code> keyword doesn’t check the case conditions for the <code>switch</code> case that it causes execution to fall into. The <code>fallthrough</code> keyword simply causes code execution to move directly to the statements inside the next case (or <code>default</code> case) block, as in C’s standard <code>switch</code> statement behavior.</p></aside><h3 id="Labeled-Statements"><a href="#Labeled-Statements">Labeled Statements</a></h3><p>In Swift, you can nest loops and conditional statements inside other loops and conditional statements to create complex control flow structures. However, loops and conditional statements can both use the <code>break</code> statement to end their execution prematurely. Therefore, it’s sometimes useful to be explicit about which loop or conditional statement you want a <code>break</code> statement to terminate. Similarly, if you have multiple nested loops, it can be useful to be explicit about which loop the <code>continue</code> statement should affect.</p><p>To achieve these aims, you can mark a loop statement or conditional statement with a <i>statement label</i>. With a conditional statement, you can use a statement label with the <code>break</code> statement to end the execution of the labeled statement. With a loop statement, you can use a statement label with the <code>break</code> or <code>continue</code> statement to end or continue the execution of the labeled statement.</p><p>A labeled statement is indicated by placing a label on the same line as the statement’s introducer keyword, followed by a colon. Here’s an example of this syntax for a <code>while</code> loop, although the principle is the same for all loops and <code>switch</code> statements:</p><pre class="swift"><code>&lt;#label name#>: while &lt;#condition#> {
+   &lt;#statements#>
+}
+</code></pre><p>The following example uses the <code>break</code> and <code>continue</code> statements with a labeled <code>while</code> loop for an adapted version of the <i>Snakes and Ladders</i> game that you saw earlier in this chapter. This time around, the game has an extra rule:</p><ul><li><p>To win, you must land <i>exactly</i> on square 25.</p></li></ul><p>If a particular dice roll would take you beyond square 25, you must roll again until you roll the exact number needed to land on square 25.</p><p>The game board is the same as before.</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/snakesAndLadders@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/snakesAndLadders~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>The values of <code>finalSquare</code>, <code>board</code>, <code>square</code>, and <code>diceRoll</code> are initialized in the same way as before:</p><pre class="swift"><code>let finalSquare = 25
+var board = [Int](repeating: 0, count: finalSquare + 1)
+board[03] = +08; board[06] = +11; board[09] = +09; board[10] = +02
+board[14] = -10; board[19] = -11; board[22] = -02; board[24] = -08
+var square = 0
+var diceRoll = 0
+</code></pre><p>This version of the game uses a <code>while</code> loop and a <code>switch</code> statement to implement the game’s logic. The <code>while</code> loop has a statement label called <code>gameLoop</code> to indicate that it’s the main game loop for the Snakes and Ladders game.</p><p>The <code>while</code> loop’s condition is <code>while square != finalSquare</code>, to reflect that you must land exactly on square 25.</p><pre class="swift"><code>gameLoop: while square != finalSquare {
+    diceRoll += 1
+    if diceRoll == 7 { diceRoll = 1 }
+    switch square + diceRoll {
+    case finalSquare:
+        // diceRoll will move us to the final square, so the game is over
+        break gameLoop
+    case let newSquare where newSquare > finalSquare:
+        // diceRoll will move us beyond the final square, so roll again
+        continue gameLoop
+    default:
+        // this is a valid move, so find out its effect
+        square += diceRoll
+        square += board[square]
+    }
+}
+print("Game over!")
+</code></pre><p>The dice is rolled at the start of each loop. Rather than moving the player immediately, the loop uses a <code>switch</code> statement to consider the result of the move and to determine whether the move is allowed:</p><ul><li><p>If the dice roll will move the player onto the final square, the game is over. The <code>break gameLoop</code> statement transfers control to the first line of code outside of the <code>while</code> loop, which ends the game.</p></li><li><p>If the dice roll will move the player <i>beyond</i> the final square, the move is invalid and the player needs to roll again. The <code>continue gameLoop</code> statement ends the current <code>while</code> loop iteration and begins the next iteration of the loop.</p></li><li><p>In all other cases, the dice roll is a valid move. The player moves forward by <code>diceRoll</code> squares, and the game logic checks for any snakes and ladders. The loop then ends, and control returns to the <code>while</code> condition to decide whether another turn is required.</p></li></ul><aside class="note"><p class="label">Note</p><p>If the <code>break</code> statement above didn’t use the <code>gameLoop</code> label, it would break out of the <code>switch</code> statement, not the <code>while</code> statement. Using the <code>gameLoop</code> label makes it clear which control statement should be terminated.</p><p>It isn’t strictly necessary to use the <code>gameLoop</code> label when calling <code>continue gameLoop</code> to jump to the next iteration of the loop. There’s only one loop in the game, and therefore no ambiguity as to which loop the <code>continue</code> statement will affect. However, there’s no harm in using the <code>gameLoop</code> label with the <code>continue</code> statement. Doing so is consistent with the label’s use alongside the <code>break</code> statement and helps make the game’s logic clearer to read and understand.</p></aside><h2 id="Early-Exit"><a href="#Early-Exit">Early Exit</a></h2><p>A <code>guard</code> statement, like an <code>if</code> statement, executes statements depending on the Boolean value of an expression. You use a <code>guard</code> statement to require that a condition must be true in order for the code after the <code>guard</code> statement to be executed. Unlike an <code>if</code> statement, a <code>guard</code> statement always has an <code>else</code> clause — the code inside the <code>else</code> clause is executed if the condition isn’t true.</p><pre class="swift"><code>func greet(person: [String: String]) {
+    guard let name = person["name"] else {
+        return
+    }
+
+    print("Hello \(name)!")
+
+    guard let location = person["location"] else {
+        print("I hope the weather is nice near you.")
+        return
+    }
+
+    print("I hope the weather is nice in \(location).")
+}
+
+greet(person: ["name": "John"])
+// Prints "Hello John!"
+// Prints "I hope the weather is nice near you."
+greet(person: ["name": "Jane", "location": "Cupertino"])
+// Prints "Hello Jane!"
+// Prints "I hope the weather is nice in Cupertino."
+</code></pre><p>If the <code>guard</code> statement’s condition is met, code execution continues after the <code>guard</code> statement’s closing brace. Any variables or constants that were assigned values using an optional binding as part of the condition are available for the rest of the code block that the <code>guard</code> statement appears in.</p><p>If that condition isn’t met, the code inside the <code>else</code> branch is executed. That branch must transfer control to exit the code block in which the <code>guard</code> statement appears. It can do this with a control transfer statement such as <code>return</code>, <code>break</code>, <code>continue</code>, or <code>throw</code>, or it can call a function or method that doesn’t return, such as <code>fatalError(_:file:line:)</code>.</p><p>Using a <code>guard</code> statement for requirements improves the readability of your code, compared to doing the same check with an <code>if</code> statement. It lets you write the code that’s typically executed without wrapping it in an <code>else</code> block, and it lets you keep the code that handles a violated requirement next to the requirement.</p><h2 id="Deferred-Actions"><a href="#Deferred-Actions">Deferred Actions</a></h2><p>Unlike control-flow constructs like <code>if</code> and <code>while</code>, which let you control whether part of your code is executed or how many times it gets executed, <code>defer</code> controls <i>when</i> a piece of code is executed. You use a <code>defer</code> block to write code that will be executed later, when your program reaches the end of the current scope. For example:</p><pre class="swift"><code>var score = 1
+if score &lt; 10 {
+    defer {
+        print(score)
+    }
+    score += 5
+}
+// Prints "6".
+</code></pre><p>In the example above, the code inside of the <code>defer</code> block is executed before exiting the body of the <code>if</code> statement. First, the code in the <code>if</code> statement runs, which increments <code>score</code> by five. Then, before exiting the <code>if</code> statement’s scope, the deferred code is run, which prints <code>score</code>.</p><p>The code inside of the <code>defer</code> always runs, regardless of how the program exits that scope. That includes code like an early exit from a function, breaking out of a <code>for</code> loop, or throwing an error. This behavior makes <code>defer</code> useful for operations where you need to guarantee a pair of actions happen — like manually allocating and freeing memory, opening and closing low-level file descriptors, and beginning and ending transactions in a database — because you can write both actions next to each other in your code. For example, the following code gives a temporary bonus to the score, by adding and subtracting 100 inside a chunk of code:</p><pre class="swift"><code>var score = 3
+if score &lt; 100 {
+    score += 100
+    defer {
+        score -= 100
+    }
+    // Other code that uses the score with its bonus goes here.
+    print(score)
+}
+// Prints "103".
+</code></pre><p>If you write more than one <code>defer</code> block in the same scope, the first one you specify is the last one to run.</p><pre class="swift"><code>if score &lt; 10 {
+    defer {
+        print(score)
+    }
+    defer {
+        print("The score is:")
+    }
+    score += 5
+}
+// Prints "The score is:".
+// Prints "6".
+</code></pre><p>If your program stops running — for example, because of a runtime error or a crash — deferred code doesn’t execute. However, deferred code does execute after an error is thrown; for information about using <code>defer</code> with error handling, see ErrorHandling.</p><h2 id="Checking-API-Availability"><a href="#Checking-API-Availability">Checking API Availability</a></h2><p>Swift has built-in support for checking API availability, which ensures that you don’t accidentally use APIs that are unavailable on a given deployment target.</p><p>The compiler uses availability information in the SDK to verify that all of the APIs used in your code are available on the deployment target specified by your project. Swift reports an error at compile time if you try to use an API that isn’t available.</p><p>You use an <i>availability condition</i> in an <code>if</code> or <code>guard</code> statement to conditionally execute a block of code, depending on whether the APIs you want to use are available at runtime. The compiler uses the information from the availability condition when it verifies that the APIs in that block of code are available.</p><pre class="swift"><code>if #available(iOS 10, macOS 10.12, *) {
+    // Use iOS 10 APIs on iOS, and use macOS 10.12 APIs on macOS
+} else {
+    // Fall back to earlier iOS and macOS APIs
+}
+</code></pre><p>The availability condition above specifies that in iOS, the body of the <code>if</code> statement executes only in iOS 10 and later; in macOS, only in macOS 10.12 and later. The last argument, <code>*</code>, is required and specifies that on any other platform, the body of the <code>if</code> executes on the minimum deployment target specified by your target.</p><p>In its general form, the availability condition takes a list of platform names and versions. You use platform names such as <code>iOS</code>, <code>macOS</code>, <code>watchOS</code>, <code>tvOS</code>, and <code>visionOS</code> — for the full list, see Attributes. In addition to specifying major version numbers like iOS 8 or macOS 10.10, you can specify minor versions numbers like iOS 11.2.6 and macOS 10.13.3.</p><pre class="swift"><code>if #available(&lt;#platform name#> &lt;#version#>, &lt;#...#>, *) {
+    &lt;#statements to execute if the APIs are available#>
+} else {
+    &lt;#fallback statements to execute if the APIs are unavailable#>
+}
+</code></pre><p>When you use an availability condition with a <code>guard</code> statement, it refines the availability information that’s used for the rest of the code in that code block.</p><pre class="swift"><code>@available(macOS 10.12, *)
+struct ColorPreference {
+    var bestColor = "blue"
+}
+
+func chooseBestColor() -> String {
+    guard #available(macOS 10.12, *) else {
+       return "gray"
+    }
+    let colors = ColorPreference()
+    return colors.bestColor
+}
+</code></pre><p>In the example above, the <code>ColorPreference</code> structure requires macOS 10.12 or later. The <code>chooseBestColor()</code> function begins with an availability guard. If the platform version is too old to use <code>ColorPreference</code>, it falls back to behavior that’s always available. After the <code>guard</code> statement, you can use APIs that require macOS 10.12 or later.</p><p>In addition to <code>#available</code>, Swift also supports the opposite check using an unavailability condition. For example, the following two checks do the same thing:</p><pre class="swift"><code>if #available(iOS 10, *) {
+} else {
+    // Fallback code
+}
+
+if #unavailable(iOS 10) {
+    // Fallback code
+}
+</code></pre><p>Using the <code>#unavailable</code> form helps make your code more readable when the check contains only fallback code.</p></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

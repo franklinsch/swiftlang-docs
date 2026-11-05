@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Restricting non-final generic methods</title><meta content="Learn why unbound generic methods aren’t allowed in Embedded Swift." name="description"><script src="../../../navigator-index-embedded-swift.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Embedded Swift</a></li><li>Restricting non-final generic methods</li></ul></nav><hgroup><p>Article</p><h1>Restricting non-final generic methods</h1></hgroup><p>Learn why unbound generic methods aren’t allowed in Embedded Swift.</p></section><section id="Background"><h2><a href="#Background">Background</a></h2><p>Embedded Swift relies on monomorphization to achieve its properties like not requiring type metadata. Monomorphization is mandatory specialization of all compiled code – all function bodies get their concrete types substituted and all generics are “compiled out”. This is based on passing type information top-down, that is, from callers to callees, and specializing callees based on the concrete type provided by the caller.</p><p>This type information passing from the caller is crucial. If it cannot happen for some reason, then monomorphization cannot happen. This is why Embedded Swift imposes restrictions on non-final generic methods on classes.</p><h2 id="Non-final-generic-methods-on-classes-for-subclassing-based-dispatch"><a href="#Non-final-generic-methods-on-classes-for-subclassing-based-dispatch">Non-final generic methods on classes (for subclassing-based dispatch)</a></h2><p>A non-final generic method on a class where the generic type does not come from the class context itself, is disallowed in Embedded Swift. This is because conservatively, the compiler must assume there could be subclasses with the method overridden. Monomorphization of a function call then cannot know the concrete target type. For example:</p><pre class="swift"><code>class MyClass {
+  func write&lt;T>(t: T) { /* implementation */ }
+}
+
+let instance: MyClass = ... // could be MyClass, or a subclass
+instance.write(t: 42) // ❌
+</code></pre><p>Alternatives (which all have different tradeoffs and code structure implications):</p><p><b>(1) Make the class final (disallow subclassing):</b></p><pre class="swift"><code>final class MyClass {
+  func write&lt;T>(t: T) { /* implementation */ }
+}
+
+let instance: MyClass = ... // can only be MyClass
+instance.write(t: 42) // ✅
+</code></pre><p><b>(2) Make the individual method final (disallow overriding in subclasses):</b></p><pre class="swift"><code>class MyClass {
+  final func write&lt;T>(t: T) { /* implementation */ }
+}
+
+let instance: MyClass = ... // could be MyClass, or a subclass
+instance.write(t: 42) // ✅
+</code></pre><p><b>(3) Make the class generic instead of the method:</b></p><pre class="swift"><code>class MyClass&lt;T> {
+  func write(t: T) { /* implementation */ }
+}
+
+let instance: MyClass = ... // can only be MyClass&lt;Int>
+instance.write(t: 42) // ✅
+</code></pre><p><b>(4) Use overloading to support a set of concrete types:</b></p><pre class="swift"><code>class MyClass {
+  func write(t: Int) { /* implementation */ }
+  func write(t: Double) { /* implementation */ }
+}
+
+let instance: MyClass = ... // could be MyClass, or a subclass
+instance.write(t: 42) // ✅
+</code></pre><h2 id="Non-final-generic-methods-on-classes-for-existential-based-dispatch"><a href="#Non-final-generic-methods-on-classes-for-existential-based-dispatch">Non-final generic methods on classes (for existential-based dispatch)</a></h2><p>A similar restriction applies to using class-bound existentials for dispatch method calls. Because at compile-time the target type is not statically known, monomorphization is not possible. For example:</p><pre class="swift"><code>protocol MyProtocol: AnyObject {
+    func write&lt;T>(t: T)
+}
+
+// existential ("any") is a runtime type-erasing box, we cannot specialize the target
+// function for T == Int.self because we don't know the concrete type of "p"
+func usingProtocolAsExistential(p: any MyProtocol) {
+    p.write(t: 42) // ❌
+}
+</code></pre><p>Alternatives:</p><p><b>(1) Avoid using an existential, use generics instead</b></p><pre class="swift"><code>protocol MyProtocol: AnyObject {
+    func write&lt;T>(t: T)
+}
+
+func usingProtocolAsGeneric(p: some MyProtocol) {
+    p.write(t: 42) // ✅
+}
+</code></pre><p><b>(2) Use a primary associated type</b></p><pre class="swift"><code>protocol MyProtocol&lt;T>: AnyObject {
+    associatedtype T
+    func write(t: T)
+}
+
+func usingProtocolAsExistential(p: any MyProtocol&lt;Int>) {
+    p.write(t: 42) // ✅
+}
+</code></pre><p><b>(3) Use overloading to support a set of concrete types:</b></p><pre class="swift"><code>protocol MyProtocol: AnyObject {
+    func write(t: Int)
+    func write(t: Double)
+}
+
+func usingProtocolAsExistential(p: any MyProtocol) {
+    p.write(t: 42) // ✅
+}
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Language-features"><a href="#Language-features">Language features</a></h3><ul><li><a href="../languagesubset/index.html"><p class="api-collection">Reviewing the language subset</p></a><p>Learn about the Embedded Swift language subset compared to full Swift.</p></li><li><a href="../strings/index.html"><p class="api-collection">Using strings</p></a><p>Enable full Unicode-compliant string support in Embedded Swift.</p></li><li><a href="../conditionalcompilation/index.html"><p class="api-collection">Conditionalizing compilation for Embedded Swift</p></a><p>Share code between Embedded Swift and full Swift using conditional compilation.</p></li><li><a href="../libraries/index.html"><p class="api-collection">Using libraries and modules in Embedded Swift</p></a><p>Learn about the library setup and linkage model of Embedded Swift.</p></li><li><a href="../externaldependencies/index.html"><p class="api-collection">Managing external dependencies</p></a><p>Learn what external system dependencies to expect from Embedded Swift compilations.</p></li><li><a href="../existentials/index.html"><p class="api-collection">Working with existentials</p></a><p>Learn about restrictions on existentials that apply in Embedded Swift.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

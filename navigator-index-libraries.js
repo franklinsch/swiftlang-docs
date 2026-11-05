@@ -1,0 +1,1 @@
+window.doccNavigatorIndex = {"includedArchiveIdentifiers":["Libraries"],"interfaceLanguages":{"swift":[{"path":"\/documentation\/libraries","title":"Project Libraries","type":"module"}]},"schemaVersion":{"major":0,"minor":1,"patch":2}};

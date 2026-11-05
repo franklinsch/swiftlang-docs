@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Writing a build tool plugin</title><meta content="Create a build tool to process or generate files." name="description"><script src="../../../navigator-index-swiftpm-PackageManagerDocs.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Package Manager (SwiftPM)</a></li><li><a href="../plugins/index.html">Plugins</a></li><li>Writing a build tool plugin</li></ul></nav><hgroup><p>Article</p><h1>Writing a build tool plugin</h1></hgroup><p>Create a build tool to process or generate files.</p><ul id="availability"><li aria-label="Swift 5.6+, Available on Swift 5.6 and later" title="Available on Swift 5.6 and later">Swift 5.6+</li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>The first step when writing a package plugin is to decide what kind of plugin you need. Implement a build tool plugin to generate source files that should be part of a build, or to perform other actions at the start of every build. Build tool plugins are invoked before a package is built in order to construct command invocations to run as part of the build.</p><p>A build tool plugin can provide two kinds of commands:</p><ul><li><p>term prebuild commands: commands that package manager runs before the build starts. Prebuild commands can generate an arbitrary number of output files with names that can’t be predicted before running the command.</p></li><li><p>term build commands: commands that package manager incorporates into the build system’s dependency graph and runs at the appropriate time during the build based on the existence and timestamps of their predefined inputs and outputs.</p></li></ul><aside class="note"><p class="label">Note</p><p>If your goal is to provide an action that you can perform at any time and is not associated with a build, implement a command plugin. See <a href="../writingcommandplugin/index.html">Writing a command plugin</a> for details about creating a command plugin.</p></aside><p>With both prebuild and build commands, it is important to note that the build tool plugin doesn’t do the work, rather it constructs the commands that the build runs later, and it is those commands that perform the work. The plugin can be quite small, and is often concerned with forming the command line for the build command that does the actual work.</p><p>A build tool plugin is available to the package that defines it, and if there is a corresponding plugin product, it is also available to any other package that has a direct dependency on the package.</p><h3 id="Build-commands"><a href="#Build-commands">Build commands</a></h3><p>Prefer to create a build command over a prebuild command when the paths of all of the inputs and outputs are known before the command runs. Build tool commands are more efficient because they provide the build system the information needed to efficiently decide when the build should invoke them.</p><p>An example is a source translation tool that generates one output file (with a predictable name) for each input file. Other examples include when the build command controls the names of the outputs without having to first run the tool. In these cases the build system runs the commands only when some of the expected outputs are missing, or when the inputs have changed after the last time the command ran. Build commands don’t require a one-to-one correspondence between inputs and outputs; it is free to choose how many (if any) output files to create by examining the input target.</p><h3 id="Prebuild-commands"><a href="#Prebuild-commands">Prebuild commands</a></h3><p>Create a prebuild command only when the names of the output aren’t known until the tool is run. This is the case if the <i>contents</i> of the input files (opposed to the input file names) determines the number and names of the output files, such as generating code based on the input of a configuration file. The build system runs prebuild commands run before every build. They should therefore do their own caching to minimize the work needed to avoid slowing down incremental builds.</p><h3 id="Declaring-a-build-tool-plugin-in-the-package-manifest"><a href="#Declaring-a-build-tool-plugin-in-the-package-manifest">Declaring a build tool plugin in the package manifest</a></h3><p>Declare a build tool plugin in the package manifest. This is done using a <code>pluginTarget</code> entry in the <code>targets</code> section of the package. Add a corresponding <code>plugin</code> entry the products section to make the plugin available to other packages.</p><p>The following example illustrates defining a build tool named “MyBuildToolPlugin” that depends on the product <code>SomeTool</code>, and can be used from other packages:</p><pre class="swift"><code>import PackageDescription
+
+let package = Package(
+    name: "MyPluginPackage",
+    products: [
+        .plugin(
+            name: "MyBuildToolPlugin",
+            targets: [
+                "MyBuildToolPlugin"
+            ]
+        )
+    ],
+    dependencies: [
+        .package(
+            url: "https://github.com/example/sometool",
+            from: "0.1.0"
+        )
+    ],
+    targets: [
+        .plugin(
+            name: "MyBuildToolPlugin",
+            capability: .buildTool(),
+            dependencies: [
+                .product(name: "SomeTool", package: "sometool"),
+            ]
+        )
+    ]
+)
+</code></pre><p>The <a href="https://developer.apple.com/documentation/packagedescription/target/plugin(name:capability:dependencies:path:exclude:sources:)">plugin target</a> declares the name and capability of the plugin, along with its dependencies. The capability of <code>.buildTool()</code> is the declaration that this defines a build tool plugin. The capability also indicates the entry point the plugin is expected to implement.</p><p>When you declare a <code>plugin</code> product, that makes the plugin visible to other packages that have a dependency on the package. The name of the plugin doesn’t have to match the name of the product, but they are often the same in order to avoid confusion. Only list the name of the plugin the target provides. If you only use the build tool plugin within the package, you don’t need to declare a <code>plugin</code> product.</p><h3 id="Build-tool-target-dependencies"><a href="#Build-tool-target-dependencies">Build tool target dependencies</a></h3><p>The dependencies specify the command line tools available for use in commands constructed by the plugin. Each dependency can be either an <code>executableTarget</code> or a <code>binaryTarget</code> target in the same package, or can be an <code>executable</code> product in another package. In the example above, the plugin depends on the hypothetical <i>SomeTool</i> product in the <i>sometool</i> package on which the package that defines the plugin has a dependency. Note that this does not necessarily mean that <i>SomeTool</i> will have been built when the plugin is invoked. It means that the plugin can look up the path at which the tool will exist at the time any commands constructed by the plugin are run.</p><p>Executable dependencies are built for the host platform as part of the build, while binary dependencies are references to <code>artifactbundle</code> archives that contains prebuilt binaries (see <a href="https://github.com/swiftlang/swift-evolution/blob/main/proposals/0305-swiftpm-binary-target-improvements.md">SE-305</a>). Binary targets are often used when the tool is built using a different build system than package manager, or when building it on demand is prohibitively expensive or requires a special build environment.</p><p>Pass an executable target’s name, an executable product’s name, or an executable artifact’s name to <code>PluginContext.tool(named:)</code>, as appropriate for the declared dependency. Binary artifact bundles must contain a variant that supports the host platform, because build tools run on the host even when the package is being cross-compiled.</p><p>Declaring a dependency is the portable way to make a tool available to a build tool plugin. Swift Package Manager also searches the directory containing the selected Swift compiler, which makes tools in the active toolchain available, but it doesn’t search the user’s <code>PATH</code> for build tool plugins. IDEs and other hosts may provide different search directories. Don’t require users to install a build tool on <code>PATH</code>; provide it through an executable or binary dependency instead.</p><h3 id="Implementing-the-build-tool-plugin-script"><a href="#Implementing-the-build-tool-plugin-script">Implementing the build tool plugin script</a></h3><p>By default, Swift Package Manager looks for the implementation of a declared plugin in a subdirectory of the <code>Plugins</code> directory named with the same name as the plugin target. This can be overridden using the <code>path</code> parameter in the target declaration.</p><p>A plugin consists of one or more Swift source files. Conform the main entry point of the build tool plugin script to the <code>BuildToolPlugin</code> protocol.</p><p>Similar to how a package manifest imports the <i>PackageDescription</i> module provided by package manager, a package plugin imports the <i>PackagePlugin</i> module. The <i>PackagePlugin</i> module contains the API through which the plugin receives information from package manager and communicates results back to it. The plugin script can import <i>Foundation</i> and other standard libraries, but it cannot import other libraries.</p><p>The following example returns an instance of <code>buildCommand</code>, so the package manager incorporates it into the build system’s command graph. The build system runs it if any of the output files are missing, or if the contents of any of the input files have changed since the last time the command ran.</p><pre class="swift"><code>import PackagePlugin
+
+@main
+struct MyPlugin: BuildToolPlugin {
+    
+  func createBuildCommands(context: PluginContext, 
+                           target: Target) throws -> [Command] {
+    // This plugin only runs for package targets that can have source files.
+    guard let sourceFiles = target.sourceModule?.sourceFiles else { return [] }
+
+    // Find the code generator tool to run (replace this with the actual one).
+    let generatorTool = try context.tool(named: "my-code-generator")
+
+    // Construct a build command for each source file with a particular suffix.
+    return sourceFiles.map(\.url).compactMap {
+        createBuildCommand(for: $0, in: context.pluginWorkDirectoryURL, with: generatorTool.url)
+    }
+  }
+
+  func createBuildCommand(for inputPath: URL,
+                          in outputDirectoryPath: URL,
+                          with generatorToolPath: URL) -> Command? {
+    // Skip any file that doesn't have the extension we're looking for
+    // (replace this with the actual one).
+    guard inputPath.pathExtension == "my-input-suffix" else { return .none }
+
+    // Return a command that will run during the build to generate the output file.
+    let inputName = inputPath.lastPathComponent
+    let outputName = inputPath.deletingPathExtension().lastPathComponent + ".swift"
+    let outputPath = outputDirectoryPath.appendingPathComponent(outputName)
+    return .buildCommand(
+        displayName: "Generating \(outputName) from \(inputName)",
+        executable: generatorToolPath,
+        arguments: ["\(inputPath)", "-o", "\(outputPath)"],
+        inputFiles: [inputPath],
+        outputFiles: [outputPath]
+    )
+  }
+}
+</code></pre><p>Build tool plugins are always applied to a target, which is provided as a parameter. Only source module targets have source files, so a plugin that iterates over source files commonly tests that the target it was provided conforms to <code>SourceModuleTarget</code>.</p><p>A build tool plugin can also return commands of the type <code>prebuildCommand</code>. These run before the build starts and can populate a directory with output files whose names are not known until the command runs:</p><pre class="swift"><code>import PackagePlugin
+import Foundation
+
+@main
+struct MyBuildToolPlugin: BuildToolPlugin {
+    
+  func createBuildCommands(context: PluginContext, 
+                           target: Target) throws -> [Command] {
+
+    // This example configures `sometool` to write to a 
+    // "GeneratedFiles" directory in the plugin work directory 
+    // (which is unique for each plugin and target).
+    let outputDir = context.pluginWorkDirectoryURL
+        .appendingPathComponent("GeneratedFiles")
+    try FileManager.default.createDirectory(
+        at: outputDir,
+        withIntermediateDirectories: true)
+
+    // Return a command to run `sometool` as a prebuild command. 
+    // It runs before every build and generates source files 
+    // into an output directory provided by the build context.
+    return [.prebuildCommand(
+            displayName: "Running SomeTool",
+            executable: try context.tool(named: "SomeTool").path,
+            arguments: [ "--verbose", "--outdir", outputDir ],
+            outputFilesDirectory: outputDir)
+    ]
+  }
+}
+</code></pre><p>In the case of prebuild commands, any dependencies must be binary targets, since these commands run before the build starts.</p><p>A build tool plugin can return a combination of build tool commands and prebuild commands. After the plugin runs, the build system incorporates the build commands it provides into the build graph. This may result in changes that require commands to run during the subsequent build.</p><p>The build system runs prebuild commands after the plugin runs, but before the build starts. Any files that are in the prebuild command’s declared <code>outputFilesDirectory</code> are evaluated as if they had been source files in the target. The prebuild command should add or remove files in this directory to reflect the results of having run the command.</p><p>The package manager supports generated Swift source files and resources as outputs, but it does not support non-Swift source files. Any generated resources are processed as if they had been declared in the manifest with the <code>.process()</code> rule. The intent is to eventually support any type of file that you could include as a source file in the target, and to let the plugin provide greater control over the downstream processing of generated files.</p><h3 id="Diagnostics"><a href="#Diagnostics">Diagnostics</a></h3><p>Plugin entry points are marked <code>throws</code>, and any errors thrown from the entry point cause the build system to mark the plugin invocation as failed. Package manager presents the thrown error to the user, which should include a clear description of what went wrong.</p><p>Additionally, plugins can use the <code>Diagnostics</code> API in PackagePlugin to emit warnings and errors. These optionally include references to file paths and line numbers in those files.</p><h3 id="Debugging-and-Testing"><a href="#Debugging-and-Testing">Debugging and Testing</a></h3><p>Package manager doesn’t currently have any specific support for debugging and testing plugins. Many plugins act as adapters that construct command lines for invoking the tools that do the real work. In the cases in which there is non-trivial code in a plugin, a good approach is to factor out that code into separate source files that can be included in unit tests using symbolic links with relative paths.</p><h3 id="Xcode-Extensions-to-the-PackagePlugin-API"><a href="#Xcode-Extensions-to-the-PackagePlugin-API">Xcode Extensions to the PackagePlugin API</a></h3><p>When you invoke a plugin in Apple’s Xcode IDE, the plugins have access to a library module provided by Xcode called <i>XcodeProjectPlugin</i>. This module extends the <i>PackagePlugin</i> APIs to let plugins work on Xcode targets in addition to packages.</p><p>In order to write a plugin that works with packages in every environment, and that conditionally works with Xcode projects when run in Xcode, the plugin should conditionally import the <i>XcodeProjectPlugin</i> module when it is available. For example:</p><pre class="swift"><code>#if canImport(XcodeProjectPlugin)
+import XcodeProjectPlugin
+
+extension MyCommandPlugin: XcodeCommandPlugin {
+
+  // Entry point for creating build commands for targets in Xcode projects.
+  func createBuildCommands(context: XcodePluginContext,
+                           target: XcodeTarget) throws -> [Command] {
+    // Find the code generator tool to run (replace this with the actual one).
+    let generatorTool = try context.tool(named: "my-code-generator")
+
+    // Construct a build command for each source file with a particular suffix.
+    return target.inputFiles.map(\.url).compactMap {
+        createBuildCommand(for: $0,
+                           in: context.pluginWorkDirectoryURL,
+                           with: generatorTool.url)
+    }
+  }
+}
+#endif
+</code></pre><p>The <code>XcodePluginContext</code> input structure is similar to the <code>PluginContext</code> structure, except that it provides access to an Xcode project. The Xcode project uses Xcode naming and semantics for the project model, which is somewhat different from that of package manager. Some of the underlying types, such as <code>FileList</code>, or <code>Path</code>, are the same for <code>PackagePlugin</code> and <code>XcodeProjectPlugin</code>.</p><p>If any targets are chosen in the Xcode user interface, Xcode passes their names as <code>--target</code> arguments to the plugin.</p><p>Other IDEs or custom environments that use the package manager could similarly provide modules that define new entry points and extend the functionality of the core <code>PackagePlugin</code> APIs.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Writing-Plugins"><a href="#Writing-Plugins">Writing Plugins</a></h3><ul><li><a href="../writingcommandplugin/index.html"><p class="api-collection">Writing a command plugin</p></a><p>Create a command plugin to provide commands that extend the package manager.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

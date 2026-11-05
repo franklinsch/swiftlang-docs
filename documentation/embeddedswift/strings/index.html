@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Using strings</title><meta content="Enable full Unicode-compliant string support in Embedded Swift." name="description"><script src="../../../navigator-index-embedded-swift.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Embedded Swift</a></li><li>Using strings</li></ul></nav><hgroup><p>Article</p><h1>Using strings</h1></hgroup><p>Enable full Unicode-compliant string support in Embedded Swift.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Both StaticString and String types are available in Embedded Swift. As is the case in desktop Swift, certain operations on strings require Unicode data tables for strict Unicode compliance. In Embedded Swift these data tables are provided as a separate static library (libswiftUnicodeDataTables.a) that users need to link in manually – if they need to use these string operations. If the library is required, linking will fail due to missing on one or more of the following symbols:</p><pre><code>_swift_stdlib_getAge
+_swift_stdlib_getBinaryProperties
+_swift_stdlib_getCaseMapping
+_swift_stdlib_getComposition
+_swift_stdlib_getDecompositionEntry
+_swift_stdlib_getGeneralCategory
+_swift_stdlib_getGraphemeBreakProperty
+_swift_stdlib_getMapping
+_swift_stdlib_getMphIdx
+_swift_stdlib_getNameAlias
+_swift_stdlib_getNormData
+_swift_stdlib_getNumericType
+_swift_stdlib_getNumericValue
+_swift_stdlib_getScalarBitArrayIdx
+_swift_stdlib_getScalarName
+_swift_stdlib_getScript
+_swift_stdlib_getScriptExtensions
+_swift_stdlib_getSpecialMapping
+_swift_stdlib_getWordBreakProperty
+_swift_stdlib_isLinkingConsonant
+_swift_stdlib_nfd_decompositions
+</code></pre><p>To resolve this, link in the <code>libswiftUnicodeDataTables.a</code> that’s in Swift toolchain’s resource directory (<code>lib/swift/</code>) under the target triple that you’re using:</p><pre class="bash"><code>$ swiftc &lt;inputs> -target armv6m-none-none-eabi -enable-experimental-feature Embedded -wmo -c -o output.o
+$ ld ... -o binary output.o $(dirname `which swiftc`)/../lib/swift/embedded/armv6m-none-none-eabi/libswiftUnicodeDataTables.a
+</code></pre><p>Alternatively in a CMake build try something like the below which will check a Swiftly based install.</p><p>Update the <code>COMPILER_TARGET</code> variable to the architecture desired.</p><pre class="CMake"><code>set(COMPILER_TARGET "riscv32-none-none-eabi")
+
+find_program(SWIFTLY "swiftly")
+IF(SWIFTLY)
+  execute_process(COMMAND swiftly use --print-location OUTPUT_VARIABLE toolchain_path OUTPUT_STRIP_TRAILING_WHITESPACE)
+  cmake_path(SET additional_lib_path NORMALIZE "${toolchain_path}/usr/lib/swift/embedded/${COMPILER_TARGET}")
+ELSE()
+  get_filename_component(compiler_bin_dir ${CMAKE_Swift_COMPILER} DIRECTORY)
+  cmake_path(SET additional_lib_path NORMALIZE "${compiler_bin_dir}/../lib/swift/embedded/${COMPILER_TARGET}")
+ENDIF()
+
+target_link_directories(${COMPONENT_LIB} PUBLIC "${additional_lib_path}")
+target_link_libraries(${COMPONENT_LIB}
+    -Wl,--whole-archive
+    swiftUnicodeDataTables
+    -Wl,--no-whole-archive
+    )
+
+## decomment the below line to troubleshoot path issues if needed.
+# message(" ----------::: ${additional_lib_path} :::---------- ")
+</code></pre><p><b>Unicode data tables are required for (list not exhaustive):</b></p><ul><li><p>Comparing String objects for equality</p></li><li><p>Sorting Strings</p></li><li><p>Using String’s hash values, and in particular using String as dictionary keys</p></li><li><p>Using String’s <code>.count</code> property</p></li><li><p>Using Unicode-aware string processing APIs (<code>.split()</code>, iterating characters, indexing)</p></li><li><p>Using Unicode-aware conversion String APIs (<code>.uppercased()</code>, <code>.lowercased()</code>, and so on)</p></li></ul><p><b>For contrast, unicode data tables are <i>not required for</i> (list not exhaustive):</b></p><ul><li><p>Using StaticString</p></li><li><p>Creating, concatenating, string interpolating, and printing String objects</p></li><li><p>Using <code>.utf8</code>, <code>.utf16</code>, and <code>.unicodeScalars</code> views of strings, including their .count property, using them as dictionary keys</p></li></ul><p>Manually linking <code>libswiftUnicodeDataTables.a</code> is required for several reasons, including acknowledging that the data tables are desirable: Since they have a non-negligible size, it’s useful to be aware that you are using them.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Language-features"><a href="#Language-features">Language features</a></h3><ul><li><a href="../languagesubset/index.html"><p class="api-collection">Reviewing the language subset</p></a><p>Learn about the Embedded Swift language subset compared to full Swift.</p></li><li><a href="../conditionalcompilation/index.html"><p class="api-collection">Conditionalizing compilation for Embedded Swift</p></a><p>Share code between Embedded Swift and full Swift using conditional compilation.</p></li><li><a href="../libraries/index.html"><p class="api-collection">Using libraries and modules in Embedded Swift</p></a><p>Learn about the library setup and linkage model of Embedded Swift.</p></li><li><a href="../externaldependencies/index.html"><p class="api-collection">Managing external dependencies</p></a><p>Learn what external system dependencies to expect from Embedded Swift compilations.</p></li><li><a href="../existentials/index.html"><p class="api-collection">Working with existentials</p></a><p>Learn about restrictions on existentials that apply in Embedded Swift.</p></li><li><a href="../nonfinalgenericmethods/index.html"><p class="api-collection">Restricting non-final generic methods</p></a><p>Learn why unbound generic methods aren’t allowed in Embedded Swift.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

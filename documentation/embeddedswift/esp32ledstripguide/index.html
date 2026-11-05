@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Driving a WS2812 LED strip on the ESP32</title><meta content="Run a Swift program that animates a WS2812 LED strip on a RISC-V ESP32 device using the ESP-IDF SDK." name="description"><script src="../../../navigator-index-embedded-swift.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Embedded Swift</a></li><li><a href="../examples/index.html">Examples</a></li><li>Driving a WS2812 LED strip on the ESP32</li></ul></nav><hgroup><p>Article</p><h1>Driving a WS2812 LED strip on the ESP32</h1></hgroup><p>Run a Swift program that animates a WS2812 LED strip on a RISC-V ESP32 device using the ESP-IDF SDK.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>This example demonstrates how to integrate with the ESP-IDF SDK using CMake along with the existing LED strip library to control WS2812 lights from Swift. The target is the ESP32-C6-DevKitC-1 board, driving the strip’s data pin from GPIO pin 8 over SPI. Any RISC-V based Espressif chip works.</p><p>The Swift code wraps the ESP-IDF LED strip driver in a <code>LedStrip</code> struct, and an <code>app_main</code> entry point — the standard C entry point for ESP-IDF applications — animates a single random-colored pixel in an infinite loop:</p><pre class="swift"><code>@_cdecl("app_main")
+func main() {
+  print("Hello from Swift on ESP32-C6!")
+
+  let n = 1
+  let ledStrip = LedStrip(gpioPin: 8, maxLeds: n)
+  ledStrip.clear()
+
+  var colors: [LedStrip.Color] = .init(repeating: .off, count: n)
+  while true {
+    colors.removeLast()
+    colors.insert(.lightRandom, at: 0)
+
+    for index in 0..&lt;n {
+      ledStrip.setPixel(index: index, color: colors[index])
+    }
+    ledStrip.refresh()
+
+    let blinkDelayMs: UInt32 = 500
+    vTaskDelay(blinkDelayMs / (1000 / UInt32(configTICK_RATE_HZ)))
+  }
+}
+</code></pre><h2 id="Install-ESP-IDF"><a href="#Install-ESP-IDF">Install ESP-IDF</a></h2><p>Set up the <a href="https://docs.espressif.com/projects/esp-idf/en/stable/esp32/">ESP-IDF</a> development environment by following the <a href="https://docs.espressif.com/projects/esp-idf/en/v5.4/esp32c6/get-started/index.html">ESP-IDF “Get Started” guide</a>.</p><aside class="important"><p class="label">Important</p><p>Configure your environment specifically for RISC-V based Espressif chips. Embedded Swift doesn’t support Xtensa-based products.</p></aside><p>Before adding Swift, confirm that your setup can build the standard C/C++ sample projects. A good test is building and running the <code>get-started/blink</code> example from ESP-IDF.</p><h2 id="Install-Swift"><a href="#Install-Swift">Install Swift</a></h2><p>Follow the instructions in <a href="../installembeddedswift/index.html">Installing Embedded Swift</a> to install the latest Swift development snapshot with Embedded Swift support. Confirm the installation by running <code>swift --version</code> — it should report a “6.2-dev” or newer development snapshot.</p><h2 id="Build-the-project"><a href="#Build-the-project">Build the project</a></h2><p>Source the ESP-IDF environment script to make <code>idf.py</code> available in your shell:</p><pre class="shell"><code>$ . &lt;path-to-esp-idf>/export.sh
+</code></pre><p>Navigate to the example directory and set your target board. Any RISC-V based Espressif chip is supported:</p><pre class="shell"><code>$ cd esp32-led-strip-sdk
+$ idf.py set-target esp32c6  # or esp32c3, esp32p4, etc.
+</code></pre><p>Build the project:</p><pre class="shell"><code>$ idf.py build
+</code></pre><h2 id="Run-on-a-device"><a href="#Run-on-a-device">Run on a device</a></h2><p>Connect the ESP32-C6-DevKitC-1 board to your Mac using USB. Wire up an external WS2812 LED strip and use GPIO pin 8 as the data pin. You might need to use a level shifter.</p><p>Flash the firmware:</p><pre class="shell"><code>$ idf.py flash
+</code></pre><p>The LED strip animates a sequence of random colors moving in one direction.</p><h2 id="Simulate-with-Wokwi"><a href="#Simulate-with-Wokwi">Simulate with Wokwi</a></h2><p>If you don’t have a physical device, you can simulate the firmware directly in VS Code. To do this:</p><ol><li><p>Build the project to generate the firmware binaries as shown above.</p></li><li><p>Install the <a href="https://docs.wokwi.com/vscode/getting-started/">Wokwi for VS Code</a> extension.</p></li><li><p>Open the <code>diagram.json</code> file in VS Code.</p></li><li><p>Click the Play button to start the simulation.</p></li><li><p>Click the Pause button at any time to freeze the simulation and inspect the current state of the GPIO pins.</p></li></ol></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="ESP32-examples"><a href="#ESP32-examples">ESP32 examples</a></h3><ul><li><a href="../esp32guide/index.html"><p class="api-collection">Blinking an LED on the ESP32</p></a><p>Run a Swift LED-blink program on a RISC-V ESP32 device using the ESP-IDF SDK.</p></li><li><a href="../esp32uartechoguide/index.html"><p class="api-collection">Echoing UART input on the ESP32</p></a><p>Run a Swift UART echo program on a RISC-V ESP32 device using the ESP-IDF SDK.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

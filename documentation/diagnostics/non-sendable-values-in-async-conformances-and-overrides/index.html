@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Non-Sendable values in async conformances and overrides (NonSendableInAsyncConformanceOrOverride)</title><script src="../../../navigator-index-compiler-diagnostics.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Swift compiler diagnostics</a></li><li><a href="../diagnostic-groups/index.html">Diagnostic groups</a></li><li>Non-Sendable values in async conformances and overrides (NonSendableInAsyncConformanceOrOverride)</li></ul></nav><hgroup><p>Article</p><h1>Non-Sendable values in async conformances and overrides (NonSendableInAsyncConformanceOrOverride)</h1></hgroup></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>An <code>async</code> method that satisfies a protocol requirement (or overrides a superclass method) may be isolated to a different actor than the requirement it fulfills. This is allowed because calling an <code>async</code> method suspends the caller, letting the implementation resume in its specified isolation. (The same applies to <code>get async</code> accessors.)</p><p>When the two isolations differ, the method’s parameters and results have to cross between them. That crossing is only safe for <code>Sendable</code> values, so the compiler rejects it for non-Sendable ones.</p><p>For example:</p><pre class="swift"><code>class Plant {
+    var height = 0
+}
+
+protocol PlantJournal {
+    func record(plant: Plant) async
+}
+
+@MainActor
+class GardenJournal: PlantJournal {
+    func record(plant: Plant) async { // error: non-Sendable parameter type 'Plant' cannot be sent from caller of protocol requirement 'record(plant:)' into main actor-isolated implementation
+        print("Recorded plant at \(plant.height) cm tall")
+    }
+}
+</code></pre><p>Here, the <code>GardenJournal</code> implementation is isolated to the main actor, while the <code>PlantJournal</code> requirement is not. A caller in a different isolation that invokes <code>record(plant:)</code> would pass a non-Sendable <code>Plant</code> into the main-actor-isolated implementation. Since that value can’t safely cross, the compiler diagnoses the implementation under complete concurrency checking. This is an error in the Swift 6 language mode.</p><p>There are a few possible ways to address this issue.</p><h2 id="Use-an-isolated-conformance"><a href="#Use-an-isolated-conformance">Use an isolated conformance</a></h2><p>If you only need the conformance to be used from within a specific global actor isolation, you can write an isolated conformance. This means the protocol methods can only be called from that isolation, so non-Sendable values won’t need to cross between isolations. This may be especially natural when the type already has a global actor isolation.</p><pre class="swift"><code>class Plant {
+    var height = 0
+}
+
+protocol PlantJournal {
+    func record(plant: Plant) async
+}
+
+@MainActor
+class GardenJournal: @MainActor PlantJournal {
+    func record(plant: Plant) async { // OK, any caller of `record` is already on MainActor.
+        print("Recorded plant at \(plant.height) cm tall")
+    }
+}
+</code></pre><p>The upcoming feature <code>InferIsolatedConformances</code> will automatically infer an isolated conformance like the one above for a global-actor-isolated type, without needing to write <code>@MainActor</code> on the conformance itself.</p><h2 id="Make-all-parameters-and-results-Sendable"><a href="#Make-all-parameters-and-results-Sendable">Make all parameters and results <code>Sendable</code></a></h2><p>If all the parameters and result types of the function are <code>Sendable</code>, it’s safe to send them between any isolations. Often, using a value type like a <code>struct</code> or an <code>enum</code> is the simplest choice, because they are implicitly <code>Sendable</code>. Having a different isolation in the implementation is no longer a problem:</p><pre class="swift"><code>struct Plant {
+    var height = 0
+}
+
+protocol PlantJournal {
+    func record(plant: Plant) async
+}
+
+@MainActor
+class GardenJournal: PlantJournal {
+    func record(plant: Plant) async { // OK, sending `Plant` from another isolation is safe.
+        print("Recorded plant at \(plant.height) cm tall")
+    }
+}
+</code></pre><p>Reference types can be made <code>Sendable</code> by an explicit <code>Sendable</code> conformance, a global actor annotation like <code>@MainActor</code>, or with <code>@unchecked Sendable</code> when the type has been made thread safe by a different synchronization mechanism like a lock or a queue.</p><h2 id="Match-the-isolation-of-both-the-protocol-and-the-implementation"><a href="#Match-the-isolation-of-both-the-protocol-and-the-implementation">Match the isolation of both the protocol and the implementation</a></h2><p>Of course, making all parameters and results <code>Sendable</code> may not always be possible. Since the problem arises when the protocol or superclass method and its implementation have different isolations, another solution is to annotate either the protocol or the implementation to use the same isolation:</p><pre class="swift"><code>class Plant {
+    var height = 0
+}
+
+@MainActor
+protocol PlantJournal {
+    func record(plant: Plant) async
+}
+
+@MainActor
+class GardenJournal: PlantJournal {
+    func record(plant: Plant) async { // OK
+        print("Recorded plant at \(plant.height) cm tall")
+    }
+}
+</code></pre><p>This means any callers of these methods will also need to be in the same isolation. For the example above, calls to <code>journal.record(plant: plant)</code> need to be performed from a main-actor-isolated context.</p><h2 id="Make-non-Sendable-parameters-or-results-sending"><a href="#Make-non-Sendable-parameters-or-results-sending">Make non-Sendable parameters or results <code>sending</code></a></h2><p>If the parameters or results can’t be made <code>Sendable</code>, and the implementation needs a different isolation than the protocol or superclass, it may still be possible to make those parameters or results <code>sending</code>. The compiler will ensure that crossings of a non-Sendable value into a different isolation using <code>sending</code> are safe, by making those values unavailable in their original isolation after being sent. However, since <code>sending</code> has to be declared on the requirement, it’s part of the protocol’s contract for every conformance, even ones whose isolation already matches and wouldn’t otherwise have needed it.</p><pre class="swift"><code>class Plant {
+    var height = 0
+}
+
+protocol PlantJournal {
+    func record(plant: sending Plant) async
+}
+
+@MainActor
+class GardenJournal: PlantJournal {
+    func record(plant: sending Plant) async { // OK
+        print("Recorded plant at \(plant.height) cm tall")
+    }
+}
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><ul><li><a href="../dynamic-callable-requirements/index.html"><p class="api-collection">@dynamicCallable implementation requirements (DynamicCallable)</p></a></li><li><a href="../add-preconcurrency-import/index.html"><p class="api-collection">Add @preconcurrency import (AddPreconcurrencyImport)</p></a></li><li><a href="../always-available-domain/index.html"><p class="api-collection">Always enabled availability domains (AlwaysAvailableDomain)</p></a><p>Warnings that identify <code>@available</code> attributes and <code>if #available</code> statements that reference custom availability domains which have been permanently enabled.</p></li><li><a href="../always-unsafe/index.html"><p class="api-collection">Always unsafe (AlwaysUnsafe)</p></a></li><li><a href="../trailing-closure-matching/index.html"><p class="api-collection">Argument matching for trailing closures (TrailingClosureMatching)</p></a></li><li><a href="../actor-isolated-mutating-async/index.html"><p class="api-collection">Calling a mutating async actor-isolated method (ActorIsolatedMutatingAsync)</p></a></li><li><a href="../actor-isolated-call/index.html"><p class="api-collection">Calling an actor-isolated method from a synchronous nonisolated context (ActorIsolatedCall)</p></a></li><li><a href="../sendable-closure-captures/index.html"><p class="api-collection">Captures in a `@Sendable` closure (SendableClosureCaptures)</p></a></li><li><a href="../compilation-caching/index.html"><p class="api-collection">Compilation caching (CompilationCaching)</p></a><p>Errors and warnings related to the compiler’s CAS compilation caching.</p></li><li><a href="../string-interpolation-conformance/index.html"><p class="api-collection">Conforming to `StringInterpolationProtocol` (StringInterpolationConformance)</p></a></li><li><a href="../conversion-from-isolated-any-to-synchronous/index.html"><p class="api-collection">Conversion from `@isolated(any)` function type to synchronous function type (ConversionFromIsolatedAnyToSynchronous)</p></a></li><li><a href="../region-isolation-cross-isolation-data-race/index.html"><p class="api-collection">Cross-isolation data race (RegionIsolationCrossIsolationDataRace)</p></a></li><li><a href="../deprecated-declaration/index.html"><p class="api-collection">Deprecated declaration warnings (DeprecatedDeclaration)</p></a><p>Warnings related to deprecated APIs that may be removed in future versions and should be replaced with more current alternatives.</p></li><li><a href="../implementation-only-deprecated/index.html"><p class="api-collection">Deprecated implementation-only imports (ImplementationOnlyDeprecated)</p></a><p>Warnings that identify <code>import</code> declarations with the <code>@_implementationOnly</code> attribute.</p></li><li><a href="../dynamic-exclusivity/index.html"><p class="api-collection">Dynamic exclusivity (DynamicExclusivity)</p></a><p>Experimental</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

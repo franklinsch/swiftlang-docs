@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Organizing test functions with suite types</title><meta content="Organize tests into test suites." name="description"><script src="../../../navigator-index-swift-testing.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Testing</a></li><li>Organizing test functions with suite types</li></ul></nav><hgroup><p>Article</p><h1>Organizing test functions with suite types</h1></hgroup><p>Organize tests into test suites.</p><ul id="availability"><li aria-label="Swift 6.0+, Available on Swift 6.0 and later" title="Available on Swift 6.0 and later">Swift 6.0+</li><li aria-label="Xcode 16.0+, Available on Xcode 16.0 and later" title="Available on Xcode 16.0 and later">Xcode 16.0+</li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>When working with a large selection of test functions, it can be helpful to organize them into test suites.</p><p>A test function can be added to a test suite in one of two ways:</p><ul><li><p>By placing it in a Swift type.</p></li><li><p>By placing it in a Swift type and annotating that type with the <code>@Suite</code> attribute.</p></li></ul><p>The <code>@Suite</code> attribute isn’t required for the testing library to recognize that a type contains test functions, but adding it allows customization of a test suite’s appearance in the IDE and at the command line. If a trait such as <a href="../trait/tags(_:)/index.html"><code>tags(<wbr>_:)</code></a> or <a href="../trait/disabled(_:sourcelocation:)/index.html"><code>disabled(<wbr>_:<wbr>source<wbr>Location:)</code></a> is applied to a test suite, it’s automatically inherited by the tests contained in the suite.</p><p>In addition to containing test functions and any other members that a Swift type might contain, test suite types can also contain additional test suites nested within them. To add a nested test suite type, simply declare an additional type within the scope of the outer test suite type.</p><p>By default, tests contained within a suite run in parallel with each other. For more information about test parallelization, see <a href="../parallelization/index.html">Running tests serially or in parallel</a>.</p><h3 id="Customize-a-suites-name"><a href="#Customize-a-suites-name">Customize a suite’s name</a></h3><p>To customize a test suite’s name, supply a string literal as an argument to the <code>@Suite</code> attribute:</p><pre class="swift"><code>@Suite("Food truck tests") struct FoodTruckTests {
+  @Test func foodTruckExists() { ... }
+}
+</code></pre><p>To further customize the appearance and behavior of a test function, use <a href="../traits/index.html">traits</a> such as <a href="../trait/tags(_:)/index.html"><code>tags(<wbr>_:)</code></a>.</p><h2 id="Test-functions-in-test-suite-types"><a href="#Test-functions-in-test-suite-types">Test functions in test suite types</a></h2><p>If a type contains a test function declared as an instance method (that is, without either the <code>static</code> or <code>class</code> keyword), the testing library calls that test function at runtime by initializing an instance of the type, then calling the test function on that instance. If a test suite type contains multiple test functions declared as instance methods, each one is called on a distinct instance of the type. Therefore, the following test suite and test function:</p><pre class="swift"><code>@Suite struct FoodTruckTests {
+  @Test func foodTruckExists() { ... }
+}
+</code></pre><p>Are equivalent to:</p><pre class="swift"><code>@Suite struct FoodTruckTests {
+  func foodTruckExists() { ... }
+
+  @Test static func staticFoodTruckExists() {
+    let instance = FoodTruckTests()
+    instance.foodTruckExists()
+  }
+}
+</code></pre><h3 id="Constraints-on-test-suite-types"><a href="#Constraints-on-test-suite-types">Constraints on test suite types</a></h3><p>When using a type as a test suite, it’s subject to some constraints that are not otherwise applied to Swift types.</p><h4 id="An-initializer-may-be-required"><a href="#An-initializer-may-be-required">An initializer may be required</a></h4><p>If a type contains test functions declared as instance methods, it must be possible to initialize an instance of the type with a zero-argument initializer. The initializer may be any combination of:</p><ul><li><p>implicit or explicit</p></li><li><p>synchronous or asynchronous</p></li><li><p>throwing or non-throwing</p></li><li><p><code>private</code>, <code>fileprivate</code>, <code>internal</code>, <code>package</code>, or <code>public</code></p></li></ul><p>For example:</p><pre class="swift"><code>@Suite struct FoodTruckTests {
+  var batteryLevel = 100
+
+  @Test func foodTruckExists() { ... } // ✅ OK: The type has an implicit init().
+}
+
+@Suite struct CashRegisterTests {
+  private init(cashOnHand: Decimal = 0.0) async throws { ... }
+
+  @Test func calculateSalesTax() { ... } // ✅ OK: The type has a callable init().
+}
+
+struct MenuTests {
+  var foods: [Food]
+  var prices: [Food: Decimal]
+
+  @Test static func specialOfTheDay() { ... } // ✅ OK: The function is static.
+  @Test func orderAllFoods() { ... } // ❌ ERROR: The suite type requires init().
+}
+</code></pre><p>The compiler emits an error when presented with a test suite that doesn’t meet this requirement.</p><h4 id="Test-suite-types-must-always-be-available"><a href="#Test-suite-types-must-always-be-available">Test suite types must always be available</a></h4><p>Although <code>@available</code> can be applied to a test function to limit its availability at runtime, a test suite type (and any types that contain it) must <i>not</i> be annotated with the <code>@available</code> attribute:</p><pre class="swift"><code>@Suite struct FoodTruckTests { ... } // ✅ OK: The type is always available.
+
+@available(macOS 11.0, *) // ❌ ERROR: The suite type must always be available.
+@Suite struct CashRegisterTests { ... }
+
+@available(macOS 11.0, *) struct MenuItemTests { // ❌ ERROR: The suite type's
+                                                 // containing type must always
+                                                 // be available too.
+  @Suite struct BurgerTests { ... }
+}
+</code></pre><p>The compiler emits an error when presented with a test suite that doesn’t meet this requirement.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Essentials"><a href="#Essentials">Essentials</a></h3><ul><li><a href="../definingtests/index.html"><p class="api-collection">Defining test functions</p></a><p>Define a test function to validate that code is working correctly.</p></li><li><a href="../migratingfromxctest/index.html"><p class="api-collection">Migrating a test from XCTest</p></a><p>Migrate an existing test method or test class written using XCTest.</p></li><li><a href="../test(_:_:)/index.html"><code>macro <span class="identifier">Test</span>(<wbr>String?, any Test<wbr>Trait...)</code></a><p>Declare a test.</p></li><li><a href="../test/index.html"><code>struct <span class="identifier">Test</span></code></a><p>A type representing a test or suite.</p></li><li><a href="../suite(_:_:)/index.html"><code>macro <span class="identifier">Suite</span>(<wbr>String?, any Suite<wbr>Trait...)</code></a><p>Declare a test suite.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

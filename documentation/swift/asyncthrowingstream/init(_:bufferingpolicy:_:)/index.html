@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../../reference.css" rel="stylesheet"><title>init(_:bufferingPolicy:_:)</title><meta content="Constructs an asynchronous stream for an element type, using the specified buffering policy and element-producing closure." name="description"><script src="../../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../../index.html">Standard Library</a></li><li><a href="../index.html">AsyncThrowingStream</a></li><li>init(_:bufferingPolicy:_:)</li></ul></nav><hgroup><p>Initializer</p><h1>init(<wbr>_:<wbr>buffering<wbr>Policy:<wbr>_:)</h1></hgroup><p>Constructs an asynchronous stream for an element type, using the specified buffering policy and element-producing closure.</p><ul id="availability"><li aria-label="iOS 13.0+, Available on iOS 13.0 and later" title="Available on iOS 13.0 and later">iOS 13.0+</li><li aria-label="iPadOS 13.0+, Available on iPadOS 13.0 and later" title="Available on iPadOS 13.0 and later">iPadOS 13.0+</li><li aria-label="Mac Catalyst 13.0+, Available on Mac Catalyst 13.0 and later" title="Available on Mac Catalyst 13.0 and later">Mac Catalyst 13.0+</li><li aria-label="macOS 10.15+, Available on macOS 10.15 and later" title="Available on macOS 10.15 and later">macOS 10.15+</li><li aria-label="tvOS 13.0+, Available on tvOS 13.0 and later" title="Available on tvOS 13.0 and later">tvOS 13.0+</li><li aria-label="visionOS 1.0+, Available on visionOS 1.0 and later" title="Available on visionOS 1.0 and later">visionOS 1.0+</li><li aria-label="watchOS 6.0+, Available on watchOS 6.0 and later" title="Available on watchOS 6.0 and later">watchOS 6.0+</li></ul><pre id="declaration"><code><span class="keyword">init</span>(
+    _ <span class="internalParameter">elementType</span>: <span class="typeIdentifier">Element</span>.Type = Element.self,
+    bufferingPolicy <span class="internalParameter">limit</span>: <a class="typeIdentifier" href="../index.html">AsyncThrowingStream</a>&lt;<span class="typeIdentifier">Element</span>,
+    <span class="typeIdentifier">Failure</span>>.<a class="typeIdentifier" href="../continuation/index.html">Continuation</a>.<a class="typeIdentifier" href="../continuation/bufferingpolicy/index.html">BufferingPolicy</a> = .unbounded,
+    _ <span class="internalParameter">build</span>: (<a class="typeIdentifier" href="../index.html">AsyncThrowingStream</a>&lt;<span class="typeIdentifier">Element</span>, <span class="typeIdentifier">Failure</span>>.<a class="typeIdentifier" href="../continuation/index.html">Continuation</a>) -> <a class="typeIdentifier" href="../../void/index.html">Void</a>
+) <span class="keyword">where</span> <span class="typeIdentifier">Failure</span> == any <a class="typeIdentifier" href="../../error/index.html">Error</a></code></pre></section><section id="Parameters"><h2><a href="#Parameters">Parameters</a></h2><dl><dt>elementType</dt><dd><p>The type of element the <code>AsyncThrowingStream</code> produces.</p></dd><dt>limit</dt><dd><p>The maximum number of elements to hold in the buffer. By default, this value is unlimited. Use a <code>Continuation.BufferingPolicy</code> to buffer a specified number of oldest or newest elements.</p></dd><dt>build</dt><dd><p>A custom closure that yields values to the <code>AsyncThrowingStream</code>. This closure receives an <code>AsyncThrowingStream.Continuation</code> instance that it uses to provide elements to the stream and terminate the stream when finished.</p></dd></dl></section><section id="Discussion"><h2><a href="#Discussion">Discussion</a></h2><p>The <code>AsyncStream.Continuation</code> received by the <code>build</code> closure is appropriate for use in concurrent contexts. It is thread safe to send and finish; all calls to the continuation are serialized. However, calling this from multiple concurrent contexts could result in out-of-order delivery.</p><p>The following example shows an <code>AsyncStream</code> created with this initializer that produces 100 random numbers on a one-second interval, calling <code>yield(_:)</code> to deliver each element to the awaiting call point. When the <code>for</code> loop exits, the stream finishes by calling the continuation’s <code>finish()</code> method. If the random number is divisible by 5 with no remainder, the stream throws a <code>MyRandomNumberError</code>.</p><pre><code>let stream = AsyncThrowingStream&lt;Int, Error>(Int.self,
+                                             bufferingPolicy: .bufferingNewest(5)) { continuation in
+    Task.detached {
+        for _ in 0..&lt;100 {
+            await Task.sleep(1 * 1_000_000_000)
+            let random = Int.random(in: 1...10)
+            if random % 5 == 0 {
+                continuation.finish(throwing: MyRandomNumberError())
+                return
+            } else {
+                continuation.yield(random)
+            }
+        }
+        continuation.finish()
+    }
+}
+
+// Call point:
+do {
+    for try await random in stream {
+        print(random)
+    }
+} catch {
+    print(error)
+}
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Creating-a-Continuation-Based-Stream"><a href="#Creating-a-Continuation-Based-Stream">Creating a Continuation-Based Stream</a></h3><ul><li><a href="../continuation/bufferingpolicy/index.html"><code>enum <span class="identifier">Buffering<wbr>Policy</span></code></a><p>A strategy that handles exhaustion of a buffer’s capacity.</p></li><li><a href="../continuation/index.html"><code>struct <span class="identifier">Continuation</span></code></a><p>A mechanism to interface between synchronous code and an asynchronous stream.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

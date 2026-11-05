@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Integrating with the Zephyr RTOS SDK</title><meta content="Integrate Swift with Zephyr RTOS for embedded systems development." name="description"><script src="../../../navigator-index-embedded-swift.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Embedded Swift</a></li><li>Integrating with the Zephyr RTOS SDK</li></ul></nav><hgroup><p>Article</p><h1>Integrating with the Zephyr RTOS SDK</h1></hgroup><p>Integrate Swift with Zephyr RTOS for embedded systems development.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p><a href="https://www.zephyrproject.org/">Zephyr</a> is an open-source RTOS for embedded systems that is sponsored by the Linux Foundation. Since it depends on CMake primarily for its build system, it can easily be integrated to be used with Embedded Swift.</p><p>The following document outlines how to setup a Swift to Zephyr project for an emulated ARM Cortex M0, explaining a few key concepts along the way. For a complete working example on real hardware, however, refer to the <a href="https://github.com/swiftlang/swift-embedded-examples/tree/main/nrfx-blink-sdk">nrfx-blink-sdk</a> project that is compatible with nRF or other boards.</p><h2 id="Target-Architecture-Compatibility"><a href="#Target-Architecture-Compatibility">Target Architecture Compatibility</a></h2><p>Zephyr <a href="https://docs.zephyrproject.org/latest/introduction/index.html">supports quite a few target architectures</a>, but not all are supported by Embedded Swift. Please refer to the following table for an overview of Zephyr-supported architectures that are supported by Swift, along with the correct target triple to use:</p><table><thead><tr><th>Architecture</th><th>Details</th><th>Swift Triple</th></tr></thead><tbody><tr><td>ARMv6-M</td><td>Cortex M0, M0+, M1</td><td>armv6m-none-none-eabi</td></tr><tr><td>ARMv7-M</td><td>Cortex M3</td><td>armv7-none-none-eabi</td></tr><tr><td>ARMv7-EM</td><td>Cortex M4/M4F, M7</td><td>armv7em-none-none-eabi</td></tr><tr><td>ARMv8-M</td><td>Cortex M23-85</td><td>armv8m.main-none-none-eabi</td></tr><tr><td>Intel</td><td>32-bit (i686)</td><td>i686-unknown-none-elf</td></tr><tr><td>Intel</td><td>64-bit (x86_64)</td><td>x86_64-unknown-none-elf</td></tr><tr><td>RISC-V</td><td>32-bit</td><td>riscv32-none-none-eabi</td></tr><tr><td>RISC-V</td><td>64-bit</td><td>riscv64-none-none-eabi</td></tr></tbody></table><h2 id="Zephyr-Setup"><a href="#Zephyr-Setup">Zephyr Setup</a></h2><p>Before setting up a Swift project that works with Zephyr, you need to setup dependencies and a Zephyr workspace as per the <a href="https://docs.zephyrproject.org/latest/develop/getting_started/index.html">Getting Started Guide</a>. Regardless of your platform (macOS or Linux), ensure that you can build the blinky example without errors before starting with Swift integration:</p><pre class="bash"><code>cd ~/zephyrproject/zephyr
+west build -p always -b reel_board samples/basic/blinky
+</code></pre><p>By default, the <code>main</code> revision of the Zephyr sources are checked out when calling <code>west init</code>, which contains pre-release and development changes that may cause instability and changing APIs that are not desirable. To checkout a specific release version of Zephyr, use the following commands:</p><pre class="bash"><code>cd ~/zephyrproject/zephyr
+git checkout v4.1.0
+west update
+west packages pip --install
+
+# For older versions of Zephyr (pre 4.1.0), use:
+pip install -r ~/zephyrproject/zephyr/scripts/requirements.txt
+</code></pre><p>Refer to the <a href="https://docs.zephyrproject.org/latest/releases/index.html">Zephyr Releases</a> page for more information on current and LTS releases.</p><h2 id="Project-Setup"><a href="#Project-Setup">Project Setup</a></h2><p>Once Zephyr is setup, the next step is to setup a project with the following files included:</p><pre class="plain"><code>SwiftZephyrProject/src/BridgingHeader.h
+SwiftZephyrProject/src/Main.swift
+SwiftZephyrProject/src/Stubs.c
+SwiftZephyrProject/CMakeLists.txt
+SwiftZephyrProject/prj.conf
+</code></pre><p>These are the minimum required files in order to build a Zephyr project. By convention, source files should be placed in the src/ subdirectory, but this is not a hard requirement. Also, <code>prj.conf</code> is required even if it is empty, or the project will not build.</p><p>Inside of <code>src/BridgingHeader.h</code>, add the following content:</p><pre class="c"><code>#pragma once
+
+#include &lt;autoconf.h>
+#include &lt;zephyr/kernel.h>
+</code></pre><p>The <code>src/Main.swift</code> file must contain a <code>static func main()</code> as follows:</p><pre class="swift"><code>@main
+struct Main {
+  static func main() {
+    print("Hello Zephyr from Swift!")
+
+    while true {
+      k_msleep(1000)
+      print("Loop")
+    }
+  }
+}
+</code></pre><p>Since Embedded Swift requires <code>posix_memalign</code> to be defined, add the following to <code>src/Stubs.c</code> to define it:</p><pre class="c"><code>#include &lt;stdlib.h>
+#include &lt;errno.h>
+
+void *aligned_alloc(size_t alignment, size_t size);
+
+// Embedded Swift currently requires posix_memalign, but the C libraries in the
+// Zephyr SDK do not provide it. Let's implement it and forward the calls to
+// aligned_alloc(3).
+int
+posix_memalign(void **memptr, size_t alignment, size_t size)
+{
+  void *p = aligned_alloc(alignment, size);
+  if (p) {
+    *memptr = p;
+    return 0;
+  }
+
+  return errno;
+}
+</code></pre><p>Finally, add the following line to <code>prj.conf</code> so that the output of <code>print()</code> statements is sent to stdout:</p><pre class="conf"><code>CONFIG_STDOUT_CONSOLE=y
+</code></pre><h3 id="CMakeListstxt-Setup"><a href="#CMakeListstxt-Setup">CMakeLists.txt Setup</a></h3><p>The <code>CMakeLists.txt</code> setup is more involved and complex since target, compilation flags, and library linking must be specified for Swift. First, some initial setup and flags:</p><pre class="cmake"><code>cmake_minimum_required(VERSION 3.29)
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+
+# Enable "wmo" as needed by Embedded Swift
+set(CMAKE_Swift_COMPILATION_MODE wholemodule)
+
+# Create a new project called "SwiftZephyrProject" and enable "Swift" as a supported language
+project(SwiftZephyrProject Swift)
+</code></pre><p>Next, set the compiler target to the arch you are building for. For this example we use <code>armv6m-none-none-eabi</code> which is compatible with the <a href="https://docs.zephyrproject.org/latest/boards/qemu/cortex_m0/doc/index.html">Cortex-M0</a> which we will compile for in a later step. If you are targeting a different architecture, see the <a href="#zephyr-target-architecture-compatibility">Zephyr Target Architecture Compatibility</a> to see which target triple to use.</p><pre class="cmake"><code># Use the armv6m-none-none-eabi target triple for Swift
+set(CMAKE_Swift_COMPILER_TARGET armv6m-none-none-eabi)
+</code></pre><p>After setting the target triple, some additional additional Swift compiler flags need to be defined.</p><pre class="cmake"><code># Set global Swift compiler flags
+add_compile_options(
+    # Enable Embedded Swift
+    "$&lt;$&lt;COMPILE_LANGUAGE:Swift>:SHELL:-enable-experimental-feature Embedded>"
+
+    # Enable function sections to enable dead code stripping on elf
+    "$&lt;$&lt;COMPILE_LANGUAGE:Swift>:SHELL:-Xfrontend -function-sections>"
+
+    # Use software floating point operations matching GCC
+    "$&lt;$&lt;COMPILE_LANGUAGE:Swift>:SHELL:-Xcc -mfloat-abi=soft>"
+
+    # Use compacted C enums matching GCC
+    "$&lt;$&lt;COMPILE_LANGUAGE:Swift>:SHELL:-Xcc -fshort-enums>"
+
+    # Disable PIC
+    "$&lt;$&lt;COMPILE_LANGUAGE:Swift>:SHELL:-Xcc -fno-pic>"
+
+    # Disable PIE
+    "$&lt;$&lt;COMPILE_LANGUAGE:Swift>:SHELL:-Xcc -fno-pie>"
+
+    # Add Libc include paths
+    "$&lt;$&lt;COMPILE_LANGUAGE:Swift>:SHELL:-Xcc -I -Xcc ${ZEPHYR_SDK_INSTALL_DIR}/arm-zephyr-eabi/picolibc/include>"
+)
+</code></pre><aside class="note"><p class="label">NOTE</p><p>The <code>-mfloat-abi=soft</code> flag may need to change to <code>-mfloat-abi=hard</code> for ARM CPUs that support hard-float, such as the Cortex-M4F and Cortex-M7. This and the <code>-fshort-enums</code> flags are not required for non-ARM architectures such as Intel and RISC-V.</p></aside><p>There are quite a few other Zephyr flags that can also be imported (optional) in order to get Zephyr include paths and flags such <code>-mcpu</code>, <code>mthumb</code>, <code>-mabi</code>, and so on:</p><pre class="cmake"><code># Import TOOLCHAIN_C_FLAGS from Zephyr as -Xcc flags
+foreach(flag ${TOOLCHAIN_C_FLAGS})
+    # Skip flags that are not known to swiftc
+    string(FIND "${flag}" "-imacro" is_imacro)
+    string(FIND "${flag}" "-mfp16-format" is_mfp16)
+    if(NOT is_imacro EQUAL -1 OR NOT is_mfp16 EQUAL -1)
+        continue()
+    endif()
+
+    add_compile_options("$&lt;$&lt;COMPILE_LANGUAGE:Swift>:SHELL:-Xcc ${flag}>")
+endforeach()
+</code></pre><p>Next, add the following block to automatically grab Zephyr compilation flags (such as <code>-D__ZEPHYR__=1</code> and <code>-DKERNEL</code>) and set them as Swift compiler definitions. This is required to successfully build Swift code that works with Zephyr:</p><pre class="cmake"><code># Add definitions from Zephyr to -Xcc flags
+get_target_property(ZEPHYR_DEFINES zephyr_interface INTERFACE_COMPILE_DEFINITIONS)
+if(ZEPHYR_DEFINES)
+    foreach(flag ${ZEPHYR_DEFINES})
+        # Ignore expressions like "$&lt;SOMETHING>"
+        string(FIND "${flag}" "$&lt;" start_of_expression)
+        if(NOT start_of_expression EQUAL -1)
+            continue()
+        endif()
+
+        add_compile_options("$&lt;$&lt;COMPILE_LANGUAGE:Swift>:SHELL:-Xcc -D${flag}>")
+    endforeach()
+endif()
+</code></pre><p>Finally, setup targets, libraries, and additional compile options:</p><pre class="cmake"><code>target_sources(app PRIVATE src/Stubs.c)
+
+# The Swift code providing "main" needs to be in an OBJECT library (instead of STATIC library) to make sure it actually gets linker.
+# A STATIC library would get dropped from linking because Zephyr provides a default weak empty main definition.
+add_library(app_swift OBJECT src/Main.swift)
+
+add_dependencies(app_swift syscall_list_h_target)
+target_compile_options(app_swift PRIVATE
+    -parse-as-library
+
+    -Osize
+
+    -Xfrontend -disable-stack-protector
+
+    # FIXME: add dependency on BridgingHeader.h
+    -import-bridging-header ${CMAKE_CURRENT_LIST_DIR}/src/BridgingHeader.h
+)
+
+# Copy include paths from C target to Swift target
+target_include_directories(app_swift PRIVATE
+    "$&lt;TARGET_PROPERTY:app,INCLUDE_DIRECTORIES>"
+)
+
+# Link the Swift target into the primary target
+target_link_libraries(app PRIVATE app_swift)
+</code></pre><h3 id="Building-and-Running"><a href="#Building-and-Running">Building and Running</a></h3><p>To build the project, ensure that the Zephyr workspace is sourced first:</p><pre class="bash"><code>source ~/zephyrproject/.venv/bin/activate
+</code></pre><p>Run the following command to configure the project with CMake:</p><pre class="console"><code>(.venv)> cmake -B build -G Ninja -DBOARD=qemu_cortex_m0 -DUSE_CCACHE=0 .
+Loading Zephyr default modules (Zephyr base (cached)).
+...
+-- Configuring done (7.6s)
+-- Generating done (0.2s)
+-- Build files have been written to: ~/SwiftZephyrProject/build
+</code></pre><p>Then, the project can be built using <code>cmake --build</code>:</p><pre class="console"><code>(.venv)> cmake --build build
+[1/135] Preparing syscall dependency handling
+
+[2/135] Generating include/generated/zephyr/version.h
+-- Zephyr version: 4.1.0 (~/zephyrproject/zephyr), build: v4.1.0
+[130/135] Linking C executable zephyr/zephyr_pre0.elf
+~/zephyr-sdk-0.17.0/arm-zephyr-eabi/bin/../lib/gcc/arm-zephyr-eabi/12.2.0/../../../../arm-zephyr-eabi/bin/ld.bfd: warning: orphan section `.swift_modhash' from `app/libapp.a(Main.swift.obj)' being placed in section `.swift_modhash'
+[135/135] Linking C executable zephyr/zephyr.elf
+~/zephyr-sdk-0.17.0/arm-zephyr-eabi/bin/../lib/gcc/arm-zephyr-eabi/12.2.0/../../../../arm-zephyr-eabi/bin/ld.bfd: warning: orphan section `.swift_modhash' from `app/libapp.a(Main.swift.obj)' being placed in section `.swift_modhash'
+Memory region         Used Size  Region Size  %age Used
+           FLASH:       14674 B       256 KB      5.60%
+             RAM:        4032 B        16 KB     24.61%
+        IDT_LIST:          0 GB        32 KB      0.00%
+Generating files from ~/SwiftZephyrProject/build/zephyr/zephyr.elf for board: qemu_cortex_m0
+</code></pre><p>Finally, to run the example in the qemu emulator, use <code>ninja run</code>:</p><pre class="console"><code>(.venv)> ninja -C build run
+ninja: Entering directory `build'
+[0/1] To exit from QEMU enter: 'CTRL+a, x'[QEMU] CPU: cortex-m0
+*** Booting Zephyr OS build v4.1.0 ***
+Hello Zephyr from Swift!
+Loop
+Loop
+Loop
+</code></pre><p>Congrats, you now have a Swift project running using Zephyr!</p><h2 id="West-Integration"><a href="#West-Integration">West Integration</a></h2><p>Up to now we have setup a project that works perfectly fine when used with just CMake and Ninja. However, projects can also be integrated with West, which is the official CLI tool used for Zephyr projects. To use <code>west</code>, start by adding a <code>west.yml</code> file to the root of the project:</p><pre class="yml"><code>manifest:
+  remotes:
+    - name: zephyrproject-rtos
+      url-base: https://github.com/zephyrproject-rtos
+
+  projects:
+    - name: zephyr
+      remote: zephyrproject-rtos
+      revision: v4.1.0
+      import:
+        name-allowlist:
+          - cmsis  # required by the ARM port
+          - hal_nordic  # required by Nordic-based boards, such as nrf52840dk/nrf52840
+</code></pre><ul><li><p>It is recommended to set the <code>revision</code> to a tagged version of Zephyr instead of always getting the main revision, which could have changing APIs.</p></li><li><p>Also, please note that depending on what architecture you are targeting, you may need to add more/different targets to the <code>name-allowlist</code>, which is useful to get needed dependencies when compiling a project from a CI. See the <a href="https://github.com/swiftlang/swift-embedded-examples/blob/main/.github/workflows/build-zephyr.yml">Zephyr workflow from swift-embedded-examples</a> for an example of setting up a CI for Zephyr.</p></li></ul><p>Next, set the <code>ZEPHYR_BASE</code> environment variable to tell <code>west</code> where the Zephyr workspace is located:</p><pre class="bash"><code>(.venv)> export ZEPHYR_BASE=~/zephyrproject/zephyr
+</code></pre><p>This could even be set as a global env variable for the user in <code>~/.bashrc</code> or <code>~/.zshrc</code> if desired.</p><p>With this, <code>west</code> commands now can be run instead of having to use <code>cmake</code> and <code>ninja</code> to build and run:</p><pre class="bash"><code>(.venv)> west build -b qemu_cortex_m0 . -p always
+...
+(.venv)> west build -t run
+-- west build: running target run
+[0/1] To exit from QEMU enter: 'CTRL+a, x'[QEMU] CPU: cortex-m0
+*** Booting Zephyr OS build v4.1.0 ***
+Hello Zephyr from Swift!
+Loop
+Loop
+Loop
+Loop
+</code></pre><p>This setup may also be desirable since <code>west flash</code> is also available and can be used instead of invoking the flashing tools manually.</p><p>If compiling a firmware for a real/physical board such as the <code>nrf52840dk/nrf52840</code>, <code>west flash</code> will work if the SEGGER J-Link host tools are installed. As an example, with the <a href="../../../../nrfx-blink-sdk/">nrfx-blink-sdk</a> project:</p><pre class="console"><code>> cd nrfx-blink-sdk
+> source ~/zephyrproject/.venv/bin/activate
+(.venv)> export ZEPHYR_BASE=~/zephyrproject/zephyr
+(.venv)> west build -b nrf52840dk/nrf52840 . -p always
+...
+(.venv)> west flash -r jlink
+-- west flash: rebuilding
+ninja: no work to do.
+-- west flash: using runner jlink
+-- runners.jlink: reset after flashing requested
+-- runners.jlink: JLink version: 8.26
+-- runners.jlink: Flashing file: ~/swift-embedded-examples/nrfx-blink-sdk/build/zephyr/zephyr.hex
+</code></pre><p>The <code>-r jlink</code> param is needed for this example to use the J-Link tools instead of using <code>nrfjprog</code>, which is the default for this board and also <a href="https://www.nordicsemi.com/Products/Development-tools/nRF-Command-Line-Tools">deprecated</a>.</p><h2 id="Customizing-the-Linker"><a href="#Customizing-the-Linker">Customizing the Linker</a></h2><p>The default linker configuration for building a Zephyr project from CMake works well for simple projects, but it can be customized as needed. The following sections show off some useful ways to customize linking Zephyr projects for Swift.</p><h3 id="Stripping-Out-Unused-Sections"><a href="#Stripping-Out-Unused-Sections">Stripping Out Unused Sections</a></h3><p>When compiling Swift to Zephyr projects, you may see some warnings about orphaned sections from the linker, like <code>.swift_modhash</code>:</p><pre class="console"><code>~/zephyr-sdk-0.17.0/arm-zephyr-eabi/bin/../lib/gcc/arm-zephyr-eabi/12.2.0/../../../../arm-zephyr-eabi/bin/ld.bfd: warning: orphan section `.swift_modhash' from `app/libapp.a(Main.swift.obj)' being placed in section `.swift_modhash'
+[135/135] Linking C executable zephyr/zephyr.elf
+~/zephyr-sdk-0.17.0/arm-zephyr-eabi/bin/../lib/gcc/arm-zephyr-eabi/12.2.0/../../../../arm-zephyr-eabi/bin/ld.bfd: warning: orphan section `.swift_modhash' from `app/libapp.a(Main.swift.obj)' being placed in section `.swift_modhash
+</code></pre><p>These types of warnings can be suppressed by passing a custom linker script to Zephyr that discards the sections, especially if they are not needed. For example, a script called <code>sections.ld</code> can be created at the root of the project with the following contents:</p><pre class="ld"><code>/DISCARD/ : { *(.swift_modhash*) }
+/DISCARD/ : { *(.ARM.attributes*) *(.ARM.exidx) }
+</code></pre><p>Then, in <code>CMakeLists.txt</code>, add the following line:</p><pre class="cmake"><code># Remove unused sections
+zephyr_linker_sources(SECTIONS "sections.ld")
+</code></pre><p>This can also help to reduce the size of the output elf/binary since unused sections are stripped out. Be careful what sections you strip out, however, as some sections may be required.</p><h3 id="Linking-Swift-Libraries"><a href="#Linking-Swift-Libraries">Linking Swift Libraries</a></h3><p>This example adds the <code>swiftUnicodeDataTables</code> library from Swift to be linked into the Zephyr project. This is useful for linking unicode symbols when using strings. See <a href="../strings/index.html">Using strings</a> for more information on this.</p><p>In order to add additional linker params, the CMake <code>target_link_libraries</code> invocation can be used against <code>zephyr_pre0</code> and <code>zephyr_final</code>, like this:</p><pre class="cmake"><code># The code is using a String as a Dictionary key and thus require linking with libswiftUnicodeDataTables.a
+# We compute the path where this file reside, taking into accout how the toolchain is referenced (Swiftly or TOOLCHAINS env variable). 
+find_program(SWIFTLY "swiftly")
+IF(SWIFTLY)
+  execute_process(COMMAND swiftly use --print-location OUTPUT_VARIABLE toolchain_path)
+  cmake_path(SET additional_lib_path NORMALIZE "${toolchain_path}/usr/lib/swift/embedded/${CMAKE_Swift_COMPILER_TARGET}")
+ELSE()
+  get_filename_component(compiler_bin_dir ${CMAKE_Swift_COMPILER} DIRECTORY)
+  cmake_path(SET additional_lib_path NORMALIZE "${compiler_bin_dir}/../lib/swift/embedded/${CMAKE_Swift_COMPILER_TARGET}")
+ENDIF()
+
+target_link_directories(zephyr_pre0 PRIVATE "${additional_lib_path}")
+target_link_libraries(zephyr_pre0
+    -Wl,--whole-archive
+    swiftUnicodeDataTables
+    -Wl,--no-whole-archive
+    )
+
+target_link_directories(zephyr_final PRIVATE "${additional_lib_path}")
+target_link_libraries(zephyr_final
+    -Wl,--whole-archive
+    swiftUnicodeDataTables
+    -Wl,--no-whole-archive
+    )
+</code></pre><p>Extra code is required to find the right paths where the <code>swiftUnicodeDataTables.a</code> file is located, depending on how Swift is installed.</p><p>When this is built, depending on the target architecture, warnings may then be printed about 32-bit enums, like this:</p><pre class="console"><code>~/zephyr-sdk-0.17.0/arm-zephyr-eabi/bin/../lib/gcc/arm-zephyr-eabi/12.2.0/../../../../arm-zephyr-eabi/bin/ld.bfd: warning: ~/.local/share/swiftly/toolchains/6.1.0/usr/lib/swift/embedded/armv6m-none-none-eabi/libswiftUnicodeDataTables.a(UnicodeWord.cpp.o) uses 32-bit enums yet the output is to use variable-size enums; use of enum values across objects may fail
+</code></pre><p>To suppress these, simply add <code>-Wl,--no-enum-size-warning</code> to the <code>target_link_libraries</code> invocations.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="SDK-support"><a href="#SDK-support">SDK support</a></h3><ul><li><a href="../integratingwithplatforms/index.html"><p class="api-collection">Integrating with embedded platforms</p></a><p>Learn the common patterns and approaches for integrating Swift with existing embedded systems.</p></li><li><a href="../portingtonewplatforms/index.html"><p class="api-collection">Bringing Embedded Swift to a new platform</p></a><p>Implement the small set of runtime entry points that Embedded Swift expects from any platform, hosted or baremetal.</p></li><li><a href="../baremetal/index.html"><p class="api-collection">Using Embedded Swift in baremetal mode</p></a><p>Program without an SDK for maximum control and minimal size.</p></li><li><a href="../integratewithpico/index.html"><p class="api-collection">Integrating with the Raspberry Pi Pico SDK</p></a><p>Set up a project that can seamlessly use C APIs from the Pico SDK.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

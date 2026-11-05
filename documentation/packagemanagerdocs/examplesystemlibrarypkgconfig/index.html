@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Swift package example that uses system library dependency with pkg-config</title><meta content="Create an Command-line executable package that uses libgit2 as a system library dependency." name="description"><script src="../../../navigator-index-swiftpm-PackageManagerDocs.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Package Manager (SwiftPM)</a></li><li><a href="../addingdependencies/index.html">Adding dependencies to a Swift package</a></li><li>Swift package example that uses system library dependency with pkg-config</li></ul></nav><hgroup><p>Article</p><h1>Swift package example that uses system library dependency with pkg-config</h1></hgroup><p>Create an Command-line executable package that uses libgit2 as a system library dependency.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>The following example walks through creating a binary executable that depends on <a href="https://github.com/libgit2/libgit2">libgit2</a>.</p><h3 id="Set-up-the-package"><a href="#Set-up-the-package">Set up the package</a></h3><p>Create a directory called <code>example</code>, and initialize it as a package that builds an executable:</p><pre class="bash"><code>$ mkdir example
+$ cd example
+example$ swift package init --type executable
+</code></pre><p>Edit the <code>Sources/example/main.swift</code> so it consists of this code:</p><pre class="swift"><code>import Clibgit
+
+let options = git_repository_init_options()
+print(options)
+</code></pre><h3 id="Add-a-system-library-target"><a href="#Add-a-system-library-target">Add a system library target</a></h3><p>Add a <code>systemLibrary</code> target to <code>Package.swift</code> that uses the <code>pkgConfig</code> parameter to look up the location of the library.</p><pre class="swift"><code>// swift-tools-version:6.1
+import PackageDescription
+
+let package = Package(
+    name: "example",
+    targets: [
+        .systemLibrary(
+            name: "Clibgit",
+            pkgConfig: "libgit2",
+            providers: [
+                .brew(["libgit2"]),
+                .apt(["libgit2-dev"])
+            ]
+        )
+    ]
+)
+
+</code></pre><p>The above example specifies two <code>providers</code> that Swift Package Manager can use to install the dependency, if needed.</p><aside class="note"><p class="label">Note</p><p>For Windows-only packages <code>pkgConfig</code> should be omitted as <code>pkg-config</code> is not expected to be available. If you can’t or don’t want to use the <code>pkgConfig</code> parameter, pass the path of a directory containing the library using the <code>-L</code> flag in the command line when building your package instead.</p><pre class="bash"><code>% swift build -Xlinker -L/usr/local/lib/
+</code></pre></aside><p>This example follows the convention of prefixing modules with <code>C</code> and using camelcase for the rest of the library, following Swift module name conventions. This allows you to create and use another module more directly named after the library that provides idiomatic Swift wrappers around the underlying C functions.</p><h3 id="Create-a-module-map-and-local-header"><a href="#Create-a-module-map-and-local-header">Create a module map and local header</a></h3><p>Create a directory <code>Sources/Clibgit</code> in your <code>example</code> project, and add a <code>module.modulemap</code> in the directory:</p><pre><code>module Clibgit [system] {
+  header "git2.h"
+  link "git2"
+  export *
+}
+</code></pre><p>In the same directory, create the header file, <code>git2.h</code>, that the above module map references:</p><pre class="c"><code>// git2.h
+#pragma once
+#include &lt;git2.h>
+</code></pre><aside class="tip"><p class="label">Tip</p><p>Try to avoid specifying an absolute system path in the module map to the <code>git2.h</code> header provided by the library. Doing so will break compatibility of your project between machines that use a different file system layout or install libraries to different paths.</p></aside><p>The <code>example</code> directory structure should look like this now:</p><pre><code>.
+├── Package.swift
+└── Sources
+    ├── Clibgit
+    │   ├── git2.h
+    │   └── module.modulemap
+    └── main.swift
+</code></pre><h3 id="Add-the-system-library-dependency-to-the-executable-target"><a href="#Add-the-system-library-dependency-to-the-executable-target">Add the system library dependency to the executable target</a></h3><p>With the system library target fully defined, you can now use it as a dependency in other targets.</p><p>For example, in <code>Package.swift</code>:</p><pre class="swift"><code>// swift-tools-version:6.1
+import PackageDescription
+
+let package = Package(
+    name: "example",
+    targets: [
+        .executableTarget(
+            name: "example",
+            dependencies: ["Clibgit"],
+            path: "Sources"
+        ),
+        .systemLibrary(
+            name: "Clibgit",
+            pkgConfig: "libgit2",
+            providers: [
+                .brew(["libgit2"]),
+                .apt(["libgit2-dev"])
+            ]
+        )
+    ]
+)
+
+</code></pre><h3 id="Run-the-example"><a href="#Run-the-example">Run the example</a></h3><p>Now run the command <code>swift run</code> in the example directory to create and run the executable:</p><pre class="bash"><code>% example swift run
+Building for debugging...
+[1/1] Write swift-version-3E695E30EE234B31.txt
+Build of product 'example' complete! (0.10s)
+git_repository_init_options(version: 0, flags: 0, mode: 0, workdir_path: nil, description: nil, template_path: nil, initial_head: nil, origin_url: nil)
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><ul><li><a href="../resolvingpackageversions/index.html"><p class="api-collection">Resolving and updating dependencies</p></a><p>Coordinate and constrain dependencies for your package.</p></li><li><a href="../packagetraits/index.html"><p class="api-collection">Providing configurable packages using traits</p></a><p>Define one or more package traits to offer default and configurable features for a package.</p></li><li><a href="../resolvingdependencyfailures/index.html"><p class="api-collection">Resolving package dependency failures</p></a><p>Understand dependency failure scenarios.</p></li><li><a href="../addingsystemlibrarydependency/index.html"><p class="api-collection">Adding a dependency on a system library.</p></a><p>Define the location for the library and provide module map to expose C headers to Swift.</p></li><li><a href="../editingdependencypackage/index.html"><p class="api-collection">Editing a remote dependency used in a Swift package</p></a><p>Temporarily switch a remote dependency to local in order to edit the dependency.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

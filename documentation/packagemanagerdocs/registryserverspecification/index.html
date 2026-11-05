@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Swift Package Registry Service Specification</title><meta content="Learn about the specification for SwiftPM’s registry service." name="description"><script src="../../../navigator-index-swiftpm-PackageManagerDocs.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="api-collection"><nav id="breadcrumbs"><ul><li><a href="../index.html">Package Manager (SwiftPM)</a></li><li>Swift Package Registry Service Specification</li></ul></nav><hgroup><p>API Collection</p><h1>Swift Package Registry Service Specification</h1></hgroup><p>Learn about the specification for SwiftPM’s registry service.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><h3 id="1-Notations"><a href="#1-Notations">1. Notations</a></h3><p>The following terminology and conventions are used in this document.</p><p>The key words “MUST”, “MUST NOT”, “REQUIRED”, “SHALL”, “SHALL NOT”, “SHOULD”, “SHOULD NOT”, “RECOMMENDED”, “MAY”, and “OPTIONAL” in this document are to be interpreted as described in <a href="https://tools.ietf.org/html/rfc2119">RFC 2119</a>.</p><p>This specification uses the Augmented Backus-Naur Form (ABNF) notation as described in <a href="https://tools.ietf.org/html/rfc5234">RFC 5234</a> and Unicode regular expression syntax as described in <a href="https://unicode.org/reports/tr18/">Unicode Technical Standard #18</a>.</p><p>API endpoints that accept parameters in their path are expressed by Uniform Resource Identifier (URI) templates, as described in <a href="https://tools.ietf.org/html/rfc6570">RFC 6570</a>.</p><h3 id="2-Definitions"><a href="#2-Definitions">2. Definitions</a></h3><p>The following terms, as used in this document, have the meanings indicated.</p><ul><li><p><i>Package</i>: A named collection of Swift source code that is organized into one or more modules according to a <code>Package.swift</code> manifest file.</p></li><li><p><i>Scope</i>: A logical grouping of related packages assigned by a package registry.</p></li><li><p><i>Release</i>: The state of a package after applying a particular set of changes that is uniquely identified by an assigned version number.</p></li><li><p><i>Version Number</i>: An identifier for a package release in accordance with the <a href="https://semver.org/">Semantic Versioning Specification (SemVer)</a>.</p></li><li><p><i>Precedence</i>: The ordering of version numbers relative to each other as defined by the <a href="https://semver.org/">Semantic Versioning Specification (SemVer)</a>.</p></li></ul><h3 id="3-Conventions"><a href="#3-Conventions">3. Conventions</a></h3><p>This document uses the following conventions in its description of client-server interactions.</p><h4 id="31-Application-layer-protocols"><a href="#31-Application-layer-protocols">3.1. Application layer protocols</a></h4><p>A client and server MUST communicate over a secured connection using Transport Layer Security (TLS) with the <code>https</code> URI scheme.</p><p>The use of HTTP 1.1 in examples is non-normative. A client and server MAY communicate according to this specification using any version of the HTTP protocol.</p><h4 id="32-Authentication"><a href="#32-Authentication">3.2. Authentication</a></h4><p>A server MAY require authentication for client requests to access information about packages and package releases.</p><p>A server SHOULD respond with a status code of <code>401</code> (Unauthorized) if a client sends a request to an endpoint that requires authentication without providing credentials. A server MAY respond with a status code of <code>404</code> (Not Found) or <code>403</code> (Forbidden) when a client provides valid credentials but isn’t authorized to access the requested resource.</p><p>A server MAY use any authentication model of its choosing. However, the use of a scoped, revocable authorization framework like <a href="https://tools.ietf.org/html/rfc6749">OAuth 2.0</a> is RECOMMENDED.</p><h4 id="33-Error-handling"><a href="#33-Error-handling">3.3. Error handling</a></h4><p>A server MUST communicate any errors to the client using “problem details” objects, as described by <a href="https://tools.ietf.org/html/rfc7807">RFC 7807</a>. For example, a client sends a request for a nonexistent release of a package and receives the following response:</p><pre class="http"><code>HTTP/1.1 404
+Content-Version: 1
+Content-Type: application/problem+json
+Content-Language: en
+
+{
+   "detail": "release not found"
+}
+</code></pre><h4 id="34-Rate-limiting"><a href="#34-Rate-limiting">3.4. Rate limiting</a></h4><p>A server MAY limit the number of requests made by a client by responding with a status code of <code>429</code> (Too Many Requests).</p><pre class="http"><code>HTTP/1.1 429
+Content-Version: 1
+Content-Type: application/problem+json
+Content-Language: en
+Retry-After: 60
+
+{
+   "detail": "try again in 60 seconds"
+}
+</code></pre><p>A client SHOULD follow the guidance of any <code>Retry-After</code> header values provided in responses to prevent overwhelming a server with retry requests. It is RECOMMENDED for clients to introduce random jitter in their retry logic to avoid a <a href="https://en.wikipedia.org/wiki/Thundering_herd_problem">thundering herd effect</a>.</p><h4 id="35-API-versioning"><a href="#35-API-versioning">3.5. API versioning</a></h4><p>Package registry APIs are versioned.</p><p>API version numbers are designated by decimal integers. The accepted version of this proposal constitutes the initial version, <code>1</code>. Subsequent revisions SHOULD be numbered sequentially (<code>2</code>, <code>3</code>, and so on).</p><p>API version numbers SHOULD follow Semantic Versioning conventions for major releases. Non-breaking changes, such as adding new endpoints, adding new optional parameters to existing endpoints, or adding new information to existing endpoints in a backward-compatible way, SHOULD NOT require a new version. Breaking changes, such as removing or changing an existing endpoint in a backward-incompatible way, MUST correspond to a new version.</p><p>A client SHOULD set the <code>Accept</code> header field to specify the API version of a request.</p><pre class="http"><code>GET /mona/LinkedList/list HTTP/1.1
+Host: packages.example.com
+Accept: application/vnd.swift.registry.v1+json
+</code></pre><p>Valid <code>Accept</code> header field values are described by the following rules:</p><pre class="abnf"><code>    version     = "1"       ; The API version
+    mediatype   = "json" /  ; JSON (default media type)
+                  "zip"  /  ; Zip archives, used for package releases
+                  "swift"   ; Swift file, used for package manifest
+    accept      = "application/vnd.swift.registry" [".v" version] ["+" mediatype]
+</code></pre><p>A server MUST set the <code>Content-Type</code> header field with the corresponding content type of the response.</p><p>A server MUST set the <code>Content-Version</code> header field with the API version number of the response, unless explicitly stated otherwise.</p><pre class="http"><code>HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Version: 1
+</code></pre><p>If a client sends a request without an <code>Accept</code> header, a server MAY either respond with a status code of <code>400 Bad Request</code> or process the request using an API version that it chooses, making sure to set the <code>Content-Type</code> and <code>Content-Version</code> headers accordingly.</p><p>If a client sends a request with an <code>Accept</code> header that specifies an unknown or invalid API version, a server SHOULD respond with a status code of <code>400</code> (Bad Request).</p><pre class="http"><code>HTTP/1.1 400 Bad Request
+Content-Version: 1
+Content-Type: application/problem+json
+Content-Language: en
+
+{
+   "detail": "invalid API version"
+}
+</code></pre><p>If a client sends a request with an <code>Accept</code> header that specifies a valid but unsupported API version, a server SHOULD respond with a status code of <code>415</code> (Unsupported Media Type).</p><pre class="http"><code>HTTP/1.1 415 Unsupported Media Type
+Content-Version: 1
+Content-Type: application/problem+json
+Content-Language: en
+
+{
+   "detail": "unsupported API version"
+}
+</code></pre><h4 id="36-Package-identification"><a href="#36-Package-identification">3.6. Package identification</a></h4><p>A package may declare external packages as dependencies in its manifest. Each package dependency may specify a requirement on which versions are allowed.</p><p>An external package dependency may itself have one or more external package dependencies, known as <dfn>transitive dependencies</dfn>. When multiple packages have dependencies in common, Swift Package Manager determines which version of that package should be used (if any exist that satisfy all specified requirements) in a process called <dfn>package resolution</dfn>.</p><p>Each external package is uniquely identified by a scoped identifier in the form <code>scope.package-name</code>.</p><h5 id="361-Package-scope"><a href="#361-Package-scope">3.6.1 Package scope</a></h5><p>A <i>scope</i> provides a namespace for related packages within a package registry. A package scope consists of alphanumeric characters and hyphens. Hyphens may not occur at the beginning or end, nor consecutively within a scope. The maximum length of a package scope is 39 characters. A valid package scope matches the following regular expression pattern:</p><pre class="regexp"><code>\A[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9])){0,38}\z
+</code></pre><p>Package scopes are case-insensitive (for example, <code>mona</code> ≍ <code>MONA</code>).</p><h5 id="362-Package-name"><a href="#362-Package-name">3.6.2. Package name</a></h5><p>A package’s <i>name</i> uniquely identifies a package in a scope. A package name consists of alphanumeric characters, underscores, and hyphens. Hyphens and underscores may not occur at the beginning or end, nor consecutively within a name. The maximum length of a package name is 100 characters. A valid package name matches the following regular expression pattern:</p><pre class="regexp"><code>\A[a-zA-Z0-9](?:[a-zA-Z0-9]|[-_](?=[a-zA-Z0-9])){0,99}\z
+</code></pre><p>Package names are case-insensitive (for example, <code>LinkedList</code> ≍ <code>LINKEDLIST</code>).</p><h3 id="4-Endpoints"><a href="#4-Endpoints">4. Endpoints</a></h3><p>A server MUST respond to the following endpoints:</p><table><thead><tr><th>Link</th><th>Method</th><th>Path</th><th>Description</th></tr></thead><tbody><tr><td><a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#41-List-package-releases">[1]</a></td><td><code>GET</code></td><td><code>/{scope}/{name}</code></td><td>List package releases</td></tr><tr><td><a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#42-Fetch-information-about-a-package-release">[2]</a></td><td><code>GET</code></td><td><code>/{scope}/{name}/{version}</code></td><td>Fetch metadata for a package release</td></tr><tr><td><a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#43-Fetch-manifest-for-a-package-release">[3]</a></td><td><code>GET</code></td><td><code>/{scope}/{name}/{version}/Package.swift{?swift-version}</code></td><td>Fetch manifest for a package release</td></tr><tr><td><a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#44-Download-source-archive">[4]</a></td><td><code>GET</code></td><td><code>/{scope}/{name}/{version}.zip</code></td><td>Download source archive for a package release</td></tr><tr><td><a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#45-Lookup-package-identifiers-registered-for-a-URL">[5]</a></td><td><code>GET</code></td><td><code>/identifiers{?url}</code></td><td>Lookup package identifiers registered for a URL</td></tr><tr><td><a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#46-Create-a-package-release">[6]</a></td><td><code>PUT</code></td><td><code>/{scope}/{name}/{version}</code></td><td>Create a package release</td></tr></tbody></table><p>A server SHOULD also respond to <code>HEAD</code> requests for each of the specified endpoints.</p><p>A client MAY send an <code>OPTIONS</code> request with an asterisk (<code>*</code>) to determine the permitted communication options for the server. A server MAY respond with a <code>Link</code> header containing an entry for the <code>service-doc</code> relation type with a link to this document, and an entry for the <code>service-desc</code> relation type with a link to the OpenAPI specification.</p><hr><p><a name="endpoint-1"></a></p><h4 id="41-List-package-releases"><a href="#41-List-package-releases">4.1. List package releases</a></h4><p>A client MAY send a <code>GET</code> request for a URI matching the expression <code>/{scope}/{name}</code> to retrieve a list of the available releases for a particular package. A client SHOULD set the <code>Accept</code> header with the value <code>application/vnd.swift.registry.v1+json</code> and MAY append the <code>.json</code> extension to the requested URI.</p><pre class="http"><code>GET /mona/LinkedList HTTP/1.1
+Host: packages.example.com
+Accept: application/vnd.swift.registry.v1+json
+</code></pre><p>If a package is found at the requested location, a server SHOULD respond with a status code of <code>200</code> (OK) and the <code>Content-Type</code> header <code>application/json</code>. Otherwise, a server SHOULD respond with a status code of <code>404</code> (Not Found).</p><p>A server SHOULD respond with a JSON document containing the releases for the requested package.</p><pre class="http"><code>HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Version: 1
+Content-Length: 508
+Link: &lt;https://github.com/mona/LinkedList>; rel="canonical",
+      &lt;ssh://git@github.com:mona/LinkedList.git>; rel="alternate",
+      &lt;https://packages.example.com/mona/LinkedList/1.1.1>; rel="latest-version",
+      &lt;https://github.com/sponsors/mona>; rel="payment"
+
+{
+    "releases": {
+        "1.1.1": {
+            "url": "https://packages.example.com/mona/LinkedList/1.1.1"
+        },
+        "1.1.0": {
+            "url": "https://packages.example.com/mona/LinkedList/1.1.0",
+            "problem": {
+                "status": 410,
+                "title": "Gone",
+                "detail": "this release was removed from the registry"
+            }
+        },
+        "1.0.0": {
+            "url": "https://packages.example.com/mona/LinkedList/1.0.0"
+        }
+    }
+}
+</code></pre><p>The response body MUST contain a JSON object nested at a top-level <code>releases</code> key, whose keys are version numbers for releases and whose values are objects containing the following fields:</p><table><thead><tr><th>Key</th><th>Type</th><th>Description</th><th>Requirement Level</th></tr></thead><tbody><tr><td><code>url</code></td><td>String</td><td>The location of the release resource.</td><td>OPTIONAL</td></tr><tr><td><code>problem</code></td><td>Object</td><td>A <a href="https://tools.ietf.org/html/rfc7807">problem details</a> object.</td><td>OPTIONAL</td></tr></tbody></table><p>A server MAY specify a URL for a release using the <code>url</code> key. A client SHOULD locate a release using the value of the <code>url</code> key, if one is provided. Otherwise, the client SHOULD locate a release by expanding the URI Template <code>/{scope}/{name}/{version}</code> on the originating host.</p><p>A server SHOULD communicate the unavailability of a package release using a <a href="https://tools.ietf.org/html/rfc7807">“problem details”</a> object. A client SHOULD consider any releases with an associated <code>problem</code> to be unavailable for the purposes of package resolution.</p><p>A server SHOULD respond with a link to the highest precedence published release of the package if one exists, using a <code>Link</code> header field with a <code>latest-version</code> relation.</p><p>A server SHOULD list releases in order of precedence, starting with the highest precedence version. However, a client SHOULD NOT assume any specific ordering of versions in a response.</p><p>A server MAY include a <code>Link</code> entry with the <code>canonical</code> relation type that locates the source repository of the package.</p><p>A server MAY include one or more <code>Link</code> entries with the <code>alternate</code> relation type for other source repository locations.</p><p>A server MAY paginate results by responding with a <code>Link</code> header field that includes any of the following relations:</p><table><thead><tr><th>Name</th><th>Description</th></tr></thead><tbody><tr><td><code>next</code></td><td>The immediate next page of results.</td></tr><tr><td><code>last</code></td><td>The last page of results.</td></tr><tr><td><code>first</code></td><td>The first page of results.</td></tr><tr><td><code>prev</code></td><td>The immediate previous page of results.</td></tr></tbody></table><p>For example, the <code>Link</code> header field in a response for the third page of paginated results:</p><pre class="http"><code>Link: &lt;https://packages.example.com/mona/HashMap/5.0.3>; rel="latest-version",
+      &lt;https://packages.example.com/mona/HashMap?page=1>; rel="first",
+      &lt;https://packages.example.com/mona/HashMap?page=2>; rel="previous",
+      &lt;https://packages.example.com/mona/HashMap?page=4>; rel="next",
+      &lt;https://packages.example.com/mona/HashMap?page=10>; rel="last"
+</code></pre><p>A server MAY respond with additional <code>Link</code> entries, such as one with a <code>payment</code> relation for sponsoring a package maintainer.</p><p><a name="endpoint-2"></a></p><h4 id="42-Fetch-information-about-a-package-release"><a href="#42-Fetch-information-about-a-package-release">4.2. Fetch information about a package release</a></h4><p>A client MAY send a <code>GET</code> request for a URI matching the expression <code>/{scope}/{name}/{version}</code> to retrieve information about a release. A client SHOULD set the <code>Accept</code> header with the value <code>application/vnd.swift.registry.v1+json</code>, and MAY append the <code>.json</code> extension to the requested URI.</p><pre class="http"><code>GET /mona/LinkedList/1.1.1 HTTP/1.1
+Host: packages.example.com
+Accept: application/vnd.swift.registry.v1+json
+</code></pre><p>If a release is found at the requested location, a server SHOULD respond with a status code of <code>200</code> (OK) and the <code>Content-Type</code> header <code>application/json</code>. Otherwise, a server SHOULD respond with a status code of <code>404</code> (Not Found).</p><pre class="http"><code>HTTP/1.1 200 OK
+Content-Version: 1
+Content-Type: application/json
+Content-Length: 720
+Link: &lt;https://packages.example.com/mona/LinkedList/1.1.1>; rel="latest-version",
+      &lt;https://packages.example.com/mona/LinkedList/1.0.0>; rel="predecessor-version"
+{
+  "id": "mona.LinkedList",
+  "version": "1.1.1",
+  "resources": [
+    {
+      "name": "source-archive",
+      "type": "application/zip",
+      "checksum": "a2ac54cf25fbc1ad0028f03f0aa4b96833b83bb05a14e510892bb27dea4dc812",
+      "signing": {
+        "signatureBase64Encoded": "l1TdTeIuGdNsO1FQ0ptD64F5nSSOsQ5WzhM6/7KsHRuLHfTsggnyIWr0DxMcBj5F40zfplwntXAgS0ynlqvlFw==",
+        "signatureFormat": "cms-1.0.0"
+      }
+    }
+  ],
+  "metadata": { ... },
+  "publishedAt": "2023-02-16T04:00:00.000Z"
+}
+</code></pre><p>The response body SHOULD contain a JSON object containing the following fields:</p><table><thead><tr><th>Key</th><th>Type</th><th>Description</th><th class="center">Required</th></tr></thead><tbody><tr><td><code>id</code></td><td>String</td><td>The namespaced package identifier.</td><td class="center">✓</td></tr><tr><td><code>version</code></td><td>String</td><td>The package release version number.</td><td class="center">✓</td></tr><tr><td><code>resources</code></td><td>Array</td><td>The resources available for the release.</td><td class="center">✓</td></tr><tr><td><code>metadata</code></td><td>Object</td><td>Additional information about the release.</td><td class="center">✓</td></tr><tr><td><code>publishedAt</code></td><td>String</td><td>The <a href="https://www.iso.org/iso-8601-date-and-time-format.html">ISO 8601</a>-formatted datetime string of when the package release was published, as recorded by the registry. See related <a href="../registryserverspecificationappendixb/index.html"><code>original<wbr>Publication<wbr>Time</code></a> in <code>metadata</code>.</td><td class="center"></td></tr></tbody></table><p>A server SHOULD respond with a <code>Link</code> header containing the following entries:</p><table><thead><tr><th>Relation</th><th>Description</th></tr></thead><tbody><tr><td><code>latest-version</code></td><td>The highest precedence published release of the package</td></tr><tr><td><code>successor-version</code></td><td>The next published release of the package ordered by precedence, if one exists</td></tr><tr><td><code>predecessor-version</code></td><td>The previously published release of the package ordered by precedence, if one exists</td></tr></tbody></table><p>A link with the <code>latest-version</code> relation MAY correspond to the requested release.</p><h5 id="421-Package-release-resources"><a href="#421-Package-release-resources">4.2.1. Package release resources</a></h5><p>Each element in the <code>resources</code> array is a JSON object with the following keys:</p><table><thead><tr><th>Key</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>name</code></td><td>String</td><td>The name of the resource.</td></tr><tr><td><code>type</code></td><td>String</td><td>The content type of the resource.</td></tr><tr><td><code>checksum</code></td><td>String</td><td>A hexadecimal representation of the SHA256 digest for the resource.</td></tr><tr><td><code>signing</code></td><td>Object</td><td>Information about the signature. Required only if the resource is signed.</td></tr></tbody></table><p>The <code>signing</code> JSON object contains these keys:</p><table><thead><tr><th>Key</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>signatureBase64Encoded</code></td><td>String</td><td>The resource’s signature, base64 encoded.</td></tr><tr><td><code>signatureFormat</code></td><td>String</td><td>The signature format. (e.g., <code>cms-1.0.0</code>)</td></tr></tbody></table><p>A resource object SHOULD have one of the following combinations of <code>name</code> and <code>type</code> values:</p><table><thead><tr><th>Name</th><th>Content Type</th><th>Description</th></tr></thead><tbody><tr><td><code>source-archive</code></td><td><code>application/zip</code></td><td>An archive of package sources.</td></tr></tbody></table><p>A release MUST NOT have more than a single resource object with a given combination of <code>name</code> and <code>type</code> values.</p><h5 id="422-Package-release-metadata-standards"><a href="#422-Package-release-metadata-standards">4.2.2. Package release metadata standards</a></h5><p><a href="../registryserverspecificationappendixb/index.html">Appendix B</a> defines the JSON schema for package release metadata that gets submitted as part of the <a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#46-Create-a-package-release">“create a package release”</a> request. A server MAY allow and/or populate additional metadata by expanding the schema. The <code>metadata</code> key in the <a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#42-Fetch-information-about-a-package-release">“fetch information about a package release”</a> API response will hold the user-provided as well as the server populated metadata.</p><p><a name="endpoint-3"></a></p><h4 id="43-Fetch-manifest-for-a-package-release"><a href="#43-Fetch-manifest-for-a-package-release">4.3. Fetch manifest for a package release</a></h4><p>A client MAY send a <code>GET</code> request for a URI matching the expression <code>/{scope}/{name}/{version}/Package.swift</code> to retrieve the package manifest for a release. A client SHOULD set the <code>Accept</code> header with the value <code>application/vnd.swift.registry.v1+swift</code>.</p><pre class="http"><code>GET /mona/LinkedList/1.1.1/Package.swift HTTP/1.1
+Host: packages.example.com
+Accept: application/vnd.swift.registry.v1+swift
+</code></pre><p>If a release is found at the requested location, a server SHOULD respond with a status code of <code>200</code> (OK) and the <code>Content-Type</code> header <code>text/x-swift</code>. Otherwise, a server SHOULD respond with a status code of <code>404</code> (Not Found).</p><pre class="http"><code>HTTP/1.1 200 OK
+Cache-Control: public, immutable
+Content-Type: text/x-swift
+Content-Disposition: attachment; filename="Package.swift"
+Content-Length: 361
+Content-Version: 1
+Link: &lt;http://packages.example.com/mona/LinkedList/1.1.1/Package.swift?swift-version=4>; rel="alternate"; filename="Package@swift-4.swift"; swift-tools-version="4.0",
+      &lt;http://packages.example.com/mona/LinkedList/1.1.1/Package.swift?swift-version=4.2>; rel="alternate"; filename="Package@swift-4.2.swift"; swift-tools-version="4.2"
+
+// swift-tools-version:5.0
+import PackageDescription
+
+let package = Package(
+    name: "LinkedList",
+    products: [
+        .library(name: "LinkedList", targets: ["LinkedList"])
+    ],
+    targets: [
+        .target(name: "LinkedList"),
+        .testTarget(name: "LinkedListTests", dependencies: ["LinkedList"]),
+    ],
+    swiftLanguageVersions: [.v4, .v5]
+)
+</code></pre><p>A server SHOULD respond with a <code>Content-Length</code> header set to the size of the manifest in bytes.</p><p>A server SHOULD respond with a <code>Content-Disposition</code> header set to <code>attachment</code> with a <code>filename</code> parameter equal to the name of the manifest file (for example, “Package.swift”).</p><p>A server MAY omit the <code>Content-Version</code> header since the response content (i.e., the manifest) SHOULD NOT change across different API versions.</p><p>It is RECOMMENDED for clients and servers to support caching as described by <a href="https://tools.ietf.org/html/rfc7234">RFC 7234</a>.</p><p>A server MUST include a <code>Link</code> header field with a value for each version-specific package manifest file in the release’s source archive, whose filename matches the following regular expression pattern:</p><pre class="regexp"><code>\APackage@swift-(\d+)(?:\.(\d+))?(?:\.(\d+))?.swift\z
+</code></pre><p>Each link value SHOULD have the <code>alternate</code> relation type, a <code>filename</code> attribute set to the version-specific package manifest filename (for example, <code>Package@swift-4.swift</code>), and a <code>swift-tools-version</code> attribute set to the <a href="https://github.com/swiftlang/swift-package-manager/blob/9b9bed7eaf0f38eeccd0d8ca06ae08f6689d1c3f/Documentation/Usage.md#swift-tools-version-specification">Swift tools version</a> specified by the package manifest file (for example, <code>4.0</code> for a manifest beginning with the comment <code>// swift-tools-version:4.0</code>).</p><h5 id="431-swift-version-query-parameter"><a href="#431-swift-version-query-parameter">4.3.1. swift-version query parameter</a></h5><p>A client MAY specify a <code>swift-version</code> query parameter to request a manifest for a particular version of Swift.</p><pre class="http"><code>GET /mona/LinkedList/1.1.1/Package.swift?swift-version=4.2 HTTP/1.1
+Host: packages.example.com
+Accept: application/vnd.swift.registry.v1+swift
+</code></pre><p>If the package includes a file named <code>Package@swift-{swift-version}.swift</code>, the server SHOULD respond with a status code of <code>200</code> (OK) and the content of that file in the response body.</p><pre class="http"><code>HTTP/1.1 200 OK
+Cache-Control: public, immutable
+Content-Type: text/x-swift
+Content-Disposition: attachment; filename="Package@swift-4.2.swift"
+Content-Length: 361
+Content-Version: 1
+
+// swift-tools-version:4.2
+import PackageDescription
+
+let package = Package(
+    name: "LinkedList",
+    products: [
+        .library(name: "LinkedList", targets: ["LinkedList"])
+    ],
+    targets: [
+        .target(name: "LinkedList"),
+        .testTarget(name: "LinkedListTests", dependencies: ["LinkedList"]),
+    ],
+    swiftLanguageVersions: [.v3, .v4]
+)
+</code></pre><p>Otherwise, the server SHOULD respond with a status code of <code>303</code> (See Other) and redirect to the unqualified <code>Package.swift</code> resource.</p><pre class="http"><code>HTTP/1.1 303 See Other
+Content-Version: 1
+Location: https://packages.example.com/mona/LinkedList/1.1.1/Package.swift
+</code></pre><p><a name="endpoint-4"></a></p><h4 id="44-Download-source-archive"><a href="#44-Download-source-archive">4.4. Download source archive</a></h4><p>A client MAY send a <code>GET</code> request for a URI matching the expression <code>/{scope}/{name}/{version}.zip</code> to retrieve a release’s source archive. A client SHOULD set the <code>Accept</code> header with the value <code>application/vnd.swift.registry.v1+zip</code> and MUST append the <code>.zip</code> extension to the requested path.</p><pre class="http"><code>GET /mona/LinkedList/1.1.1.zip HTTP/1.1
+Host: packages.example.com
+Accept: application/vnd.swift.registry.v1+zip
+</code></pre><p>If a release is found at the requested location, a server SHOULD respond with a status code of <code>200</code> (OK) and the <code>Content-Type</code> header <code>application/zip</code>. Otherwise, a server SHOULD respond with a status code of <code>404</code> (Not Found).</p><pre class="http"><code>HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Cache-Control: public, immutable
+Content-Type: application/zip
+Content-Disposition: attachment; filename="LinkedList-1.1.1.zip"
+Content-Length: 2048
+Content-Version: 1
+Digest: sha-256=oqxUzyX7wa0AKPA/CqS5aDO4O7BaFOUQiSuyfepNyBI=
+Link: &lt;https://mirror-japanwest.example.com/mona-LinkedList-1.1.1.zip>; rel=duplicate; geo=jp; pri=10; type="application/zip"
+X-Swift-Package-Signature-Format: cms-1.0.0
+X-Swift-Package-Signature: l1TdTeIuGdNsO1FQ0ptD64F5nSSOsQ5WzhM6/7KsHRuLHfTsggnyIWr0DxMcBj5F40zfplwntXAgS0ynlqvlFw==
+</code></pre><p>A server MUST respond with a <code>Content-Length</code> header set to the size of the archive in bytes. A client SHOULD terminate any requests whose response exceeds the expected content length.</p><p>A server MAY respond with a <code>Digest</code> header containing a cryptographic digest of the source archive.</p><p>A server SHOULD respond with a <code>Content-Disposition</code> header set to <code>attachment</code> with a <code>filename</code> parameter equal to the name of the package followed by a hyphen (<code>-</code>), the version number, and file extension (for example, “LinkedList-1.1.1.zip”).</p><p>A server MAY omit the <code>Content-Version</code> header since the response content (i.e., the source archive) SHOULD NOT change across different API versions.</p><p>It is RECOMMENDED for clients and servers to support range requests as described by <a href="https://tools.ietf.org/html/rfc7233">RFC 7233</a> and caching as described by <a href="https://tools.ietf.org/html/rfc7234">RFC 7234</a>.</p><p>If a release is signed, a server MUST include <code>X-Swift-Package-Signature-Format</code> and <code>X-Swift-Package-Signature</code> headers in the response.</p><h5 id="441-Integrity-verification"><a href="#441-Integrity-verification">4.4.1. Integrity verification</a></h5><p>A client MUST verify the integrity of a downloaded source archive using the <code>checksum</code> value for the associated <code>source-archive</code> resource in the response to <code>GET /{scope}/{name}/{version}</code>, as described in <a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#421-Package-release-resources">4.2.1</a>.</p><p>A client SHOULD also verify the integrity using any values provided in the <code>Digest</code> header of the source archive response (for using the command <code>shasum -b -a 256 LinkedList-1.1.1.zip | cut -f1 | xxd -r -p | base64</code>).</p><h5 id="442-Download-locations"><a href="#442-Download-locations">4.4.2. Download locations</a></h5><p>A server MAY specify mirrors or multiple download locations using <code>Link</code> header fields with a <code>duplicate</code> relation, as described by <a href="https://tools.ietf.org/html/rfc6249">RFC 6249</a>. A client MAY use this information to determine its preferred strategy for downloading.</p><p>A server MAY respond with a status code of <code>303</code> (See Other) to redirect the client to download the source archive from another host. The client MUST NOT follow redirects that downgrade to an insecure connection. The client SHOULD limit the number of redirects to prevent a redirect loop.</p><p>For example, a server redirects the client to download from a content delivery network (CDN) using a signed URL:</p><pre class="http"><code>HTTP/1.1 303 See Other
+Location: https://example.cdn.com/LinkedList-1.1.1.zip?key=XXXXXXXXXXXXXXXXX
+</code></pre><pre class="http"><code>GET /LinkedList-1.1.1.zip?key=XXXXXXXXXXXXXXXXX HTTP/1.1
+Host: example.cdn.com
+Accept: application/vnd.swift.registry.v1+zip
+</code></pre><pre class="http"><code>HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Cache-Control: public, immutable
+Content-Type: application/zip
+Content-Disposition: attachment; filename="LinkedList-1.1.1.zip"
+Content-Length: 2048
+Content-Version: 1
+Digest: sha-256=a2ac54cf25fbc1ad0028f03f0aa4b96833b83bb05a14e510892bb27dea4dc812
+</code></pre><h5 id="443-Signature-validation"><a href="#443-Signature-validation">4.4.3. Signature validation</a></h5><p>A client MUST validate the signature of a signed archive according to the signature format and configuration. Signing information can alternatively be found in the associated <code>source-archive</code> resource in the response to <code>GET /{scope}/{name}/{version}</code>, as described in <a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#421-Package-release-resources">4.2.1</a>.</p><p><a name="endpoint-5"></a></p><h4 id="45-Lookup-package-identifiers-registered-for-a-URL"><a href="#45-Lookup-package-identifiers-registered-for-a-URL">4.5. Lookup package identifiers registered for a URL</a></h4><p>A client MAY send a <code>GET</code> request for a URI matching the expression <code>/identifiers?url={url}</code> to retrieve package identifiers associated with a particular URL. A client SHOULD set the <code>Accept</code> header with the value <code>application/vnd.swift.registry.v1+json</code>.</p><pre class="http"><code>GET /identifiers?url=https://github.com/mona/LinkedList HTTP/1.1
+Host: packages.example.com
+Accept: application/vnd.swift.registry.v1
+</code></pre><p>A client MUST provide a URL for the <code>url</code> query parameter. When no <code>url</code> parameter is specified, a server SHOULD respond with a status code of <code>400</code> (Bad Request).</p><p>If one or more package identifiers are associated with the specified URL, a server SHOULD respond with a status code of <code>200</code> (OK) and the <code>Content-Type</code> header <code>application/json</code>. Otherwise, a server SHOULD respond with a status code of <code>404</code> (Not Found).</p><p>A server SHOULD respond with a JSON document containing the package identifiers for the specified URL.</p><pre class="http"><code>HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Version: 1
+
+{
+    "identifiers": [
+      "mona.LinkedList"
+    ]
+}
+</code></pre><p>The response body MUST contain an array of package identifier strings nested at a top-level <code>identifiers</code> key.</p><p>It is RECOMMENDED for clients and servers to support caching as described by <a href="https://tools.ietf.org/html/rfc7234">RFC 7234</a>.</p><h5 id="451-URL-to-package-identifier-mappings"><a href="#451-URL-to-package-identifier-mappings">4.5.1 URL to package identifier mappings</a></h5><p>As part of the <a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#422-Package-release-metadata-standards">package release metadata</a> JSON object, the <code>repositoryURLs</code> array can be used to specify URLs associated with a package identifier. This is one way through which a server can obtain URL to package identifier mappings for this API.</p><p>A server MAY choose other mechanism(s) for package authors to specify these mappings.</p><p>A server SHOULD validate the package author’s ownership claim on the corresponding repository.</p><p><a name="endpoint-6"></a></p><h4 id="46-Create-a-package-release"><a href="#46-Create-a-package-release">4.6. Create a package release</a></h4><p>A client MAY send a <code>PUT</code> request for a URI matching the expression <code>/{scope}/{name}/{version}</code> to publish a release of a package. A client MUST provide a body encoded as multipart form data with the following sections:</p><table><thead><tr><th>Key</th><th>Content-Type</th><th>Description</th><th>Requirement Level</th></tr></thead><tbody><tr><td><code>source-archive</code></td><td><code>application/zip</code></td><td>The source archive of the package.</td><td>REQUIRED</td></tr><tr><td><code>source-archive-signature</code></td><td><code>application/octet-stream</code></td><td>The signature of the source archive.</td><td>OPTIONAL</td></tr><tr><td><code>metadata</code></td><td><code>application/json</code></td><td>Additional information about the release.</td><td>OPTIONAL</td></tr><tr><td><code>metadata-signature</code></td><td><code>application/octet-stream</code></td><td>The signature of the metadata.</td><td>OPTIONAL</td></tr></tbody></table><p>A client MUST set a <code>Content-Type</code> header with the value <code>multipart/form-data</code>. <code>boundary</code> can be any string.</p><p>A client MAY use any valid value (e.g., <code>binary</code>) for the <code>Content-Transfer-Encoding</code> header.</p><p>A client SHOULD set the <code>Content-Length</code> header with the total size of the body in bytes.</p><p>A client SHOULD set the <code>Accept</code> header with the value <code>application/vnd.swift.registry.v1+json</code>.</p><p>A client MUST set a <code>X-Swift-Package-Signature-Format</code> header with the signature format if the source archive is signed.</p><pre class="http"><code>PUT /mona/LinkedList/1.1.1 HTTP/1.1
+Host: packages.example.com
+Accept: application/vnd.swift.registry.v1+json
+Content-Type: multipart/form-data;boundary="boundary"
+Content-Length: 336
+Expect: 100-continue
+X-Swift-Package-Signature-Format: cms-1.0.0
+
+--boundary
+Content-Disposition: form-data; name="source-archive"
+Content-Type: application/zip
+Content-Length: 32
+Content-Transfer-Encoding: base64
+
+gHUFBgAAAAAAAAAAAAAAAAAAAAAAAA==
+
+--boundary
+Content-Disposition: form-data; name="source-archive-signature"
+Content-Type: application/octet-stream
+Content-Length: 88
+Content-Transfer-Encoding: base64
+
+l1TdTeIuGdNsO1FQ0ptD64F5nSSOsQ5WzhM6/7KsHRuLHfTsggnyIWr0DxMcBj5F40zfplwntXAgS0ynlqvlFw==
+
+--boundary
+Content-Disposition: form-data; name="metadata"
+Content-Type: application/json
+Content-Transfer-Encoding: quoted-printable
+Content-Length: 3
+
+{ "repositoryURLs": [] }
+
+--boundary
+Content-Disposition: form-data; name="metadata-signature"
+Content-Type: application/octet-stream
+Content-Length: 88
+Content-Transfer-Encoding: base64
+
+M6TdTeIuGdNsO1FQ0ptD64F5nSSOsQ5WzhM6/7KsHRuLHfTsggnyIWr0DxMcBj5F40zfplwntXAgS0ynlqvlFw==
+
+</code></pre><p>A server SHOULD require a client to perform authentication for any requests to create a package release. Use of multi-factor authentication is RECOMMENDED.</p><p>A client MAY publish releases in any order. For example, if a package has existing <code>1.0.0</code> and <code>2.0.0</code> releases, a client MAY publish a new <code>1.0.1</code> or <code>1.1.0</code> release.</p><p>Once a release has been published, any resources associated with that release, including its source archive, MUST NOT change.</p><p>If a release already exists for a package at the specified version, the server SHOULD respond with a status code of <code>409</code> (Conflict).</p><pre class="http"><code>HTTP/1.1 409 Conflict
+Content-Version: 1
+Content-Type: application/problem+json
+Content-Language: en
+
+{
+   "detail": "a release with version 1.0.0 already exists"
+}
+</code></pre><p>It is RECOMMENDED that a server institute policies for publishing new releases of a package after a scope is transferred to a new owner. For example, the next release of an existing package is published with a new major version, or only after a period of 45 days after transfer.</p><p>If the client provides an <code>Expect</code> header, a server SHOULD check that the request can succeed before responding with a status code of <code>100 (Continue)</code>. A server that doesn’t support expectations SHOULD respond with a status code of <code>417 (Expectation Failed)</code>. In response, a client MAY remove the <code>Expect</code> header and retry the request.</p><pre class="http"><code>HTTP/1.1 417 (Expectation Failed)
+Content-Version: 1
+Content-Type: application/problem+json
+Content-Language: en
+
+{
+   "detail": "expectations aren't supported"
+}
+</code></pre><p>Support for this endpoint is OPTIONAL. A server SHOULD indicate that publishing isn’t supported by responding with a status code of <code>405</code> (Method Not Allowed).</p><pre class="http"><code>HTTP/1.1 405 (Method Not Allowed)
+Content-Version: 1
+Content-Type: application/problem+json
+Content-Language: en
+
+{
+   "detail": "publishing isn't supported"
+}
+</code></pre><p>A server MAY respond either synchronously or asynchronously. For more information, see <a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#463-Synchronous-and-asynchronous-publication">4.6.3</a>.</p><h5 id="461-Source-archive"><a href="#461-Source-archive">4.6.1. Source archive</a></h5><p>A client MUST include a multipart section named <code>source-archive</code> containing the source archive for a release. A client SHOULD set a <code>Content-Type</code> header with the value <code>application/zip</code> and a <code>Content-Length</code> header with the size of the Zip archive in bytes.</p><pre class="http"><code>--boundary
+Content-Disposition: form-data; name="source-archive"
+Content-Type: application/zip
+Content-Length: 32
+Content-Transfer-Encoding: base64
+
+gHUFBgAAAAAAAAAAAAAAAAAAAAAAAA==
+</code></pre><p>A client SHOULD use the <code>swift package archive-source</code> tool to create a source archive for the release.</p><p>A server MAY analyze a package to assess its viability, perform security testing, or otherwise evaluate software quality. A server MAY refuse to publish a package release for any reason by responding with a status code of <code>422</code> (Unprocessable Entity).</p><pre class="http"><code>HTTP/1.1 422 Unprocessable Entity
+Content-Version: 1
+Content-Type: application/problem+json
+Content-Language: en
+
+{
+   "detail": "package doesn't contain a valid manifest (Package.swift) file"
+}
+</code></pre><p>A server SHOULD use the <code>swift package compute-checksum</code> tool to compute the checksum that’s provided in response to a client’s subsequent request to <a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#44-Download-source-archive">download the source archive</a> for the release.</p><h5 id="462-Package-release-metadata"><a href="#462-Package-release-metadata">4.6.2. Package release metadata</a></h5><p>A client MAY include a multipart section named <code>metadata</code> containing additional information about the release. A client SHOULD set a <code>Content-Type</code> header with the value <code>application/json</code> and a <code>Content-Length</code> header with the size of the JSON document in bytes. The package release metadata MUST be based on the <a href="../registryserverspecificationappendixb/index.html">JSON schema</a>, as discussed in <a href="doc://PackageManagerDocs/documentation/PackageManagerDocs/RegistryServerSpecification#422-Package-release-metadata-standards">4.2.2</a>.</p><pre class="http"><code>--boundary
+Content-Disposition: form-data; name="metadata"
+Content-Type: application/json
+Content-Length: 226
+Content-Transfer-Encoding: quoted-printable
+
+{
+  "description": "One thing links to another.",
+  "repositoryURLs": ["https://github.com/mona/LinkedList"],
+  "licenseURL": "https://www.apache.org/licenses/LICENSE-2.0",
+  "author": {
+      "name": "Mona Lisa Octocat"
+  }
+}
+
+</code></pre><p>A server MAY allow and/or populate additional metadata for a release.</p><p>A server MAY make any properties in the <a href="../registryserverspecificationappendixb/index.html">JSON schema</a> and additional metadata it defines required.</p><p>If a client provides an invalid JSON document, the server SHOULD respond with a status code of <code>422</code> (Unprocessable Entity) or <code>413</code> (Payload Too Large) and MAY communicate validation error details in the response body.</p><pre class="http"><code>HTTP/1.1 422 Unprocessable Entity
+Content-Version: 1
+Content-Type: application/problem+json
+Content-Language: en
+
+{
+   "detail": "invalid JSON provided for release metadata"
+}
+</code></pre><h5 id="463-Synchronous-and-asynchronous-publication"><a href="#463-Synchronous-and-asynchronous-publication">4.6.3. Synchronous and asynchronous publication</a></h5><p>A server MAY respond to a request to publish a new package release either synchronously or asynchronously.</p><p>A client MAY indicate their preference for asynchronous processing with a <code>Prefer</code> header field containing the token <code>respond-async</code> and an optional <code>wait</code> preference, as described by <a href="https://tools.ietf.org/html/rfc7240">RFC 7240</a>.</p><pre class="http"><code>PUT /mona/LinkedList/1.1.1 HTTP/1.1
+Host: packages.example.com
+Accept: application/vnd.swift.registry.v1
+Prefer: respond-async, wait=300
+</code></pre><h6 id="4631-Synchronous-publication"><a href="#4631-Synchronous-publication">4.6.3.1. Synchronous publication</a></h6><p>If processing is done synchronously, the server MUST respond with a status code of <code>201</code> (Created) to indicate that the package release was published. This response SHOULD also contain a <code>Location</code> header with a URL to the new release.</p><pre class="http"><code>HTTP/1.1 201 Created
+Content-Version: 1
+Location: https://packages.example.com/github.com/mona/LinkedList/1.1.1
+</code></pre><p>A client MAY set a timeout to guarantee a timely response to each request.</p><h6 id="4632-Asynchronous-publication"><a href="#4632-Asynchronous-publication">4.6.3.2. Asynchronous publication</a></h6><p>If processing is done asynchronously, the server MUST respond with a status code of <code>202</code> (Accepted) to acknowledge that the request is being processed. This response MUST contain a <code>Location</code> header with a URL that the client can poll for progress updates and SHOULD contain a <code>Retry-After</code> header with an estimate of when processing is expected to finish. A server MAY locate the status resource endpoint at a URI of its choosing. However, the use of a non-sequential, randomly-generated identifier is RECOMMENDED.</p><pre class="http"><code>HTTP/1.1 202 Accepted
+Content-Version: 1
+Location: https://packages.example.com/submissions/90D8CC77-A576-47AE-A531-D6402C4E33BC
+Retry-After: 120
+</code></pre><p>A client MAY send a <code>GET</code> request to the location provided by the server in response to a publish request to see the current status of that process.</p><pre class="http"><code>GET /submissions/90D8CC77-A576-47AE-A531-D6402C4E33BC HTTP/1.1
+Host: packages.example.com
+Accept: application/vnd.swift.registry.v1
+</code></pre><p>If the asynchronous publish request is still processing, the server SHOULD respond with a status code of <code>202</code> (Accepted) and a <code>Retry-After</code> header with an estimate of when processing should finish. A server MAY include additional details in the response body.</p><pre class="http"><code>HTTP/1.1 202 Accepted
+Content-Version: 1
+Content-Type: application/json
+Retry-After: 120
+
+{
+  "status": "Processing (2/3 steps complete)",
+  "steps": {
+    {"name": "Validate metadata", "status": "complete"},
+    {"name": "Verify package manifest", "status": "complete"},
+    {"name": "Scan for vulnerabilities", "status": "pending"}
+  }
+}
+</code></pre><p>If the asynchronous publish request is finished processing successfully, the server SHOULD respond with a status code of <code>301</code> (Moved Permanently) and a <code>Location</code> header with a URL to the package release.</p><pre class="http"><code>HTTP/1.1 301 Moved Permanently
+Content-Version: 1
+Location: https://packages.example.com/mona/LinkedList/1.1.1
+</code></pre><p>If the asynchronous publish request failed, the server SHOULD respond with an appropriate client error status code (<code>4xx</code>).</p><pre class="http"><code>HTTP/1.1 400 Bad Request
+Content-Version: 1
+Content-Type: application/problem+json
+Content-Language: en
+Location: https://packages.example.com/submissions/90D8CC77-A576-47AE-A531-D6402C4E33BC
+
+{
+   "detail": "invalid package"
+}
+</code></pre><p>A client MAY send a <code>DELETE</code> request to the location provided by the server in response to a publish request to cancel that process.</p><p>If a request to publish a new package release were to fail, a server MUST communicate that failure in the same way if sending an immediate response as it would if responding to a client polling for status.</p><p>If a client makes a request to publish a package release to a server that is asynchronously processing a request to publish that release, the server MUST respond with a status code of <code>409</code> (Conflict)</p><pre class="http"><code>HTTP/1.1 409 Conflict
+Content-Version: 1
+Content-Type: application/problem+json
+Content-Language: en
+Location: https://packages.example.com/submissions/90D8CC77-A576-47AE-A531-D6402C4E33BC
+
+{
+   "detail": "already processing a request to publish this package version"
+}
+</code></pre><p>If a client makes a request to publish a package release to a server that finished processing a failed request to publish that release, the server SHOULD try publishing that release again. A server MAY refuse to fulfill a subsequent request to publish a package release by responding with a status code of <code>409</code> (Conflict).</p><h3 id="5-Normative-References"><a href="#5-Normative-References">5. Normative References</a></h3><ul><li><p><a href="https://tools.ietf.org/html/rfc2119">RFC 2119</a>: Key words for use in RFCs to Indicate Requirement Levels</p></li><li><p><a href="https://tools.ietf.org/html/rfc5843">RFC 3230</a>: Instance Digests in HTTP</p></li><li><p><a href="https://tools.ietf.org/html/rfc3986">RFC 3986</a>: Uniform Resource Identifier (URI): Generic Syntax</p></li><li><p><a href="https://tools.ietf.org/html/rfc3987">RFC 3987</a>: Internationalized Resource Identifiers (IRIs)</p></li><li><p><a href="https://tools.ietf.org/html/rfc5234">RFC 5234</a>: Augmented BNF for Syntax Specifications: ABNF</p></li><li><p><a href="https://tools.ietf.org/html/rfc5843">RFC 5843</a>: Additional Hash Algorithms for HTTP Instance Digests</p></li><li><p><a href="https://tools.ietf.org/html/rfc6249">RFC 6249</a>: Metalink/HTTP: Mirrors and Hashes</p></li><li><p><a href="https://tools.ietf.org/html/rfc6570">RFC 6570</a>: URI Template</p></li><li><p><a href="https://tools.ietf.org/html/rfc7159">RFC 7159</a>: The JavaScript Object Notation (JSON) Data Interchange Format</p></li><li><p><a href="https://tools.ietf.org/html/rfc7230">RFC 7230</a>: Hypertext Transfer Protocol (HTTP/1.1): Message Syntax and Routing</p></li><li><p><a href="https://tools.ietf.org/html/rfc7231">RFC 7231</a>: Hypertext Transfer Protocol (HTTP/1.1): Semantics and Content</p></li><li><p><a href="https://tools.ietf.org/html/rfc7233">RFC 7233</a>: Hypertext Transfer Protocol (HTTP/1.1): Range Requests</p></li><li><p><a href="https://tools.ietf.org/html/rfc7234">RFC 7234</a>: Hypertext Transfer Protocol (HTTP/1.1): Caching</p></li><li><p><a href="https://tools.ietf.org/html/rfc7240">RFC 7240</a>: Prefer Header for HTTP</p></li><li><p><a href="https://tools.ietf.org/html/rfc7578">RFC 7578</a>: Returning Values from Forms: multipart/form-data</p></li><li><p><a href="https://tools.ietf.org/html/rfc7807">RFC 7807</a>: Problem Details for HTTP APIs</p></li><li><p><a href="https://tools.ietf.org/html/rfc8288">RFC 8288</a>: Web Linking</p></li><li><p><a href="https://semver.org/">SemVer</a>: Semantic Versioning</p></li></ul><h3 id="6-Informative-References"><a href="#6-Informative-References">6. Informative References</a></h3><ul><li><p><a href="https://tools.ietf.org/html/rfc6838">BCP 13</a> Media Type Specifications and Registration Procedures</p></li><li><p><a href="https://tools.ietf.org/html/rfc6749">RFC 6749</a>: The OAuth 2.0 Authorization Framework</p></li><li><p><a href="https://tools.ietf.org/html/rfc8446">RFC 8446</a>: The Transport Layer Security (TLS) Protocol Version 1.3</p></li><li><p><a href="https://tools.ietf.org/html/rfc8631">RFC 8631</a>: Link Relation Types for Web Services</p></li><li><p><a href="https://w3c.github.io/json-ld-syntax/">JSON-LD</a>: A JSON-based Serialization for Linked Data</p></li><li><p><a href="https://schema.org/">Schema.org</a>: A shared vocabulary for structured data.</p></li><li><p><a href="https://swagger.io/specification/">OAS</a>: OpenAPI Specification</p></li></ul></section><section id="Topics"><h2><a href="#Topics">Topics</a></h2><h3 id="Appendices"><a href="#Appendices">Appendices</a></h3><ul><li><a href="../registryserverspecificationappendixa/index.html"><p class="api-collection">Appendix A - OpenAPI Document</p></a><p>Non-normative OpenAPI (v3) description of the registry service.</p></li><li><a href="../registryserverspecificationappendixb/index.html"><p class="api-collection">Appendix B - Package Release Metadata JSON Schema</p></a><p>JSON schema for the <code>metadata</code> object accepted by a create package release request.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

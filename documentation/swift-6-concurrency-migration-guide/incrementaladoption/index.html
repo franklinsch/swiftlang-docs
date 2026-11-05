@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Incremental Adoption</title><meta content="Learn how you can introduce Swift concurrency features into your project incrementally." name="description"><script src="../../../navigator-index-swift-migration-guide.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../../migrationguide/index.html">Migrating to Swift 6</a></li><li>Incremental Adoption</li></ul></nav><hgroup><p>Article</p><h1>Incremental Adoption</h1></hgroup><p>Learn how you can introduce Swift concurrency features into your project incrementally.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Migrating projects towards the Swift 6 language mode is usually done in stages. In fact, many projects began the process before Swift 6 was even available. You can continue to introduce concurrency features <i>gradually</i>, addressing any problems that come up along the way. This allows you to make incremental progress without disrupting the entire project.</p><p>Swift includes a number of language features and standard library APIs to help make incremental adoption easier.</p><h2 id="Wrapping-Callback-Based-Functions"><a href="#Wrapping-Callback-Based-Functions">Wrapping Callback-Based Functions</a></h2><p>APIs that accept and invoke a single function on completion are an extremely common pattern in Swift. It’s possible to make a version of such a function that is usable directly from an asynchronous context.</p><pre class="swift"><code>func updateStyle(backgroundColor: ColorComponents, completionHandler: @escaping () -> Void) {
+    // ...
+}
+</code></pre><p>This is an example of a function that informs a client its work is complete using a callback. There is no way for a caller to determine when or on what thread the callback will be invoked without consulting documentation.</p><p>You can wrap this function up into an asynchronous version using <i>continuations</i>.</p><pre class="swift"><code>func updateStyle(backgroundColor: ColorComponents) async {
+    await withCheckedContinuation { continuation in
+        updateStyle(backgroundColor: backgroundColor) {
+            // ... do some work here ...
+
+            continuation.resume()
+        }
+    }
+}
+</code></pre><aside class="note"><p class="label">Note</p><p>You have to take care to <i>resume</i> the continuation <i>exactly once</i>. If you miss invoking it, the calling task will remain suspended indefinitely. On the other hand, resuming a checked continuation more than once will cause an expected crash, protecting you from undefined behavior.</p></aside><p>With an asynchronous version, there is no longer any ambiguity. After the function has completed, execution will always resume in the same context it was started in.</p><pre class="swift"><code>await updateStyle(backgroundColor: color)
+// style has been updated
+</code></pre><p>The <code>withCheckedContinuation</code> function is one of a <a href="https://developer.apple.com/documentation/swift/concurrency#continuations">suite of standard library APIs</a> that exist to make interfacing non-async and async code possible.</p><aside class="note"><p class="label">Note</p><p>Introducing asynchronous code into a project can surface data isolation checking violations. To understand and address these, see <a href="doc://org.swift.migration.6/documentation/Swift-6-Concurrency-Migration-Guide/CommonProblems#Crossing-Isolation-Boundaries">Crossing Isolation Boundaries</a></p></aside><h2 id="Dynamic-Isolation"><a href="#Dynamic-Isolation">Dynamic Isolation</a></h2><p>Expressing the isolation of your program statically, using annotations and other language constructs, is both powerful and concise. But it can be difficult to introduce static isolation without updating all dependencies simultaneously.</p><p>Dynamic isolation provides runtime mechanisms you can use as a fallback for describing data isolation. It can be an essential tool for interfacing a Swift 6 component with another that has not yet been updated, even if these components are within the <i>same</i> module.</p><h3 id="Internal-Only-Isolation"><a href="#Internal-Only-Isolation">Internal-Only Isolation</a></h3><p>Suppose you have determined that a reference type within your project can be best described with <code>MainActor</code> static isolation.</p><pre class="swift"><code>@MainActor
+class WindowStyler {
+    private var backgroundColor: ColorComponents
+
+    func applyStyle() {
+        // ...
+    }
+}
+</code></pre><p>This <code>MainActor</code> isolation may be <i>logically</i> correct. But if this type is used in other unmigrated locations, adding static isolation here could require many additional changes. An alternative is to use dynamic isolation to help control the scope.</p><pre class="swift"><code>class WindowStyler {
+    @MainActor
+    private var backgroundColor: ColorComponents
+
+    func applyStyle() {
+        MainActor.assumeIsolated {
+            // use and interact with other `MainActor` state
+        }
+    }
+}
+</code></pre><p>Here, the isolation has been internalized into the class. This keeps any changes localized to the type, allowing you make changes without affecting any clients of the type.</p><p>However, a major disadvantage of this technique is the type’s true isolation requirements remain invisible. There is no way for clients to determine if or how they should change based on this public API. You should use this approach only as a temporary solution, and only when you have exhausted other options.</p><h3 id="Usage-Only-Isolation"><a href="#Usage-Only-Isolation">Usage-Only Isolation</a></h3><p>If it is impractical to contain isolation exclusively within a type, you can instead expand the isolation to cover only its API usage.</p><p>To do this, first apply static isolation to the type, and then use dynamic isolation at any usage locations:</p><pre class="swift"><code>@MainActor
+class WindowStyler {
+    // ...
+}
+
+class UIStyler {
+    @MainActor
+    private let windowStyler: WindowStyler
+    
+    func applyStyle() {
+        MainActor.assumeIsolated {
+            windowStyler.applyStyle()
+        }
+    }
+}
+</code></pre><p>Combining static and dynamic isolation can be a powerful tool to keep the scope of changes gradual.</p><h3 id="Explicit-MainActor-Context"><a href="#Explicit-MainActor-Context">Explicit MainActor Context</a></h3><p>The <code>assumeIsolated</code> method is synchronous and exists to recover isolation information from runtime back into the type-system by preventing execution if the assumption was incorrect. The <code>MainActor</code> type also has a method you can use to manually switch isolation in an asynchronous context.</p><pre class="swift"><code>// type that should be MainActor, but has not been updated yet
+class PersonalTransportation {
+}
+
+await MainActor.run {
+    // isolated to the MainActor here
+    let transport = PersonalTransportation()
+    
+    // ...
+}
+</code></pre><p>Remember that static isolation allows the compiler to both verify and automate the process of switching isolation as needed. Even when used in combination with static isolation, it can be difficult to determine when <code>MainActor.run</code> is truly necessary. While <code>MainActor.run</code> can be useful during migration, it should not be used as a substitute for expressing the isolation requirements of your system statically. The ultimate goal should still be to apply <code>@MainActor</code> to <code>PersonalTransportation</code>.</p><h2 id="Missing-Annotations"><a href="#Missing-Annotations">Missing Annotations</a></h2><p>Dynamic isolation gives you tools to express isolation at runtime. But you may also find you need to describe other concurrency properties that are missing from unmigrated modules.</p><h3 id="Unmarked-Sendable-Closures"><a href="#Unmarked-Sendable-Closures">Unmarked Sendable Closures</a></h3><p>The sendability of a closure affects how the compiler infers isolation for its body. A callback closure that actually does cross isolation boundaries but is <i>missing</i> a <code>Sendable</code> annotation violates a critical invariant of the concurrency system.</p><pre class="swift"><code>// definition within a pre-Swift 6 module
+extension JPKJetPack {
+    // Note the lack of a @Sendable annotation
+    static func jetPackConfiguration(_ callback: @escaping () -> Void) {
+        // Can potentially cross isolation domains
+    }
+}
+
+@MainActor
+class PersonalTransportation {
+    func configure() {
+        JPKJetPack.jetPackConfiguration {
+            // MainActor isolation will be inferred here
+            self.applyConfiguration()
+        }
+    }
+
+    func applyConfiguration() {
+    }
+}
+</code></pre><p>If <code>jetPackConfiguration</code> can invoke its closure in another isolation domain, it must be marked <code>@Sendable</code>. When an un-migrated module hasn’t yet done this, it will result in incorrect actor inference. This code will compile without issue but crash at runtime.</p><aside class="note"><p class="label">Note</p><p>It is not possible for the compiler to detect or diagnose the <i>lack</i> of compiler-visible information.</p></aside><p>To workaround this, you can manually annotate the closure with <code>@Sendable.</code> This will prevent the compiler from inferring <code>MainActor</code> isolation. Because the compiler now knows actor isolation could change, it will require a task at the callsite and an await in the task.</p><pre class="swift"><code>@MainActor
+class PersonalTransportation {
+    func configure() {
+        JPKJetPack.jetPackConfiguration { @Sendable in
+            // Sendable closures do not infer actor isolation,
+            // making this context non-isolated
+            Task {
+                await self.applyConfiguration()
+            }
+        }
+    }
+
+    func applyConfiguration() {
+    }
+}
+</code></pre><p>Alternatively, it is also possible to disable runtime isolation assertions for the module with the <code>-disable-dynamic-actor-isolation</code> compiler flag. This will suppress all runtime enforcement of dynamic actor isolation.</p><aside class="warning"><p class="label">Warning</p><p>This flag should be used with caution. Disabling these runtime checks will permit data isolation violations.</p></aside><h2 id="Integrating-DispatchSerialQueue-with-Actors"><a href="#Integrating-DispatchSerialQueue-with-Actors">Integrating DispatchSerialQueue with Actors</a></h2><p>By default, the mechanism actors use to schedule and execute work is system-defined. However you can override this to provide a custom implementation. The <code>DispatchSerialQueue</code> type includes built-in support for this facility.</p><pre class="swift"><code>actor LandingSite {
+    private let queue = DispatchSerialQueue(label: "something")
+
+    nonisolated var unownedExecutor: UnownedSerialExecutor {
+        queue.asUnownedSerialExecutor()
+    }
+
+    func acceptTransport(_ transport: PersonalTransportation) {
+        // this function will be running on queue
+    }
+}
+</code></pre><p>This can be useful if you want to migrate a type towards the actor model while maintaining compatibility with code that depends on <code>DispatchQueue</code>.</p><h2 id="Backwards-Compatibility"><a href="#Backwards-Compatibility">Backwards Compatibility</a></h2><p>It’s important to keep in mind that static isolation, being part of the type system, affects your public API. But you can migrate your own modules in a way that improves their APIs for Swift 6 <i>without</i> breaking any existing clients.</p><p>Suppose the <code>WindowStyler</code> is public API. You have determined that it really should be <code>MainActor</code>-isolated, but want to ensure backwards compatibility for clients.</p><pre class="swift"><code>@preconcurrency @MainActor
+public class WindowStyler {
+    // ...
+}
+</code></pre><p>Using <code>@preconcurrency</code> this way marks the isolation as conditional on the client module also having complete checking enabled. This preserves source compatibility with clients that have not yet begun adopting Swift 6.</p><h2 id="Dependencies"><a href="#Dependencies">Dependencies</a></h2><p>Often, you aren’t in control of the modules you need to import as dependencies. If these modules have not yet adopted Swift 6, you may find yourself with errors that are difficult or impossible to resolve.</p><p>There are a number of different kinds of problems that result from using unmigrated code. The <code>@preconcurrency</code> annotation can help with many of these situations:</p><ul><li><p><a href="doc://org.swift.migration.6/documentation/Swift-6-Concurrency-Migration-Guide/CommonProblems#Non-Sendable-Types">Non-Sendable types</a></p></li><li><p>Mismatches in <a href="doc://org.swift.migration.6/documentation/Swift-6-Concurrency-Migration-Guide/CommonProblems#Protocol-Conformance-Isolation-Mismatch">protocol-conformance isolation</a></p></li></ul><h2 id="CObjective-C"><a href="#CObjective-C">C/Objective-C</a></h2><p>You can expose Swift concurrency support for your C and Objective-C APIs using annotations. This is made possible by Clang’s <a href="https://clang.llvm.org/docs/AttributeReference.html#customizing-swift-import">concurrency-specific annotations</a>:</p><pre><code>__attribute__((swift_attr(“@Sendable”)))
+__attribute__((swift_attr(“@_nonSendable”)))
+__attribute__((swift_attr("nonisolated")))
+__attribute__((swift_attr("@UIActor")))
+__attribute__((swift_attr("sending")))
+
+__attribute__((swift_async(none)))
+__attribute__((swift_async(not_swift_private, COMPLETION_BLOCK_INDEX))
+__attribute__((swift_async(swift_private, COMPLETION_BLOCK_INDEX)))
+__attribute__((__swift_async_name__(NAME)))
+__attribute__((swift_async_error(none)))
+__attribute__((__swift_attr__("@_unavailableFromAsync(message: \"" msg "\")")))
+</code></pre><p>When working with a project that can import Foundation, the following annotation macros are available in <code>NSObjCRuntime.h</code>:</p><pre><code>NS_SWIFT_SENDABLE
+NS_SWIFT_NONSENDABLE
+NS_SWIFT_NONISOLATED
+NS_SWIFT_UI_ACTOR
+NS_SWIFT_SENDING
+
+NS_SWIFT_DISABLE_ASYNC
+NS_SWIFT_ASYNC(COMPLETION_BLOCK_INDEX)
+NS_REFINED_FOR_SWIFT_ASYNC(COMPLETION_BLOCK_INDEX)
+NS_SWIFT_ASYNC_NAME
+NS_SWIFT_ASYNC_NOTHROW
+NS_SWIFT_UNAVAILABLE_FROM_ASYNC(msg)
+</code></pre><h3 id="Dealing-with-missing-isolation-annotations-in-Objective-C-libraries"><a href="#Dealing-with-missing-isolation-annotations-in-Objective-C-libraries">Dealing with missing isolation annotations in Objective-C libraries</a></h3><p>While the SDKs and other Objective-C libraries make progress in adopting Swift concurrency, they will often go through the exercise of codifying contracts which were only explained in documentation. For example, before Swift concurrency, APIs frequently had to document their threading behavior with comments like “this will always be called on the main thread”.</p><p>Swift concurrency enables us to turn these code comments, into compiler and runtime enforced isolation checks, that Swift will then verify when you adopt such APIs.</p><p>For example, the fictional <code>NSJetPack</code> protocol generally invokes all of its delegate methods on the main thread, and therefore has now become MainActor-isolated.</p><p>The library author can mark as MainActor isolated using the <code>NS_SWIFT_UI_ACTOR</code> attribute, which is equivalent to annotating a type using <code>@MainActor</code> in Swift:</p><pre class="swift"><code>NS_SWIFT_UI_ACTOR
+@protocol NSJetPack // fictional protocol
+  // ...
+@end
+</code></pre><p>Thanks to this, all member methods of this protocol inherit the <code>@MainActor</code> isolation, and for most methods this is correct.</p><p>However, in this example, let us consider a method which was previously documented as follows:</p><pre class="objc"><code>NS_SWIFT_UI_ACTOR // SDK author annotated using MainActor in recent SDK audit
+@protocol NSJetPack // fictional protocol
+/* Return YES if this jetpack supports flying at really high altitude!
+ 
+ JetPackKit invokes this method at a variety of times, and not always on the main thread. For example, ...
+*/
+@property(readonly) BOOL supportsHighAltitude;
+
+@end
+</code></pre><p>This method’s isolation was accidentally inferred as <code>@MainActor</code>, because of the annotation on the enclosing type. Although it has specifically documented a different threading strategy - it may or may not be invoked on the main actor - annotating these semantics on the method was accidentally missed.</p><p>This is an annotation problem in the fictional JetPackKit library. Specifically, it is missing a <code>nonisolated</code> annotation on the method, which would inform Swift about the correct and expected execution semantics.</p><p>Swift code adopting this library may look like this:</p><pre class="swift"><code>@MainActor
+final class MyJetPack: NSJetPack {
+  override class var supportsHighAltitude: Bool { // runtime crash in Swift 6 mode
+    true
+  }
+}
+</code></pre><p>The above code will crash with a runtime check, which aims to ensure we are actually executing on the main actor as we’re crossing from objective-c’s non-swift-concurrency land into Swift.</p><p>It is a Swift 6 feature to detect such issues automatically and crash at runtime when such expectations are violated. Leaving such issues un-diagnosed, could lead to actual hard-to-detect data races, and undermine Swift 6’s promise about data-race safety.</p><p>Such failure would include a similar backtrace to this:</p><pre><code>* thread #5, queue = 'com.apple.root.default-qos', stop reason = EXC_BREAKPOINT (code=1, subcode=0x1004f8a5c)
+  * frame #0: 0x00000001004..... libdispatch.dylib`_dispatch_assert_queue_fail + 120
+    frame #1: 0x00000001004..... libdispatch.dylib`dispatch_assert_queue + 196
+    frame #2: 0x0000000275b..... libswift_Concurrency.dylib`swift_task_isCurrentExecutorImpl(swift::SerialExecutorRef) + 280
+    frame #3: 0x0000000275b..... libswift_Concurrency.dylib`Swift._checkExpectedExecutor(_filenameStart: Builtin.RawPointer, _filenameLength: Builtin.Word, _filenameIsASCII: Builtin.Int1, _line: Builtin.Word, _executor: Builtin.Executor) -> () + 60
+    frame #4: 0x00000001089..... MyApp.debug.dylib`@objc static JetPack.supportsHighAltitude.getter at &lt;compiler-generated>:0
+    ...
+    frame #10: 0x00000001005..... libdispatch.dylib`_dispatch_root_queue_drain + 404
+    frame #11: 0x00000001005..... libdispatch.dylib`_dispatch_worker_thread2 + 188
+    frame #12: 0x00000001005..... libsystem_pthread.dylib`_pthread_wqthread + 228
+</code></pre><aside class="note"><p class="label">Note</p><p>When encountering such an issue, and by investigating the documentation and API annotations you determine something was incorrectly annotated, the best way to resolve the root cause of the problem is to report the issue back to the library maintainer.</p></aside><p>As you can see, the runtime injected an executor check into the call, and the dispatch queue assertion (of it running on the MainActor), has failed. This prevents sneaky and hard to debug data-races.</p><p>The correct long-term solution to this issue is the library fixing the method’s annotation, by marking it as <code>nonisolated</code>:</p><pre class="objc"><code>// Solution in the library providing the API:
+@property(readonly) BOOL supportsHighAltitude NS_SWIFT_NONISOLATED;
+</code></pre><p>Until the library fixes its annotation issue, you are able to witness the method using a correctly <code>nonisolated</code> method, like this:</p><pre class="swift"><code>// Solution in adopting client code, wishing to run in Swift 6 mode:
+@MainActor
+final class MyJetPack: NSJetPack {
+  // Correct
+  override nonisolated class var supportsHighAltitude: Bool {
+    true
+  }
+}
+</code></pre><p>This way Swift knows not to check for the not-correct assumption that the method requires main actor isolation.</p></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../../reference.css" rel="stylesheet"><title>init(truncatingIfNeeded:)</title><meta content="Creates a new instance from the bit pattern of the given instance by sign-extending or truncating to fit this type." name="description"><script src="../../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../../index.html">Standard Library</a></li><li><a href="../index.html">UInt</a></li><li>init(truncatingIfNeeded:)</li></ul></nav><hgroup><p>Initializer</p><h1>init(<wbr>truncating<wbr>If<wbr>Needed:)</h1></hgroup><p>Creates a new instance from the bit pattern of the given instance by sign-extending or truncating to fit this type.</p><ul id="availability"><li aria-label="iOS 8.0+, Available on iOS 8.0 and later" title="Available on iOS 8.0 and later">iOS 8.0+</li><li aria-label="iPadOS 8.0+, Available on iPadOS 8.0 and later" title="Available on iPadOS 8.0 and later">iPadOS 8.0+</li><li aria-label="Mac Catalyst 13.0+, Available on Mac Catalyst 13.0 and later" title="Available on Mac Catalyst 13.0 and later">Mac Catalyst 13.0+</li><li aria-label="macOS 10.10+, Available on macOS 10.10 and later" title="Available on macOS 10.10 and later">macOS 10.10+</li><li aria-label="tvOS 9.0+, Available on tvOS 9.0 and later" title="Available on tvOS 9.0 and later">tvOS 9.0+</li><li aria-label="visionOS 1.0+, Available on visionOS 1.0 and later" title="Available on visionOS 1.0 and later">visionOS 1.0+</li><li aria-label="watchOS 2.0+, Available on watchOS 2.0 and later" title="Available on watchOS 2.0 and later">watchOS 2.0+</li></ul><pre id="declaration"><code><span class="keyword">init</span>&lt;T>(truncatingIfNeeded <span class="internalParameter">source</span>: <span class="typeIdentifier">T</span>) <span class="keyword">where</span> <span class="typeIdentifier">T</span> : <a class="typeIdentifier" href="../../binaryinteger/index.html">BinaryInteger</a></code></pre></section><section id="Parameters"><h2><a href="#Parameters">Parameters</a></h2><dl><dt>source</dt><dd><p>An integer to convert to this type.</p></dd></dl></section><section id="Discussion"><h2><a href="#Discussion">Discussion</a></h2><p>When the bit width of <code>T</code> (the type of <code>source</code>) is equal to or greater than this type’s bit width, the result is the truncated least-significant bits of <code>source</code>. For example, when converting a 16-bit value to an 8-bit type, only the lower 8 bits of <code>source</code> are used.</p><pre><code>let p: Int16 = -500
+// 'p' has a binary representation of 11111110_00001100
+let q = Int8(truncatingIfNeeded: p)
+// q == 12
+// 'q' has a binary representation of 00001100
+</code></pre><p>When the bit width of <code>T</code> is less than this type’s bit width, the result is <i>sign-extended</i> to fill the remaining bits. That is, if <code>source</code> is negative, the result is padded with ones; otherwise, the result is padded with zeros.</p><pre><code>let u: Int8 = 21
+// 'u' has a binary representation of 00010101
+let v = Int16(truncatingIfNeeded: u)
+// v == 21
+// 'v' has a binary representation of 00000000_00010101
+
+let w: Int8 = -21
+// 'w' has a binary representation of 11101011
+let x = Int16(truncatingIfNeeded: w)
+// x == -21
+// 'x' has a binary representation of 11111111_11101011
+let y = UInt16(truncatingIfNeeded: w)
+// y == 65515
+// 'y' has a binary representation of 11111111_11101011
+</code></pre></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

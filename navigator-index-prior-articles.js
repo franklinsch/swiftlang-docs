@@ -1,0 +1,1 @@
+window.doccNavigatorIndex = {"includedArchiveIdentifiers":["PriorArticles"],"interfaceLanguages":{"swift":[{"path":"\/documentation\/priorarticles","title":"Prior articles","type":"module"}]},"schemaVersion":{"major":0,"minor":1,"patch":2}};

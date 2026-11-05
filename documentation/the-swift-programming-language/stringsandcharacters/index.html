@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Strings and Characters</title><meta content="Store and manipulate text." name="description"><script src="../../../navigator-index-swift-book.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">The Swift Programming Language (6.4)</a></li><li>Strings and Characters</li></ul></nav><hgroup><p>Article</p><h1>Strings and Characters</h1></hgroup><p>Store and manipulate text.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>A <i>string</i> is a series of characters, such as <code>"hello, world"</code> or <code>"albatross"</code>. Swift strings are represented by the <code>String</code> type. The contents of a <code>String</code> can be accessed in various ways, including as a collection of <code>Character</code> values.</p><p>Swift’s <code>String</code> and <code>Character</code> types provide a fast, Unicode-compliant way to work with text in your code. The syntax for string creation and manipulation is lightweight and readable, with a string literal syntax that’s similar to C. String concatenation is as simple as combining two strings with the <code>+</code> operator, and string mutability is managed by choosing between a constant or a variable, just like any other value in Swift. You can also use strings to insert constants, variables, literals, and expressions into longer strings, in a process known as string interpolation. This makes it easy to create custom string values for display, storage, and printing.</p><p>Despite this simplicity of syntax, Swift’s <code>String</code> type is a fast, modern string implementation. Every string is composed of encoding-independent Unicode characters, and provides support for accessing those characters in various Unicode representations.</p><aside class="note"><p class="label">Note</p><p>Swift’s <code>String</code> type is bridged with Foundation’s <code>NSString</code> class. Foundation also extends <code>String</code> to expose methods defined by <code>NSString</code>. This means, if you import Foundation, you can access those <code>NSString</code> methods on <code>String</code> without casting.</p><p>For more information about using <code>String</code> with Foundation and Cocoa, see <a href="https://developer.apple.com/documentation/swift/string#Bridging-Between-String-and-NSString">Bridging Between String and NSString</a>.</p></aside><h2 id="String-Literals"><a href="#String-Literals">String Literals</a></h2><p>You can include predefined <code>String</code> values within your code as <i>string literals</i>. A string literal is a sequence of characters surrounded by double quotation marks (<code>"</code>).</p><p>Use a string literal as an initial value for a constant or variable:</p><pre class="swift"><code>let someString = "Some string literal value"
+</code></pre><p>Note that Swift infers a type of <code>String</code> for the <code>someString</code> constant because it’s initialized with a string literal value.</p><h3 id="Multiline-String-Literals"><a href="#Multiline-String-Literals">Multiline String Literals</a></h3><p>If you need a string that spans several lines, use a multiline string literal — a sequence of characters surrounded by three double quotation marks:</p><pre class="swift"><code>let quotation = """
+The White Rabbit put on his spectacles.  "Where shall I begin,
+please your Majesty?" he asked.
+
+"Begin at the beginning," the King said gravely, "and go on
+till you come to the end; then stop."
+"""
+</code></pre><p>A multiline string literal includes all of the lines between its opening and closing quotation marks. The string begins on the first line after the opening quotation marks (<code>"""</code>) and ends on the line before the closing quotation marks, which means that neither of the strings below start or end with a line break:</p><pre class="swift"><code>let singleLineString = "These are the same."
+let multilineString = """
+These are the same.
+"""
+</code></pre><p>When your source code includes a line break inside of a multiline string literal, that line break also appears in the string’s value. If you want to use line breaks to make your source code easier to read, but you don’t want the line breaks to be part of the string’s value, write a backslash (<code>\</code>) at the end of those lines:</p><pre class="swift"><code>let softWrappedQuotation = """
+The White Rabbit put on his spectacles.  "Where shall I begin, \
+please your Majesty?" he asked.
+
+"Begin at the beginning," the King said gravely, "and go on \
+till you come to the end; then stop."
+"""
+</code></pre><p>To make a multiline string literal that begins or ends with a line feed, write a blank line as the first or last line. For example:</p><pre class="swift"><code>let lineBreaks = """
+
+This string starts with a line break.
+It also ends with a line break.
+
+"""
+</code></pre><p>A multiline string can be indented to match the surrounding code. The whitespace before the closing quotation marks (<code>"""</code>) tells Swift what whitespace to ignore before all of the other lines. However, if you write whitespace at the beginning of a line in addition to what’s before the closing quotation marks, that whitespace <i>is</i> included.</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/multilineStringWhitespace@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/multilineStringWhitespace~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><p>In the example above, even though the entire multiline string literal is indented, the first and last lines in the string don’t begin with any whitespace. The middle line has more indentation than the closing quotation marks, so it starts with that extra four-space indentation.</p><h3 id="Special-Characters-in-String-Literals"><a href="#Special-Characters-in-String-Literals">Special Characters in String Literals</a></h3><p>String literals can include the following special characters:</p><ul><li><p>The escaped special characters <code>\0</code> (null character), <code>\\</code> (backslash), <code>\t</code> (horizontal tab), <code>\n</code> (line feed), <code>\r</code> (carriage return), <code>\"</code> (double quotation mark) and <code>\'</code> (single quotation mark)</p></li><li><p>An arbitrary Unicode scalar value, written as <code>\u{</code><i>n</i><code>}</code>, where <i>n</i> is a 1–8 digit hexadecimal number (Unicode is discussed in StringsAndCharacters below)</p></li></ul><p>The code below shows four examples of these special characters. The <code>wiseWords</code> constant contains two escaped double quotation marks. The <code>dollarSign</code>, <code>blackHeart</code>, and <code>sparklingHeart</code> constants demonstrate the Unicode scalar format:</p><pre class="swift"><code>let wiseWords = "\"Imagination is more important than knowledge\" - Einstein"
+// "Imagination is more important than knowledge" - Einstein
+let dollarSign = "\u{24}"        // $,  Unicode scalar U+0024
+let blackHeart = "\u{2665}"      // ♥,  Unicode scalar U+2665
+let sparklingHeart = "\u{1F496}" // 💖, Unicode scalar U+1F496
+</code></pre><p>Because multiline string literals use three double quotation marks instead of just one, you can include a double quotation mark (<code>"</code>) inside of a multiline string literal without escaping it. To include the text <code>"""</code> in a multiline string, escape at least one of the quotation marks. For example:</p><pre class="swift"><code>let threeDoubleQuotationMarks = """
+Escaping the first quotation mark \"""
+Escaping all three quotation marks \"\"\"
+"""
+</code></pre><h3 id="Extended-String-Delimiters"><a href="#Extended-String-Delimiters">Extended String Delimiters</a></h3><p>You can place a string literal within <i>extended delimiters</i> to include special characters in a string without invoking their effect. You place your string within quotation marks (<code>"</code>) and surround that with number signs (<code>#</code>). For example, printing the string literal <code>#"Line 1\nLine 2"#</code> prints the line feed escape sequence (<code>\n</code>) rather than printing the string across two lines.</p><p>If you need the special effects of a character in a string literal, match the number of number signs within the string following the escape character (<code>\</code>). For example, if your string is <code>#"Line 1\nLine 2"#</code> and you want to break the line, you can use <code>#"Line 1\#nLine 2"#</code> instead. Similarly, <code>###"Line1\###nLine2"###</code> also breaks the line.</p><p>String literals created using extended delimiters can also be multiline string literals. You can use extended delimiters to include the text <code>"""</code> in a multiline string, overriding the default behavior that ends the literal. For example:</p><pre class="swift"><code>let threeMoreDoubleQuotationMarks = #"""
+Here are three more double quotes: """
+"""#
+</code></pre><h2 id="Initializing-an-Empty-String"><a href="#Initializing-an-Empty-String">Initializing an Empty String</a></h2><p>To create an empty <code>String</code> value as the starting point for building a longer string, either assign an empty string literal to a variable or initialize a new <code>String</code> instance with initializer syntax:</p><pre class="swift"><code>var emptyString = ""               // empty string literal
+var anotherEmptyString = String()  // initializer syntax
+// these two strings are both empty, and are equivalent to each other
+</code></pre><p>Find out whether a <code>String</code> value is empty by checking its Boolean <code>isEmpty</code> property:</p><pre class="swift"><code>if emptyString.isEmpty {
+    print("Nothing to see here")
+}
+// Prints "Nothing to see here".
+</code></pre><h2 id="String-Mutability"><a href="#String-Mutability">String Mutability</a></h2><p>You indicate whether a particular <code>String</code> can be modified (or <i>mutated</i>) by assigning it to a variable (in which case it can be modified), or to a constant (in which case it can’t be modified):</p><pre class="swift"><code>var variableString = "Horse"
+variableString += " and carriage"
+// variableString is now "Horse and carriage"
+
+let constantString = "Highlander"
+constantString += " and another Highlander"
+// this reports a compile-time error - a constant string cannot be modified
+</code></pre><aside class="note"><p class="label">Note</p><p>This approach is different from string mutation in Objective-C and Cocoa, where you choose between two classes (<code>NSString</code> and <code>NSMutableString</code>) to indicate whether a string can be mutated.</p></aside><h2 id="Strings-Are-Value-Types"><a href="#Strings-Are-Value-Types">Strings Are Value Types</a></h2><p>Swift’s <code>String</code> type is a <i>value type</i>. If you create a new <code>String</code> value, that <code>String</code> value is <i>copied</i> when it’s passed to a function or method, or when it’s assigned to a constant or variable. In each case, a new copy of the existing <code>String</code> value is created, and the new copy is passed or assigned, not the original version. Value types are described in ClassesAndStructures.</p><p>Swift’s copy-by-default <code>String</code> behavior ensures that when a function or method passes you a <code>String</code> value, it’s clear that you own that exact <code>String</code> value, regardless of where it came from. You can be confident that the string you are passed won’t be modified unless you modify it yourself.</p><p>Behind the scenes, Swift’s compiler optimizes string usage so that actual copying takes place only when absolutely necessary. This means you always get great performance when working with strings as value types.</p><h2 id="Working-with-Characters"><a href="#Working-with-Characters">Working with Characters</a></h2><p>You can access the individual <code>Character</code> values for a <code>String</code> by iterating over the string with a <code>for</code>-<code>in</code> loop:</p><pre class="swift"><code>for character in "Dog!🐶" {
+    print(character)
+}
+// D
+// o
+// g
+// !
+// 🐶
+</code></pre><p>The <code>for</code>-<code>in</code> loop is described in ControlFlow.</p><p>Alternatively, you can create a stand-alone <code>Character</code> constant or variable from a single-character string literal by providing a <code>Character</code> type annotation:</p><pre class="swift"><code>let exclamationMark: Character = "!"
+</code></pre><p><code>String</code> values can be constructed by passing an array of <code>Character</code> values as an argument to its initializer:</p><pre class="swift"><code>let catCharacters: [Character] = ["C", "a", "t", "!", "🐱"]
+let catString = String(catCharacters)
+print(catString)
+// Prints "Cat!🐱".
+</code></pre><h2 id="Concatenating-Strings-and-Characters"><a href="#Concatenating-Strings-and-Characters">Concatenating Strings and Characters</a></h2><p><code>String</code> values can be added together (or <i>concatenated</i>) with the addition operator (<code>+</code>) to create a new <code>String</code> value:</p><pre class="swift"><code>let string1 = "hello"
+let string2 = " there"
+var welcome = string1 + string2
+// welcome now equals "hello there"
+</code></pre><p>You can also append a <code>String</code> value to an existing <code>String</code> variable with the addition assignment operator (<code>+=</code>):</p><pre class="swift"><code>var instruction = "look over"
+instruction += string2
+// instruction now equals "look over there"
+</code></pre><p>You can append a <code>Character</code> value to a <code>String</code> variable with the <code>String</code> type’s <code>append()</code> method:</p><pre class="swift"><code>let exclamationMark: Character = "!"
+welcome.append(exclamationMark)
+// welcome now equals "hello there!"
+</code></pre><aside class="note"><p class="label">Note</p><p>You can’t append a <code>String</code> or <code>Character</code> to an existing <code>Character</code> variable, because a <code>Character</code> value must contain a single character only.</p></aside><p>If you’re using multiline string literals to build up the lines of a longer string, you want every line in the string to end with a line break, including the last line. For example:</p><pre class="swift"><code>let badStart = """
+    one
+    two
+    """
+let end = """
+    three
+    """
+print(badStart + end)
+// Prints two lines:
+// one
+// twothree
+
+let goodStart = """
+    one
+    two
+
+    """
+print(goodStart + end)
+// Prints three lines:
+// one
+// two
+// three
+</code></pre><p>In the code above, concatenating <code>badStart</code> with <code>end</code> produces a two-line string, which isn’t the desired result. Because the last line of <code>badStart</code> doesn’t end with a line break, that line gets combined with the first line of <code>end</code>. In contrast, both lines of <code>goodStart</code> end with a line break, so when it’s combined with <code>end</code> the result has three lines, as expected.</p><h2 id="String-Interpolation"><a href="#String-Interpolation">String Interpolation</a></h2><p><i>String interpolation</i> is a way to construct a new <code>String</code> value from a mix of constants, variables, literals, and expressions by including their values inside a string literal. You can use string interpolation in both single-line and multiline string literals. Each item that you insert into the string literal is wrapped in a pair of parentheses, prefixed by a backslash (<code>\</code>):</p><pre class="swift"><code>let multiplier = 3
+let message = "\(multiplier) times 2.5 is \(Double(multiplier) * 2.5)"
+// message is "3 times 2.5 is 7.5"
+</code></pre><p>In the example above, the value of <code>multiplier</code> is inserted into a string literal as <code>\(multiplier)</code>. This placeholder is replaced with the actual value of <code>multiplier</code> when the string interpolation is evaluated to create an actual string.</p><p>The value of <code>multiplier</code> is also part of a larger expression later in the string. This expression calculates the value of <code>Double(multiplier) * 2.5</code> and inserts the result (<code>7.5</code>) into the string. In this case, the expression is written as <code>\(Double(multiplier) * 2.5)</code> when it’s included inside the string literal.</p><p>You can use extended string delimiters to create strings containing characters that would otherwise be treated as a string interpolation. For example:</p><pre class="swift"><code>print(#"Write an interpolated string in Swift using \(multiplier)."#)
+// Prints "Write an interpolated string in Swift using \(multiplier)."
+</code></pre><p>To use string interpolation inside a string that uses extended delimiters, match the number of number signs after the backslash to the number of number signs at the beginning and end of the string. For example:</p><pre class="swift"><code>print(#"6 times 7 is \#(6 * 7)."#)
+// Prints "6 times 7 is 42."
+</code></pre><aside class="note"><p class="label">Note</p><p>The expressions you write inside parentheses within an interpolated string can’t contain an unescaped backslash (<code>\</code>), a carriage return, or a line feed. However, they can contain other string literals.</p></aside><h2 id="Unicode"><a href="#Unicode">Unicode</a></h2><p><i>Unicode</i> is an international standard for encoding, representing, and processing text in different writing systems. It enables you to represent almost any character from any language in a standardized form, and to read and write those characters to and from an external source such as a text file or web page. Swift’s <code>String</code> and <code>Character</code> types are fully Unicode-compliant, as described in this section.</p><h3 id="Unicode-Scalar-Values"><a href="#Unicode-Scalar-Values">Unicode Scalar Values</a></h3><p>Behind the scenes, Swift’s native <code>String</code> type is built from <i>Unicode scalar values</i>. A Unicode scalar value is a unique 21-bit number for a character or modifier, such as <code>U+0061</code> for <code>LATIN SMALL LETTER A</code> (<code>"a"</code>), or <code>U+1F425</code> for <code>FRONT-FACING BABY CHICK</code> (<code>"🐥"</code>).</p><p>Note that not all 21-bit Unicode scalar values are assigned to a character — some scalars are reserved for future assignment or for use in UTF-16 encoding. Scalar values that have been assigned to a character typically also have a name, such as <code>LATIN SMALL LETTER A</code> and <code>FRONT-FACING BABY CHICK</code> in the examples above.</p><h3 id="Extended-Grapheme-Clusters"><a href="#Extended-Grapheme-Clusters">Extended Grapheme Clusters</a></h3><p>Every instance of Swift’s <code>Character</code> type represents a single <i>extended grapheme cluster</i>. An extended grapheme cluster is a sequence of one or more Unicode scalars that (when combined) produce a single human-readable character.</p><p>Here’s an example. The letter <code>é</code> can be represented as the single Unicode scalar <code>é</code> (<code>LATIN SMALL LETTER E WITH ACUTE</code>, or <code>U+00E9</code>). However, the same letter can also be represented as a <i>pair</i> of scalars — a standard letter <code>e</code> (<code>LATIN SMALL LETTER E</code>, or <code>U+0065</code>), followed by the <code>COMBINING ACUTE ACCENT</code> scalar (<code>U+0301</code>). The <code>COMBINING ACUTE ACCENT</code> scalar is graphically applied to the scalar that precedes it, turning an <code>e</code> into an <code>é</code> when it’s rendered by a Unicode-aware text-rendering system.</p><p>In both cases, the letter <code>é</code> is represented as a single Swift <code>Character</code> value that represents an extended grapheme cluster. In the first case, the cluster contains a single scalar; in the second case, it’s a cluster of two scalars:</p><pre class="swift"><code>let eAcute: Character = "\u{E9}"                         // é
+let combinedEAcute: Character = "\u{65}\u{301}"          // e followed by ́
+// eAcute is é, combinedEAcute is é
+</code></pre><p>Extended grapheme clusters are a flexible way to represent many complex script characters as a single <code>Character</code> value. For example, Hangul syllables from the Korean alphabet can be represented as either a precomposed or decomposed sequence. Both of these representations qualify as a single <code>Character</code> value in Swift:</p><pre class="swift"><code>let precomposed: Character = "\u{D55C}"                  // 한
+let decomposed: Character = "\u{1112}\u{1161}\u{11AB}"   // ᄒ, ᅡ, ᆫ
+// precomposed is 한, decomposed is 한
+</code></pre><p>Extended grapheme clusters enable scalars for enclosing marks (such as <code>COMBINING ENCLOSING CIRCLE</code>, or <code>U+20DD</code>) to enclose other Unicode scalars as part of a single <code>Character</code> value:</p><pre class="swift"><code>let enclosedEAcute: Character = "\u{E9}\u{20DD}"
+// enclosedEAcute is é⃝
+</code></pre><p>Unicode scalars for regional indicator symbols can be combined in pairs to make a single <code>Character</code> value, such as this combination of <code>REGIONAL INDICATOR SYMBOL LETTER U</code> (<code>U+1F1FA</code>) and <code>REGIONAL INDICATOR SYMBOL LETTER S</code> (<code>U+1F1F8</code>):</p><pre class="swift"><code>let regionalIndicatorForUS: Character = "\u{1F1FA}\u{1F1F8}"
+// regionalIndicatorForUS is 🇺🇸
+</code></pre><h2 id="Counting-Characters"><a href="#Counting-Characters">Counting Characters</a></h2><p>To retrieve a count of the <code>Character</code> values in a string, use the <code>count</code> property of the string:</p><pre class="swift"><code>let unusualMenagerie = "Koala 🐨, Snail 🐌, Penguin 🐧, Dromedary 🐪"
+print("unusualMenagerie has \(unusualMenagerie.count) characters")
+// Prints "unusualMenagerie has 40 characters".
+</code></pre><p>Note that Swift’s use of extended grapheme clusters for <code>Character</code> values means that string concatenation and modification may not always affect a string’s character count.</p><p>For example, if you initialize a new string with the four-character word <code>cafe</code>, and then append a <code>COMBINING ACUTE ACCENT</code> (<code>U+0301</code>) to the end of the string, the resulting string will still have a character count of <code>4</code>, with a fourth character of <code>é</code>, not <code>e</code>:</p><pre class="swift"><code>var word = "cafe"
+print("the number of characters in \(word) is \(word.count)")
+// Prints "the number of characters in cafe is 4".
+
+word += "\u{301}"    // COMBINING ACUTE ACCENT, U+0301
+
+print("the number of characters in \(word) is \(word.count)")
+// Prints "the number of characters in café is 4".
+</code></pre><aside class="note"><p class="label">Note</p><p>Extended grapheme clusters can be composed of multiple Unicode scalars. This means that different characters — and different representations of the same character — can require different amounts of memory to store. Because of this, characters in Swift don’t each take up the same amount of memory within a string’s representation. As a result, the number of characters in a string can’t be calculated without iterating through the string to determine its extended grapheme cluster boundaries. If you are working with particularly long string values, be aware that the <code>count</code> property must iterate over the Unicode scalars in the entire string in order to determine the characters for that string.</p><p>The count of the characters returned by the <code>count</code> property isn’t always the same as the <code>length</code> property of an <code>NSString</code> that contains the same characters. The length of an <code>NSString</code> is based on the number of 16-bit code units within the string’s UTF-16 representation and not the number of Unicode extended grapheme clusters within the string.</p></aside><h2 id="Accessing-and-Modifying-a-String"><a href="#Accessing-and-Modifying-a-String">Accessing and Modifying a String</a></h2><p>You access and modify a string through its methods and properties, or by using subscript syntax.</p><h3 id="String-Indices"><a href="#String-Indices">String Indices</a></h3><p>Each <code>String</code> value has an associated <i>index type</i>, <code>String.Index</code>, which corresponds to the position of each <code>Character</code> in the string.</p><p>As mentioned above, different characters can require different amounts of memory to store, so in order to determine which <code>Character</code> is at a particular position, you must iterate over each Unicode scalar from the start or end of that <code>String</code>. For this reason, Swift strings can’t be indexed by integer values.</p><p>Use the <code>startIndex</code> property to access the position of the first <code>Character</code> of a <code>String</code>. The <code>endIndex</code> property is the position after the last character in a <code>String</code>. As a result, the <code>endIndex</code> property isn’t a valid argument to a string’s subscript. If a <code>String</code> is empty, <code>startIndex</code> and <code>endIndex</code> are equal.</p><p>You access the indices before and after a given index using the <code>index(before:)</code> and <code>index(after:)</code> methods of <code>String</code>. To access an index farther away from the given index, you can use the <code>index(_:offsetBy:)</code> method instead of calling one of these methods multiple times.</p><p>You can use subscript syntax to access the <code>Character</code> at a particular <code>String</code> index.</p><pre class="swift"><code>let greeting = "Guten Tag!"
+greeting[greeting.startIndex]
+// G
+greeting[greeting.index(before: greeting.endIndex)]
+// !
+greeting[greeting.index(after: greeting.startIndex)]
+// u
+let index = greeting.index(greeting.startIndex, offsetBy: 7)
+greeting[index]
+// a
+</code></pre><p>Attempting to access an index outside of a string’s range or a <code>Character</code> at an index outside of a string’s range will trigger a runtime error.</p><pre class="swift"><code>greeting[greeting.endIndex] // Error
+greeting.index(after: greeting.endIndex) // Error
+</code></pre><p>Use the <code>indices</code> property to access all of the indices of individual characters in a string.</p><pre class="swift"><code>for index in greeting.indices {
+    print("\(greeting[index]) ", terminator: "")
+}
+// Prints "G u t e n   T a g ! ".
+</code></pre><aside class="note"><p class="label">Note</p><p>You can use the <code>startIndex</code> and <code>endIndex</code> properties and the <code>index(before:)</code>, <code>index(after:)</code>, and <code>index(_:offsetBy:)</code> methods on any type that conforms to the <code>Collection</code> protocol. This includes <code>String</code>, as shown here, as well as collection types such as <code>Array</code>, <code>Dictionary</code>, and <code>Set</code>.</p></aside><h3 id="Inserting-and-Removing"><a href="#Inserting-and-Removing">Inserting and Removing</a></h3><p>To insert a single character into a string at a specified index, use the <code>insert(_:at:)</code> method, and to insert the contents of another string at a specified index, use the <code>insert(contentsOf:at:)</code> method.</p><pre class="swift"><code>var welcome = "hello"
+welcome.insert("!", at: welcome.endIndex)
+// welcome now equals "hello!"
+
+welcome.insert(contentsOf: " there", at: welcome.index(before: welcome.endIndex))
+// welcome now equals "hello there!"
+</code></pre><p>To remove a single character from a string at a specified index, use the <code>remove(at:)</code> method, and to remove a substring at a specified range, use the <code>removeSubrange(_:)</code> method:</p><pre class="swift"><code>welcome.remove(at: welcome.index(before: welcome.endIndex))
+// welcome now equals "hello there"
+
+let range = welcome.index(welcome.endIndex, offsetBy: -6)..&lt;welcome.endIndex
+welcome.removeSubrange(range)
+// welcome now equals "hello"
+</code></pre><aside class="note"><p class="label">Note</p><p>You can use the <code>insert(_:at:)</code>, <code>insert(contentsOf:at:)</code>, <code>remove(at:)</code>, and <code>removeSubrange(_:)</code> methods on any type that conforms to the <code>RangeReplaceableCollection</code> protocol. This includes <code>String</code>, as shown here, as well as collection types such as <code>Array</code>, <code>Dictionary</code>, and <code>Set</code>.</p></aside><h2 id="Substrings"><a href="#Substrings">Substrings</a></h2><p>When you get a substring from a string — for example, using a subscript or a method like <code>prefix(_:)</code> — the result is an instance of <a href="https://developer.apple.com/documentation/swift/substring"><code>Substring</code></a>, not another string. Substrings in Swift have most of the same methods as strings, which means you can work with substrings the same way you work with strings. However, unlike strings, you use substrings for only a short amount of time while performing actions on a string. When you’re ready to store the result for a longer time, you convert the substring to an instance of <code>String</code>. For example:</p><pre class="swift"><code>let greeting = "Hello, world!"
+let index = greeting.firstIndex(of: ",") ?? greeting.endIndex
+let beginning = greeting[..&lt;index]
+// beginning is "Hello"
+
+// Convert the result to a String for long-term storage.
+let newString = String(beginning)
+</code></pre><p>Like strings, each substring has a region of memory where the characters that make up the substring are stored. The difference between strings and substrings is that, as a performance optimization, a substring can reuse part of the memory that’s used to store the original string, or part of the memory that’s used to store another substring. (Strings have a similar optimization, but if two strings share memory, they’re equal.) This performance optimization means you don’t have to pay the performance cost of copying memory until you modify either the string or substring. As mentioned above, substrings aren’t suitable for long-term storage — because they reuse the storage of the original string, the entire original string must be kept in memory as long as any of its substrings are being used.</p><p>In the example above, <code>greeting</code> is a string, which means it has a region of memory where the characters that make up the string are stored. Because <code>beginning</code> is a substring of <code>greeting</code>, it reuses the memory that <code>greeting</code> uses. In contrast, <code>newString</code> is a string — when it’s created from the substring, it has its own storage. The figure below shows these relationships:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/stringSubstring@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/stringSubstring~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><aside class="note"><p class="label">Note</p><p>Both <code>String</code> and <code>Substring</code> conform to the <a href="https://developer.apple.com/documentation/swift/stringprotocol"><code>String<wbr>Protocol</code></a> protocol, which means it’s often convenient for string-manipulation functions to accept a <code>StringProtocol</code> value. You can call such functions with either a <code>String</code> or <code>Substring</code> value.</p></aside><h2 id="Comparing-Strings"><a href="#Comparing-Strings">Comparing Strings</a></h2><p>Swift provides three ways to compare textual values: string and character equality, prefix equality, and suffix equality.</p><h3 id="String-and-Character-Equality"><a href="#String-and-Character-Equality">String and Character Equality</a></h3><p>String and character equality is checked with the “equal to” operator (<code>==</code>) and the “not equal to” operator (<code>!=</code>), as described in BasicOperators:</p><pre class="swift"><code>let quotation = "We're a lot alike, you and I."
+let sameQuotation = "We're a lot alike, you and I."
+if quotation == sameQuotation {
+    print("These two strings are considered equal")
+}
+// Prints "These two strings are considered equal".
+</code></pre><p>Two <code>String</code> values (or two <code>Character</code> values) are considered equal if their extended grapheme clusters are <i>canonically equivalent</i>. Extended grapheme clusters are canonically equivalent if they have the same linguistic meaning and appearance, even if they’re composed from different Unicode scalars behind the scenes.</p><p>For example, <code>LATIN SMALL LETTER E WITH ACUTE</code> (<code>U+00E9</code>) is canonically equivalent to <code>LATIN SMALL LETTER E</code> (<code>U+0065</code>) followed by <code>COMBINING ACUTE ACCENT</code> (<code>U+0301</code>). Both of these extended grapheme clusters are valid ways to represent the character <code>é</code>, and so they’re considered to be canonically equivalent:</p><pre class="swift"><code>// "Voulez-vous un café?" using LATIN SMALL LETTER E WITH ACUTE
+let eAcuteQuestion = "Voulez-vous un caf\u{E9}?"
+
+// "Voulez-vous un café?" using LATIN SMALL LETTER E and COMBINING ACUTE ACCENT
+let combinedEAcuteQuestion = "Voulez-vous un caf\u{65}\u{301}?"
+
+if eAcuteQuestion == combinedEAcuteQuestion {
+    print("These two strings are considered equal")
+}
+// Prints "These two strings are considered equal".
+</code></pre><p>Conversely, <code>LATIN CAPITAL LETTER A</code> (<code>U+0041</code>, or <code>"A"</code>), as used in English, is <i>not</i> equivalent to <code>CYRILLIC CAPITAL LETTER A</code> (<code>U+0410</code>, or <code>"А"</code>), as used in Russian. The characters are visually similar, but don’t have the same linguistic meaning:</p><pre class="swift"><code>let latinCapitalLetterA: Character = "\u{41}"
+
+let cyrillicCapitalLetterA: Character = "\u{0410}"
+
+if latinCapitalLetterA != cyrillicCapitalLetterA {
+    print("These two characters aren't equivalent.")
+}
+// Prints "These two characters aren't equivalent."
+</code></pre><aside class="note"><p class="label">Note</p><p>String and character comparisons in Swift aren’t locale-sensitive.</p></aside><h3 id="Prefix-and-Suffix-Equality"><a href="#Prefix-and-Suffix-Equality">Prefix and Suffix Equality</a></h3><p>To check whether a string has a particular string prefix or suffix, call the string’s <code>hasPrefix(_:)</code> and <code>hasSuffix(_:)</code> methods, both of which take a single argument of type <code>String</code> and return a Boolean value.</p><p>The examples below consider an array of strings representing the scene locations from the first two acts of Shakespeare’s <i>Romeo and Juliet</i>:</p><pre class="swift"><code>let romeoAndJuliet = [
+    "Act 1 Scene 1: Verona, A public place",
+    "Act 1 Scene 2: Capulet's mansion",
+    "Act 1 Scene 3: A room in Capulet's mansion",
+    "Act 1 Scene 4: A street outside Capulet's mansion",
+    "Act 1 Scene 5: The Great Hall in Capulet's mansion",
+    "Act 2 Scene 1: Outside Capulet's mansion",
+    "Act 2 Scene 2: Capulet's orchard",
+    "Act 2 Scene 3: Outside Friar Lawrence's cell",
+    "Act 2 Scene 4: A street in Verona",
+    "Act 2 Scene 5: Capulet's mansion",
+    "Act 2 Scene 6: Friar Lawrence's cell"
+]
+</code></pre><p>You can use the <code>hasPrefix(_:)</code> method with the <code>romeoAndJuliet</code> array to count the number of scenes in Act 1 of the play:</p><pre class="swift"><code>var act1SceneCount = 0
+for scene in romeoAndJuliet {
+    if scene.hasPrefix("Act 1 ") {
+        act1SceneCount += 1
+    }
+}
+print("There are \(act1SceneCount) scenes in Act 1")
+// Prints "There are 5 scenes in Act 1".
+</code></pre><p>Similarly, use the <code>hasSuffix(_:)</code> method to count the number of scenes that take place in or around Capulet’s mansion and Friar Lawrence’s cell:</p><pre class="swift"><code>var mansionCount = 0
+var cellCount = 0
+for scene in romeoAndJuliet {
+    if scene.hasSuffix("Capulet's mansion") {
+        mansionCount += 1
+    } else if scene.hasSuffix("Friar Lawrence's cell") {
+        cellCount += 1
+    }
+}
+print("\(mansionCount) mansion scenes; \(cellCount) cell scenes")
+// Prints "6 mansion scenes; 2 cell scenes".
+</code></pre><aside class="note"><p class="label">Note</p><p>The <code>hasPrefix(_:)</code> and <code>hasSuffix(_:)</code> methods perform a character-by-character canonical equivalence comparison between the extended grapheme clusters in each string, as described in StringsAndCharacters.</p></aside><h2 id="Unicode-Representations-of-Strings"><a href="#Unicode-Representations-of-Strings">Unicode Representations of Strings</a></h2><p>When a Unicode string is written to a text file or some other storage, the Unicode scalars in that string are encoded in one of several Unicode-defined <i>encoding forms</i>. Each form encodes the string in small chunks known as <i>code units</i>. These include the UTF-8 encoding form (which encodes a string as 8-bit code units), the UTF-16 encoding form (which encodes a string as 16-bit code units), and the UTF-32 encoding form (which encodes a string as 32-bit code units).</p><p>Swift provides several different ways to access Unicode representations of strings. You can iterate over the string with a <code>for</code>-<code>in</code> statement, to access its individual <code>Character</code> values as Unicode extended grapheme clusters. This process is described in StringsAndCharacters.</p><p>Alternatively, access a <code>String</code> value in one of three other Unicode-compliant representations:</p><ul><li><p>A collection of UTF-8 code units (accessed with the string’s <code>utf8</code> property)</p></li><li><p>A collection of UTF-16 code units (accessed with the string’s <code>utf16</code> property)</p></li><li><p>A collection of 21-bit Unicode scalar values, equivalent to the string’s UTF-32 encoding form (accessed with the string’s <code>unicodeScalars</code> property)</p></li></ul><p>Each example below shows a different representation of the following string, which is made up of the characters <code>D</code>, <code>o</code>, <code>g</code>, <code>‼</code> (<code>DOUBLE EXCLAMATION MARK</code>, or Unicode scalar <code>U+203C</code>), and the 🐶 character (<code>DOG FACE</code>, or Unicode scalar <code>U+1F436</code>):</p><pre class="swift"><code>let dogString = "Dog‼🐶"
+</code></pre><h3 id="UTF-8-Representation"><a href="#UTF-8-Representation">UTF-8 Representation</a></h3><p>You can access a UTF-8 representation of a <code>String</code> by iterating over its <code>utf8</code> property. This property is of type <code>String.UTF8View</code>, which is a collection of unsigned 8-bit (<code>UInt8</code>) values, one for each byte in the string’s UTF-8 representation:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/UTF8@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/UTF8~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><pre class="swift"><code>for codeUnit in dogString.utf8 {
+    print("\(codeUnit) ", terminator: "")
+}
+print("")
+// Prints "68 111 103 226 128 188 240 159 144 182 ".
+</code></pre><p>In the example above, the first three decimal <code>codeUnit</code> values (<code>68</code>, <code>111</code>, <code>103</code>) represent the characters <code>D</code>, <code>o</code>, and <code>g</code>, whose UTF-8 representation is the same as their ASCII representation. The next three decimal <code>codeUnit</code> values (<code>226</code>, <code>128</code>, <code>188</code>) are a three-byte UTF-8 representation of the <code>DOUBLE EXCLAMATION MARK</code> character. The last four <code>codeUnit</code> values (<code>240</code>, <code>159</code>, <code>144</code>, <code>182</code>) are a four-byte UTF-8 representation of the <code>DOG FACE</code> character.</p><h3 id="UTF-16-Representation"><a href="#UTF-16-Representation">UTF-16 Representation</a></h3><p>You can access a UTF-16 representation of a <code>String</code> by iterating over its <code>utf16</code> property. This property is of type <code>String.UTF16View</code>, which is a collection of unsigned 16-bit (<code>UInt16</code>) values, one for each 16-bit code unit in the string’s UTF-16 representation:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/UTF16@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/UTF16~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><pre class="swift"><code>for codeUnit in dogString.utf16 {
+    print("\(codeUnit) ", terminator: "")
+}
+print("")
+// Prints "68 111 103 8252 55357 56374 ".
+</code></pre><p>Again, the first three <code>codeUnit</code> values (<code>68</code>, <code>111</code>, <code>103</code>) represent the characters <code>D</code>, <code>o</code>, and <code>g</code>, whose UTF-16 code units have the same values as in the string’s UTF-8 representation (because these Unicode scalars represent ASCII characters).</p><p>The fourth <code>codeUnit</code> value (<code>8252</code>) is a decimal equivalent of the hexadecimal value <code>203C</code>, which represents the Unicode scalar <code>U+203C</code> for the <code>DOUBLE EXCLAMATION MARK</code> character. This character can be represented as a single code unit in UTF-16.</p><p>The fifth and sixth <code>codeUnit</code> values (<code>55357</code> and <code>56374</code>) are a UTF-16 surrogate pair representation of the <code>DOG FACE</code> character. These values are a high-surrogate value of <code>U+D83D</code> (decimal value <code>55357</code>) and a low-surrogate value of <code>U+DC36</code> (decimal value <code>56374</code>).</p><h3 id="Unicode-Scalar-Representation"><a href="#Unicode-Scalar-Representation">Unicode Scalar Representation</a></h3><p>You can access a Unicode scalar representation of a <code>String</code> value by iterating over its <code>unicodeScalars</code> property. This property is of type <code>UnicodeScalarView</code>, which is a collection of values of type <code>UnicodeScalar</code>.</p><p>Each <code>UnicodeScalar</code> has a <code>value</code> property that returns the scalar’s 21-bit value, represented within a <code>UInt32</code> value:</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.tspl/UnicodeScalar@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.tspl/UnicodeScalar~dark@2x.png"><img decoding="async" loading="lazy"></picture></p><pre class="swift"><code>for scalar in dogString.unicodeScalars {
+    print("\(scalar.value) ", terminator: "")
+}
+print("")
+// Prints "68 111 103 8252 128054 ".
+</code></pre><p>The <code>value</code> properties for the first three <code>UnicodeScalar</code> values (<code>68</code>, <code>111</code>, <code>103</code>) once again represent the characters <code>D</code>, <code>o</code>, and <code>g</code>.</p><p>The fourth <code>codeUnit</code> value (<code>8252</code>) is again a decimal equivalent of the hexadecimal value <code>203C</code>, which represents the Unicode scalar <code>U+203C</code> for the <code>DOUBLE EXCLAMATION MARK</code> character.</p><p>The <code>value</code> property of the fifth and final <code>UnicodeScalar</code>, <code>128054</code>, is a decimal equivalent of the hexadecimal value <code>1F436</code>, which represents the Unicode scalar <code>U+1F436</code> for the <code>DOG FACE</code> character.</p><p>As an alternative to querying their <code>value</code> properties, each <code>UnicodeScalar</code> value can also be used to construct a new <code>String</code> value, such as with string interpolation:</p><pre class="swift"><code>for scalar in dogString.unicodeScalars {
+    print("\(scalar) ")
+}
+// D
+// o
+// g
+// ‼
+// 🐶
+</code></pre></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

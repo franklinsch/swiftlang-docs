@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Creating Module Maps</title><meta content="Define how C and C++ headers are exposed to Swift for system library targets, precompiled libraries, or C Language targets." name="description"><script src="../../../navigator-index-swiftpm-PackageManagerDocs.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="api-collection"><nav id="breadcrumbs"><ul><li><a href="../index.html">Package Manager (SwiftPM)</a></li><li>Creating Module Maps</li></ul></nav><hgroup><p>API Collection</p><h1>Creating Module Maps</h1></hgroup><p>Define how C and C++ headers are exposed to Swift for system library targets, precompiled libraries, or C Language targets.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Module maps bridge C and C++ libraries with Swift code. They define how the Clang module system organizes headers so Swift can import them. When you wrap a C library for use in Swift Package Manager, you create a module map that describes the library’s public interface.</p><p>Create a module map when you:</p><ul><li><p>Wrap a C or C++ library for Swift Package Manager.</p></li><li><p>Define a system library target that references pre-installed libraries.</p></li><li><p>Package a binary library in an artifact bundle.</p></li><li><p>Need to control which headers Swift can import.</p></li></ul><p>Swift Package Manager automatically configures the build system when it finds your module map:</p><ul><li><p>Adds the module map to compiler search paths.</p></li><li><p>Configures header include directories.</p></li><li><p>Links binary libraries specified in the module map.</p></li><li><p>Selects platform-specific variants from artifact bundles.</p></li></ul><p>You don’t need to manually configure compiler flags or search paths.</p><p>This article shows you how to create module maps for libraries you’re wrapping. For complete syntax details, see <a href="../modulemapreference/index.html">Module Map Syntax Reference</a>. To diagnose import failures and compilation errors, see <a href="../debuggingmodulemaps/index.html">Debugging Module Maps</a>.</p><h3 id="Create-a-basic-module-map"><a href="#Create-a-basic-module-map">Create a basic module map</a></h3><p>To show how to create a module map, this example starts with a simple module map that exposes a single header.</p><p>Create a file named <code>module.modulemap</code> in your library’s include directory:</p><pre><code>module MyLibrary {
+    header "MyLibrary.h"
+    export *
+}
+</code></pre><p>This module map defines a module named <code>MyLibrary</code> that includes one header file. The <code>export *</code> directive makes all symbols from the header available to code that imports the module.</p><h4 id="Use-relative-paths-for-headers"><a href="#Use-relative-paths-for-headers">Use relative paths for headers</a></h4><p>Specify header paths relative to the module map file’s location. If your module map is in <code>include/module.modulemap</code>, the header directive <code>header "MyLibrary.h"</code> looks for <code>include/MyLibrary.h</code>.</p><p>Don’t use absolute paths or parent directory references (<code>../</code>) when referencing headers. Relative paths ensure your module map works across different systems and build configurations.</p><h4 id="Match-the-module-name-to-your-artifact"><a href="#Match-the-module-name-to-your-artifact">Match the module name to your artifact</a></h4><p>The module name in your module map must match the artifact name in Swift Package Manager. If your Package.swift defines a binary target named <code>MyLibrary</code>, your module map must declare <code>module MyLibrary</code>.</p><p>When you use the functions exposed in a module map in Swift, you get access to them using <code>import</code>. For the example above, use the following to access the C functions you exposed in the module map:</p><pre class="swift"><code>import MyLibrary
+</code></pre><h3 id="Create-a-module-map-for-C++"><a href="#Create-a-module-map-for-C++">Create a module map for C++</a></h3><p>C++ libraries require an additional directive to enable C++ language support. Add the <code>requires cplusplus</code> directive to your module map:</p><pre><code>module MyCppLibrary {
+    header "MyCppLibrary.h"
+    requires cplusplus
+    export *
+}
+</code></pre><p>Without this directive, the compiler treats the header as C code and produces errors when it encounters C++ syntax.</p><p>You can require a specific C++ standard version:</p><pre><code>module ModernCppLibrary {
+    header "ModernCppLibrary.h"
+    requires cplusplus11
+    export *
+}
+</code></pre><p>Use <code>cplusplus11</code> for C++11 or later. The compiler rejects the module if the build doesn’t enable the required C++ standard.</p><h3 id="Organize-multiple-headers-with-umbrella-headers"><a href="#Organize-multiple-headers-with-umbrella-headers">Organize multiple headers with umbrella headers</a></h3><p>When your library has multiple headers, use an umbrella header to include them all.</p><p>Create a main header file that includes your other headers:</p><pre class="c"><code>// MyLibrary.h
+#ifndef MYLIBRARY_H
+#define MYLIBRARY_H
+
+#include "Core.h"
+#include "Utils.h"
+#include "Types.h"
+
+#endif
+</code></pre><p>Then reference it in your module map with the <code>umbrella header</code> directive:</p><pre><code>module MyLibrary {
+    umbrella header "MyLibrary.h"
+    export *
+}
+</code></pre><p>The umbrella header pattern is common for libraries with multiple public headers. It provides a single include point for all functionality and clearly defines the public API.</p><h3 id="Mark-system-libraries"><a href="#Mark-system-libraries">Mark system libraries</a></h3><p>When wrapping system libraries (libraries that are built in or pre-installed on the system), add the <code>[system]</code> attribute:</p><pre><code>module SystemLib [system] {
+    header "systemlib.h"
+    link "systemlib"
+    export *
+}
+</code></pre><p>The <code>[system]</code> attribute ensures consistent behavior between local builds and client builds. It affects how Swift imports certain Objective-C types, particularly <code>NSUInteger</code>, which maps to <code>Int</code> for system modules and <code>UInt</code> for non-system modules.</p><h3 id="Link-binary-libraries"><a href="#Link-binary-libraries">Link binary libraries</a></h3><p>Use the <code>link</code> directive to specify libraries the linker should include:</p><pre><code>module ZLib [system] {
+    header "zlib.h"
+    link "z"
+    export *
+}
+</code></pre><p>Swift Package Manager passes this information to the linker automatically. You specify the library name without the <code>lib</code> prefix or file extension. For example write <code>"z"</code> for <code>libz.a</code> or <code>libz.dylib</code>.</p><h3 id="Add-a-module-map-to-a-system-library-target"><a href="#Add-a-module-map-to-a-system-library-target">Add a module map to a system library target</a></h3><p>Create a system library target when you wrap a library that users install separately on their systems. The common convention for exposing system libraries is to prefix the name of the library with <code>C</code>. This allows you to create a Swift module with the name of the C library that provides a more idiomatic Swift interface.</p><h4 id="Create-the-target-directory"><a href="#Create-the-target-directory">Create the target directory</a></h4><p>Make a directory for your system library target in your package’s root:</p><pre class="bash"><code>mkdir -p SystemLibraries/CSystemLib
+</code></pre><h4 id="Create-the-module-map-file"><a href="#Create-the-module-map-file">Create the module map file</a></h4><p>Add a <code>module.modulemap</code> file in the target directory:</p><pre><code>module CSystemLib [system] {
+    header "shim.h"
+    link "systemlib"
+    export *
+}
+</code></pre><h4 id="Create-a-shim-header"><a href="#Create-a-shim-header">Create a shim header</a></h4><p>Add a shim header that includes the actual system header:</p><pre class="c"><code>// shim.h
+#include &lt;systemlib.h>
+</code></pre><p>The shim header allows the compiler to find the actual header through search paths, avoiding hardcoded absolute paths that break portability.</p><h4 id="Declare-the-target"><a href="#Declare-the-target">Declare the target</a></h4><p>Add a system library target to your Package.swift:</p><pre class="swift"><code>.systemLibrary(
+    name: "CSystemLib",
+    pkgConfig: "systemlib",
+    providers: [
+        .apt(["libsystemlib-dev"]),
+        .brew(["systemlib"])
+    ]
+)
+</code></pre><p>Users who build your package need to install the library first. The package manager uses <code>pkg-config</code> to locate the library and configure search paths.</p></section><section id="Topics"><h2><a href="#Topics">Topics</a></h2><ul><li><a href="../modulemapreference/index.html"><p class="api-collection">Module Map Syntax Reference</p></a><p>A reference of module map directives, attributes, and syntax for defining C and C++ module interfaces.</p></li><li><a href="../debuggingmodulemaps/index.html"><p class="api-collection">Debugging Module Maps</p></a><p>Diagnose and resolve issues when Swift can’t import your C or C++ libraries.</p></li></ul></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Targets"><a href="#Targets">Targets</a></h3><ul><li><a href="../creatingclanguagetargets/index.html"><p class="api-collection">Creating C language targets</p></a><p>Include C language code as a target in your Swift package.</p></li><li><a href="../creatingmixedlanguagetargets/index.html"><p class="api-collection">Creating Mixed Language Targets</p></a><p>Combine Swift and C/C++/Objective-C sources in a single target.</p></li><li><a href="../modulealiasing/index.html"><p class="api-collection">Module Aliasing</p></a><p>Create aliased names for modules to avoid collisions between targets in your package or its dependencies.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

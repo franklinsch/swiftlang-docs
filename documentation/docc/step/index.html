@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Step</title><meta content="Defines an individual task the reader performs within a set of steps on a tutorial page." name="description"><script src="../../../navigator-index-docc-documentation.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../index.html">DocC</a></li><li>Step</li></ul></nav><hgroup><p>Directive</p><h1>Step</h1></hgroup><p>Defines an individual task the reader performs within a set of steps on a tutorial page.</p><ul id="availability"><li aria-label="Swift-DocC 5.5+, Available on Swift-DocC 5.5 and later" title="Available on Swift-DocC 5.5 and later">Swift-DocC 5.5+</li></ul><pre id="declaration"><code><span class="typeIdentifier">@Step</span> {
+    ...
+}</code></pre></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Use the <code>Step</code> directive to define a single task the reader performs within a set of steps  on a tutorial page. Provide text that explains what to do, and provide a code listing , an image, or a video that illustrates the step.</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.docc/2-a@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.docc/2-a~dark@2x.png"><img alt="A screenshot showing a step on a tutorial page. The step has instructional text and a corresponding image." decoding="async" loading="lazy"></picture></p><pre><code>@Tutorial(time: 30) {
+    @Intro(title: "Creating Custom Sloths") {
+        
+        ...
+
+    }
+    
+    @Section(title: "Create a new folder and add SlothCreator") {
+        @ContentAndMedia {
+            
+            ...
+            
+        }
+        
+        @Steps {
+            @Step {
+                Create the folder.
+                
+                @Image(source: placeholder-image, alt: "A screenshot using the `mkdir` command to create a folder to place SlothCreator in.")
+            }
+            
+            ...
+                            
+        }
+    }
+}
+</code></pre><aside class="tip"><p class="label">Tip</p><p>Don’t number steps. Steps are automatically numbered in the rendered documentation.</p></aside><h3 id="Setting-Context-for-a-Step"><a href="#Setting-Context-for-a-Step">Setting Context for a Step</a></h3><p>To provide additional context about the step, add text before or after the step.</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.docc/2-b@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.docc/2-b~dark@2x.png"><img alt="A screenshot showing a step on a tutorial page. The step is preceded with context-setting text." decoding="async" loading="lazy"></picture></p><pre><code>The following steps display your customized sloth view in the preview.
+
+@Step {
+    Add the `sloth` parameter to initialize the `CustomizedSlothView` in the preview provider, and pass a new `Sloth` instance for the value.
+    
+    @Code(name: "CustomizedSlothView.swift", file: 01-creating-code-02-07.swift) {
+        @Image(source: preview-01-creating-code-02-07.png, alt: "A portrait of a generic sloth displayed in the center of the canvas.")
+    }
+}
+</code></pre><h3 id="Contained-Elements"><a href="#Contained-Elements">Contained Elements</a></h3><p>A step contains one the following items:</p><ul><li><p>term <a href="../code/index.html"><code>Code</code></a>: A code listing, and optionally a preview of the expected result, reader sees when they reach the step. <b>(optional)</b></p></li><li><p>term <a href="../image/index.html"><code>Image</code></a>: An image the reader sees when they reach the step. <b>(optional)</b></p></li><li><p>term <a href="../video/index.html"><code>Video</code></a>: A video the reader sees when they reach the step. <b>(optional)</b></p></li></ul><h3 id="Containing-Elements"><a href="#Containing-Elements">Containing Elements</a></h3><p>The following items can include a step:</p><ul><li><p><a href="../steps/index.html"><code>Steps</code></a></p></li></ul></section><section id="Topics"><h2><a href="#Topics">Topics</a></h2><h3 id="Displaying-Code"><a href="#Displaying-Code">Displaying Code</a></h3><ul><li><a href="../code/index.html"><code><span class="identifier">@Code</span>(<wbr>...)</code></a><p>Defines the code for an individual step on a tutorial page.</p></li></ul><h3 id="Displaying-Media"><a href="#Displaying-Media">Displaying Media</a></h3><p></p><ul><li><a href="../image/index.html"><code><span class="identifier">@Image</span>(<span class="identifier">source</span>: Resource<wbr>Reference, <span class="identifier">alt</span>: String)</code></a><p>Displays an image in a tutorial.</p></li><li><a href="../video/index.html"><code><span class="identifier">@Video</span>(<span class="identifier">source</span>: Resource<wbr>Reference, <span class="identifier">alt</span>: String, <span class="identifier">poster</span>: Resource<wbr>Reference)</code></a><p>Displays a video in a tutorial.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

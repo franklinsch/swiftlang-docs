@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Data Race Safety</title><meta content="Learn about the fundamental concepts Swift uses to enable data-race-free concurrent code." name="description"><script src="../../../navigator-index-swift-migration-guide.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../../migrationguide/index.html">Migrating to Swift 6</a></li><li>Data Race Safety</li></ul></nav><hgroup><p>Article</p><h1>Data Race Safety</h1></hgroup><p>Learn about the fundamental concepts Swift uses to enable data-race-free concurrent code.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Traditionally, mutable state had to be manually protected via careful runtime synchronization. Using tools such as locks and queues, the prevention of data races was entirely up to the programmer. This is notoriously difficult not just to do correctly, but also to keep correct over time. Even determining the <i>need</i> for synchronization may be challenging. Worst of all, unsafe code does not guarantee failure at runtime. This code can often seem to work, possibly because highly unusual conditions are required to exhibit the incorrect and unpredictable behavior characteristic of a data race.</p><p>More formally, a data race occurs when one thread accesses memory while the same memory is being mutated by another thread. The Swift 6 language mode eliminates these problems by preventing data races at compile time.</p><aside class="important"><p class="label">Important</p><p>You may have encountered constructs like <code>async</code>/<code>await</code> and actors in other languages. Pay extra attention, as similarities to these concepts in Swift may only be superficial.</p></aside><h2 id="Data-Isolation"><a href="#Data-Isolation">Data Isolation</a></h2><p>Swift’s concurrency system allows the compiler to understand and verify the safety of all mutable state. It does this with a mechanism called <i>data isolation</i>. Data isolation guarantees mutually exclusive access to mutable state. It is a form of synchronization, conceptually similar to a lock. But unlike a lock, the protection data isolation provides happens at compile-time.</p><p>A Swift programmer interacts with data isolation in two ways: statically and dynamically.</p><p>The term <i>static</i> is used to describe program elements that are unaffected by runtime state. These elements, such as a function definition, are made up of keywords and annotations. Swift’s concurrency system is an extension of its type system. When you declare functions and types, you are doing so statically. Isolation can be a part of these static declarations.</p><p>There are cases, however, where the type system alone cannot sufficiently describe runtime behavior. An example could be an Objective-C type that has been exposed to Swift. This declaration, made outside of Swift code, may not provide enough information to the compiler to ensure safe usage. To accommodate these situations, there are additional features that allow you to express isolation requirements dynamically.</p><p>Data isolation, be it static or dynamic, allows the compiler to guarantee Swift code you write is free of data races.</p><aside class="note"><p class="label">Note</p><p>For more information about using dynamic isolation, see IncrementalAdoption</p></aside><h3 id="Isolation-Domains"><a href="#Isolation-Domains">Isolation Domains</a></h3><p>Data isolation is the <i>mechanism</i> used to protect shared mutable state. But it is often useful to talk about an independent unit of isolation. This is known as an <i>isolation domain</i>. How much state a particular domain is responsible for protecting varies widely. An isolation domain might protect a single variable, or an entire subsystem, such as a user interface.</p><p>The critical feature of an isolation domain is the safety it provides. Mutable state can only be accessed from one isolation domain at a time. You can pass mutable state from one isolation domain to another, but you can never access that state concurrently from a different domain. This guarantee is validated by the compiler.</p><p>Even if you have not explicitly defined it yourself, <i>all</i> function and variable declarations have a well-defined static isolation domain. These domains will always fall into one of three categories:</p><ol><li><p>Non-isolated</p></li><li><p>Isolated to an actor value</p></li><li><p>Isolated to a global actor</p></li></ol><h3 id="Non-isolated"><a href="#Non-isolated">Non-isolated</a></h3><p>Functions and variables do not have to be a part of an explicit isolation domain. In fact, a lack of isolation is the default, called <i>non-isolated</i>. Because all the data isolation rules apply, there is no way for non-isolated code to mutate state protected in another domain.</p><pre class="swift"><code>func sailTheSea() {
+}
+</code></pre><p>This top-level function has no static isolation, making it non-isolated. It can safely call other non-isolated functions, and access non-isolated variables, but it cannot access anything from another isolation domain.</p><pre class="swift"><code>class Chicken {
+    let name: String
+    var currentHunger: HungerLevel
+}
+</code></pre><p>This is an example of a non-isolated type. Inheritance can play a role in static isolation. But this simple class, with no superclass or protocol conformances, also uses the default isolation.</p><p>Data isolation guarantees that non-isolated entities cannot access the mutable state of other domains. As a result of this, non-isolated functions and variables are always safe to access from any other domain.</p><h3 id="Actors"><a href="#Actors">Actors</a></h3><p>Actors give the programmer a way to define an isolation domain, along with methods that operate within that domain. All stored properties of an actor are isolated to the enclosing actor instance.</p><pre class="swift"><code>actor Island {
+    var flock: [Chicken]
+    var food: [Pineapple]
+
+    func addToFlock() {
+        flock.append(Chicken())
+    }
+}
+</code></pre><p>Here, every <code>Island</code> instance will define a new domain, which will be used to protect access to its properties. The method <code>Island.addToFlock</code> is said to be isolated to <code>self</code>. The body of a method has access to all data that shares its isolation domain, making the <code>flock</code> property synchronously accessible.</p><p>Actor isolation can be selectively disabled. This can be useful any time you want to keep code organized within an isolated type, but opt-out of the isolation requirements that go along with it. Non-isolated methods cannot synchronously access any protected state.</p><pre class="swift"><code>actor Island {
+    var flock: [Chicken]
+    var food: [Pineapple]
+
+    nonisolated func canGrow() -> PlantSpecies {
+        // neither flock nor food are accessible here
+    }
+}
+</code></pre><p>The isolation domain of an actor is not limited to its own methods. Functions that accept an isolated parameter can also gain access to actor-isolated state without the need for any other form of synchronization.</p><pre class="swift"><code>func addToFlock(of island: isolated Island) {
+    island.flock.append(Chicken())
+}
+</code></pre><aside class="note"><p class="label">Note</p><p>For an overview of actors, please see the <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency#Actors">Actors</a> section of The Swift Programming Language.</p></aside><h3 id="Global-Actors"><a href="#Global-Actors">Global Actors</a></h3><p>Global actors share all of the properties of regular actors, but also provide a means of statically assigning declarations to their isolation domain. This is done with an annotation matching the actor name. Global actors are particularly useful when groups of types all need to interoperate as a single pool of shared mutable state.</p><pre class="swift"><code>@MainActor
+class ChickenValley {
+    var flock: [Chicken]
+    var food: [Pineapple]
+}
+</code></pre><p>This class is statically-isolated to <code>MainActor</code>. This ensures that all access to its mutable state is done from that isolation domain.</p><p>You can opt-out of this type of actor isolation as well, using the <code>nonisolated</code> keyword. And just as with actor types, doing so will disallow access to any protected state.</p><pre class="swift"><code>@MainActor
+class ChickenValley {
+    var flock: [Chicken]
+    var food: [Pineapple]
+
+    nonisolated func canGrow() -> PlantSpecies {
+        // neither flock, food, nor any other MainActor-isolated
+        // state is accessible here
+    }
+}
+</code></pre><h3 id="Tasks"><a href="#Tasks">Tasks</a></h3><p>A <code>task</code> is a unit of work that can run concurrently within your program. You cannot run concurrent code in Swift outside of a task, but that doesn’t mean you must always manually start one. Typically, asynchronous functions do not need to be aware of the task running them. In fact, tasks can often begin at a much higher level, within an application framework, or even at the entry point of the program.</p><p>Tasks may run concurrently with one another, but each individual task only executes one function at a time. They run code in order, from beginning to end.</p><pre class="swift"><code>Task {
+    flock.map(Chicken.produce)
+}
+</code></pre><p>A task always has an isolation domain. They can be isolated to an actor instance, a global actor, or could be non-isolated. This isolation can be established manually, but can also be inherited automatically based on context. Task isolation, just like all other Swift code, determines what mutable state is accessible.</p><p>Tasks can run both synchronous and asynchronous code. Regardless of the structure and how many tasks are involved, functions in the same isolation domain cannot run concurrently with each other. There will only ever be one task running synchronous code for any given isolation domain.</p><aside class="note"><p class="label">Note</p><p>For more information see the <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency#Tasks-and-Task-Groups">Tasks</a> section of The Swift Programming Language.</p></aside><h3 id="Isolation-Inference-and-Inheritance"><a href="#Isolation-Inference-and-Inheritance">Isolation Inference and Inheritance</a></h3><p>There are many ways to specify isolation explicitly. But there are cases where the context of a declaration establishes isolation implicitly, via <i>isolation inference</i>.</p><h4 id="Classes"><a href="#Classes">Classes</a></h4><p>A subclass will always have the same isolation as its parent.</p><pre class="swift"><code>@MainActor
+class Animal {
+}
+
+class Chicken: Animal {
+}
+</code></pre><p>Because <code>Chicken</code> inherits from <code>Animal</code>, the static isolation of the <code>Animal</code> type also implicitly applies. Not only that, it also cannot be changed by a subclass. All <code>Animal</code> instances have been declared to be <code>MainActor</code>-isolated, which means all <code>Chicken</code> instances must be as well.</p><p>The static isolation of a type will also be inferred for its properties and methods by default.</p><pre class="swift"><code>@MainActor
+class Animal {
+    // all declarations within this type are also
+    // implicitly MainActor-isolated
+    let name: String
+
+    func eat(food: Pineapple) {
+    }
+}
+</code></pre><aside class="note"><p class="label">Note</p><p>For more information, see the <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/inheritance">Inheritance</a> section of The Swift Programming Language.</p></aside><h4 id="Protocols"><a href="#Protocols">Protocols</a></h4><p>A protocol conformance can implicitly affect isolation. However, the protocol’s effect on isolation depends on how the conformance is applied.</p><pre class="swift"><code>@MainActor
+protocol Feedable {
+    func eat(food: Pineapple)
+}
+
+// inferred isolation applies to the entire type
+class Chicken: Feedable {
+}
+
+// inferred isolation only applies within the extension
+extension Pirate: Feedable {
+}
+</code></pre><p>A protocol’s requirements themselves can also be isolated. This allows more fine-grained control around how isolation is inferred for conforming types.</p><pre class="swift"><code>protocol Feedable {
+    @MainActor
+    func eat(food: Pineapple)
+}
+</code></pre><p>Regardless of how a protocol is defined and conformance added, you cannot alter other mechanisms of static isolation. If a type is globally-isolated, either explicitly or via inference from a superclass, a protocol conformance cannot be used to change it.</p><aside class="note"><p class="label">Note</p><p>For more information, see the <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/protocols">Protocols</a> section of The Swift Programming Language.</p></aside><h4 id="Function-Types"><a href="#Function-Types">Function Types</a></h4><p>Isolation <i>inference</i> allows a type to implicitly define the isolation of its properties and methods. But these are all examples of <i>declarations</i>. It is also possible to achieve a similar effect with function values, through isolation <i>inheritance</i>.</p><p>By default, closures are isolated to the same context they’re formed in. For example:</p><pre class="swift"><code>@MainActor
+class Model { ... }
+
+@MainActor
+class C {
+    var models: [Model] = []
+
+    func mapModels&lt;Value>(
+      _ keyPath: KeyPath&lt;Model, Value>
+    ) -> some Collection&lt;Value> {
+        models.lazy.map { $0[keyPath: keyPath] }
+    }
+}
+</code></pre><p>In the above code, the closure to <code>LazySequence.map</code> has type <code>@escaping (Base.Element) -> U</code>. This closure must stay on the main actor where it was originally formed. This allows the closure to capture state or call isolated methods from the surrounding context.</p><p>Closures that can run concurrently with the original context are marked explicitly through <code>@Sendable</code> and <code>sending</code> annotations described in later sections.</p><p>For <code>async</code> closures that may be evaluated concurrently, the closure can still capture the isolation of the original context. This mechanism is used by the <code>Task</code> initializer so that the given operation is isolated to the original context by default, while still allowing explicit isolation to be specified:</p><pre class="swift"><code>@MainActor
+func eat(food: Pineapple) {
+    // the static isolation of this function's declaration is
+    // captured by the closure created here
+    Task {
+        // allowing the closure's body to inherit MainActor-isolation
+        Chicken.prizedHen.eat(food: food)
+    }
+
+    Task { @MyGlobalActor in
+        // this task is isolated to `MyGlobalActor`
+    }
+}
+</code></pre><p>The closure’s type here is defined by <code>Task.init</code>. Despite that declaration not being isolated to any actor, this newly-created task will <i>inherit</i> the <code>MainActor</code> isolation of its enclosing scope unless an explicit global actor is written. Function types offer a number of mechanisms for controlling their isolation behavior, but by default they behave identically to other types.</p><aside class="note"><p class="label">Note</p><p>For more information, see the <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/closures">Closures</a> section of The Swift Programming Language.</p></aside><h2 id="Isolation-Boundaries"><a href="#Isolation-Boundaries">Isolation Boundaries</a></h2><p>Isolation domains protect their mutable state, but useful programs need more than just protection. They have to communicate and coordinate, often by passing data back and forth. Moving values into or out of an isolation domain is known as <i>crossing</i> an isolation boundary. Values are only ever permitted to cross an isolation boundary where there is no potential for concurrent access to shared mutable state.</p><p>Values can cross boundaries directly, via asynchronous function calls. When you call an asynchronous function with a <i>different</i> isolation domain, the parameters and return value need to move into that domain. Values can also cross boundaries indirectly when captured by closures. Closures introduce many potential opportunities for concurrent accesses. They can be created in one domain and then executed in another. They can even be executed in multiple, different domains.</p><h3 id="Sendable-Types"><a href="#Sendable-Types">Sendable Types</a></h3><p>In some cases, all values of a particular type are safe to pass across isolation boundaries because thread-safety is a property of the type itself. This is represented by the <code>Sendable</code> protocol. A conformance to <code>Sendable</code> means the given type is thread safe, and values of the type can be shared across arbitrary isolation domains without introducing a risk of data races.</p><p>Swift encourages using value types because they are naturally safe. With value types, different parts of your program can’t have shared references to the same value. When you pass an instance of a value type to a function, the function has its own independent copy of that value. Because value semantics guarantees the absence of shared mutable state, value types in Swift are implicitly <code>Sendable</code> when all their stored properties are also Sendable. However, this implicit conformance is not visible outside of their defining module. Making a type <code>Sendable</code> is part of its public API contract and must always be done explicitly.</p><pre class="swift"><code>enum Ripeness {
+    case hard
+    case perfect
+    case mushy(daysPast: Int)
+}
+
+struct Pineapple {
+    var weight: Double
+    var ripeness: Ripeness
+}
+</code></pre><p>Here, both the <code>Ripeness</code> and <code>Pineapple</code> types are implicitly <code>Sendable</code>, since they are composed entirely of <code>Sendable</code> value types.</p><aside class="note"><p class="label">Note</p><p>For more information see the <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency#Sendable-Types">Sendable Types</a> section of The Swift Programming Language.</p></aside><h4 id="Flow-Sensitive-Isolation-Analysis"><a href="#Flow-Sensitive-Isolation-Analysis">Flow-Sensitive Isolation Analysis</a></h4><p>The <code>Sendable</code> protocol is used to express thread-safety for a type as a whole. But there are situations when a particular <i>instance</i> of a non-<code>Sendable</code> type is being used in a safe way. The compiler is often capable of inferring this safety through flow-sensitive analysis known as <a href="https://github.com/swiftlang/swift-evolution/blob/main/proposals/0414-region-based-isolation.md">region-based isolation</a>.</p><p>Region-based isolation allows the compiler to permit instances of non-<code>Sendable</code> types to cross isolation domains when it can prove doing so cannot introduce data races.</p><pre class="swift"><code>func populate(island: Island) async {
+    let chicken = Chicken()
+
+    await island.adopt(chicken)
+}
+</code></pre><p>Here, the compiler can correctly reason that even though <code>chicken</code> has a non-<code>Sendable</code> type, allowing it to cross into the <code>island</code> isolation domain is safe. However, this exception to <code>Sendable</code> checking is inherently contigent on the surrounding code. The compiler will still produce an error should any unsafe accesses to the <code>chicken</code> variable ever be introduced.</p><pre class="swift"><code>func populate(island: Island) async {
+    let chicken = Chicken()
+
+    await island.adopt(chicken)
+
+    // this would result in an error
+    chicken.eat(food: Pineapple())
+}
+</code></pre><p>Region-based isolation works without any code changes. But a function’s parameters and return values can also explicitly state that they support crossing domains using this mechanism.</p><pre class="swift"><code>func populate(island: Island, with chicken: sending Chicken) async {
+    await island.adopt(chicken)
+}
+</code></pre><p>The compiler can now provide the guarantee that at all call sites, the <code>chicken</code> parameter will never be subject to unsafe access. This is a relaxing of an otherwise significant constraint. Without <code>sending</code>, this function would only be possible to implement by requiring that <code>Chicken</code> first conform to <code>Sendable</code>.</p><h3 id="Actor-Isolated-Types"><a href="#Actor-Isolated-Types">Actor-Isolated Types</a></h3><p>Actors are not value types, but because they protect all of their state in their own isolation domain, they are inherently safe to pass across boundaries. This makes all actor types implicitly <code>Sendable</code>, even if their properties are not <code>Sendable</code> themselves.</p><pre class="swift"><code>actor Island {
+    var flock: [Chicken]  // non-Sendable
+    var food: [Pineapple] // Sendable
+}
+</code></pre><p>Global-actor-isolated types are also implicitly <code>Sendable</code> for similar reasons. They do not have a private, dedicated isolation domain, but their state is still protected by an actor.</p><pre class="swift"><code>@MainActor
+class ChickenValley {
+    var flock: [Chicken]  // non-Sendable
+    var food: [Pineapple] // Sendable
+}
+</code></pre><h3 id="Reference-Types"><a href="#Reference-Types">Reference Types</a></h3><p>Unlike value types, reference types cannot be implicitly <code>Sendable</code>. And while they can be made <code>Sendable</code>, doing so comes with a number of constraints. To make a class <code>Sendable</code> it must contain no mutable state and all immutable properties must also be <code>Sendable</code>. Further, the compiler can only validate the implementation of final classes.</p><pre class="swift"><code>final class Chicken: Sendable {
+    let name: String
+}
+</code></pre><p>It is possible to satisfy the thread-safety requirements of <code>Sendable</code> using synchronization primitives that the compiler cannot reason about, such as through OS-specific constructs or when working with thread-safe types implemented in C/C++/Objective-C. Such types may be marked as conforming to <code>@unchecked Sendable</code> to promise the compiler that the type is thread-safe. The compiler will not perform any checking on an <code>@unchecked Sendable</code> type, so this opt-out must be used with caution.</p><h3 id="Suspension-Points"><a href="#Suspension-Points">Suspension Points</a></h3><p>A task can switch between isolation domains when a function in one domain calls a function in another. A call that crosses an isolation boundary must be made asynchronously, because the destination isolation domain might be busy running other tasks. In that case, the task will be suspended until the destination isolation domain is available. Critically, a suspension point does <i>not</i> block. The current isolation domain (and the thread it is running on) are freed up to perform other work. The Swift concurrency runtime expects code to never block on future work, allowing the system to always make forward progress. This eliminates a common source of deadlocks in concurrent code.</p><pre class="swift"><code>@MainActor
+func stockUp() {
+    // beginning execution on MainActor
+    let food = Pineapple()
+
+    // switching to the island actor's domain
+    await island.store(food)
+}
+</code></pre><p>Potential suspension points are marked in source code with the <code>await</code> keyword. Its presence indicates that the call might suspend at runtime, but <code>await</code> does not force a suspension. The function being called might suspend only under certain dynamic conditions. It’s possible that a call marked with <code>await</code> will not actually suspend.</p><h3 id="Atomicity"><a href="#Atomicity">Atomicity</a></h3><p>While actors do guarantee safety from data races, they do not ensure atomicity across suspension points. Concurrent code often needs to execute a sequence of operations together as an atomic unit, such that other threads can never see an intermediate state. Units of code that require this property are known as <i>critical sections</i>.</p><p>Because the current isolation domain is freed up to perform other work, actor-isolated state may change after an asynchronous call. As a consequence, you can think of explicitly marking potential suspension points as a way to indicate the end of a critical section.</p><pre class="swift"><code>func deposit(pineapples: [Pineapple], onto island: Island) async {
+   var food = await island.food
+   food += pineapples
+   await island.store(food)
+}
+</code></pre><p>This code assumes, incorrectly, that the <code>island</code> actor’s <code>food</code> value will not change between asynchronous calls. Critical sections should always be structured to run synchronously.</p><aside class="note"><p class="label">Note</p><p>For more information, see the <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/concurrency/#Defining-and-Calling-Asynchronous-Functions">Defining and Calling Asynchronous Functions</a> section of The Swift Programming Language.</p></aside></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Common Compiler Errors</title><meta content="Identify, understand, and address common problems you can encounter while working with Swift concurrency." name="description"><script src="../../../navigator-index-swift-migration-guide.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../../migrationguide/index.html">Migrating to Swift 6</a></li><li>Common Compiler Errors</li></ul></nav><hgroup><p>Article</p><h1>Common Compiler Errors</h1></hgroup><p>Identify, understand, and address common problems you can encounter while working with Swift concurrency.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>The data isolation guarantees made by the compiler affect all Swift code. This means complete concurrency checking can surface latent issues, even in Swift 5 code that doesn’t use any concurrency language features directly. With the Swift 6 language mode enabled, some of these potential issues can also become errors.</p><p>After enabling complete checking, many projects can contain a large number of warnings and errors. <i>Don’t</i> get overwhelmed! Most of these can be tracked down to a much smaller set of root causes. And these causes, frequently, are a result of common patterns which aren’t just easy to fix, but can also be very instructive while learning about Swift’s concurrency system.</p><h2 id="Unsafe-Global-and-Static-Variables"><a href="#Unsafe-Global-and-Static-Variables">Unsafe Global and Static Variables</a></h2><p>Global state, including static variables, are accessible from anywhere in a program. This visibility makes them particularly susceptible to concurrent access. Before data-race safety, global variable patterns relied on programmers carefully accessing global state in ways that avoided data-races without any help from the compiler.</p><aside class="experiment"><p class="label">Experiment</p><p>These code examples are available in package form. Try them out yourself in <a href="https://github.com/apple/swift-migration-guide/blob/main/Sources/Examples/Globals.swift">Globals.swift</a>.</p></aside><h3 id="Sendable-Types"><a href="#Sendable-Types">Sendable Types</a></h3><pre class="swift"><code>var supportedStyleCount = 42
+</code></pre><p>Here, we have defined a global variable. The global variable is both non-isolated <i>and</i> mutable from any isolation domain. Compiling the above code in Swift 6 mode produces an error message:</p><pre><code>1 | var supportedStyleCount = 42
+  |              |- error: global variable 'supportedStyleCount' is not concurrency-safe because it is non-isolated global shared mutable state
+  |              |- note: convert 'supportedStyleCount' to a 'let' constant to make the shared state immutable
+  |              |- note: restrict 'supportedStyleCount' to the main actor if it will only be accessed from the main thread
+  |              |- note: unsafely mark 'supportedStyleCount' as concurrency-safe if all accesses are protected by an external synchronization mechanism
+2 |
+</code></pre><p>Two functions with different isolation domains accessing this variable risks a data race. In the following code, <code>printSupportedStyles()</code> could be running on the main actor concurrently with a call to <code>addNewStyle()</code> from another isolation domain:</p><pre class="swift"><code>@MainActor
+func printSupportedStyles() {
+    print("Supported styles: ", supportedStyleCount)
+}
+
+func addNewStyle() {
+    let style = Style()
+
+    supportedStyleCount += 1
+
+    storeStyle(style)
+}
+</code></pre><p>One way to address the problem is by changing the variable’s isolation.</p><pre class="swift"><code>@MainActor
+var supportedStyleCount = 42
+</code></pre><p>The variable remains mutable, but has been isolated to a global actor. All accesses can now only happen in one isolation domain, and the synchronous access within <code>addNewStyle</code> would be invalid at compile time.</p><p>If the variable is meant to be constant and is never mutated, a straight-forward solution is to express this to the compiler. By changing the <code>var</code> to a <code>let</code>, the compiler can statically disallow mutation, guaranteeing safe read-only access.</p><pre class="swift"><code>let supportedStyleCount = 42
+</code></pre><p>A global value can also be expressed with a computed property. If such property consistently returns the same constant value, this is semantically equivalent to a <code>let</code> constant as far as observable values/effects are concerned:</p><pre class="swift"><code>var supportedStyleCount: Int {
+    42
+}
+</code></pre><p>If there is synchronization in place that protects this variable in a way that is invisible to the compiler, you can disable all isolation checking for <code>supportedStyleCount</code> using <code>nonisolated(unsafe)</code>.</p><pre class="swift"><code>/// This value is only ever accessed while holding `styleLock`.
+nonisolated(unsafe) var supportedStyleCount = 42
+</code></pre><p>Only use <code>nonisolated(unsafe)</code> when you are carefully guarding all access to the variable with an external synchronization mechanism such as a lock or dispatch queue.</p><h3 id="Non-Sendable-Types"><a href="#Non-Sendable-Types">Non-Sendable Types</a></h3><p>In the above examples, the variable is an <code>Int</code>, a value type that is inherently <code>Sendable</code>. Global <i>reference</i> types present an additional challenge, because they are typically not <code>Sendable</code>.</p><pre class="swift"><code>class WindowStyler {
+    var background: ColorComponents
+
+    static let defaultStyler = WindowStyler()
+}
+</code></pre><p>The problem with this <code>static let</code> declaration is not related to the mutability of the variable. The issue is <code>WindowStyler</code> is a non-<code>Sendable</code> type, making its internal state unsafe to share across isolation domains.</p><pre class="swift"><code>func resetDefaultStyle() {
+    WindowStyler.defaultStyler.background = ColorComponents(red: 1.0, green: 1.0, blue: 1.0)
+}
+
+@MainActor
+class StyleStore {
+    var stylers: [WindowStyler]
+
+    func hasDefaultBackground() -> Bool {
+        stylers.contains { $0.background == WindowStyler.defaultStyler.background }
+    }
+}
+</code></pre><p>Here, we see two functions that could access the internal state of the <code>WindowStyler.defaultStyler</code> concurrently. The compiler only permits these kinds of cross-isolation accesses with <code>Sendable</code> types. One option is to isolate the variable to a single domain using a global actor. Alternatively, it might make sense to add a conformance to <code>Sendable</code> directly.</p><h2 id="Protocol-Conformance-Isolation-Mismatch"><a href="#Protocol-Conformance-Isolation-Mismatch">Protocol Conformance Isolation Mismatch</a></h2><p>A protocol defines requirements that a conforming type must satisfy, including static isolation. This can result in isolation mismatches between a protocol’s declaration and conforming types.</p><p>There are many possible solutions to this class of problem, but they often involve trade-offs. Choosing an appropriate approach first requires understanding <i>why</i> there is a mismatch in the first place.</p><aside class="experiment"><p class="label">Experiment</p><p>These code examples are available in package form. Try them out yourself in <a href="https://github.com/apple/swift-migration-guide/blob/main/Sources/Examples/ConformanceMismatches.swift">ConformanceMismatches.swift</a>.</p></aside><h3 id="Under-Specified-Protocol"><a href="#Under-Specified-Protocol">Under-Specified Protocol</a></h3><p>The most commonly-encountered form of this problem happens when a protocol has no explicit isolation. In this case, as with all other declarations, this implies <i>non-isolated</i>. Non-isolated protocol requirements can be called from generic code in any isolation domain. If the requirement is synchronous, it is invalid for a conforming type’s implementation to access actor-isolated state:</p><pre class="swift"><code>protocol Styler {
+    func applyStyle()
+}
+
+@MainActor
+class WindowStyler: Styler {
+    func applyStyle() {
+        // access main-actor-isolated state
+    }
+}
+</code></pre><p>The above code produces the following error in Swift 6 mode:</p><pre><code> 5 | @MainActor
+ 6 | class WindowStyler: Styler {
+ 7 |     func applyStyle() {
+   |          |- error: main actor-isolated instance method 'applyStyle()' cannot be used to satisfy nonisolated protocol requirement
+   |          `- note: add 'nonisolated' to 'applyStyle()' to make this instance method not isolated to the actor
+ 8 |         // access main-actor-isolated state
+ 9 |     }
+</code></pre><p>It is possible that the protocol actually <i>should</i> be isolated, but has not yet been updated for concurrency. If conforming types are migrated to add correct isolation first, mismatches will occur.</p><pre class="swift"><code>// This really only makes sense to use from MainActor types, but
+// has not yet been updated to reflect that.
+protocol Styler {
+    func applyStyle()
+}
+
+// A conforming type, which is now correctly isolated, has exposed 
+// a mismatch.
+@MainActor
+class WindowStyler: Styler {
+}
+</code></pre><h4 id="Adding-Isolation"><a href="#Adding-Isolation">Adding Isolation</a></h4><p>If protocol requirements are always called from the main actor, adding <code>@MainActor</code> is the best solution.</p><p>There are two ways to isolate a protocol requirement to the main actor:</p><pre class="swift"><code>// entire protocol
+@MainActor
+protocol Styler {
+    func applyStyle()
+}
+
+// per-requirement
+protocol Styler {
+    @MainActor
+    func applyStyle()
+}
+</code></pre><p>Marking a protocol with a global actor attribute will infer isolation for the entire scope of the conformance. This can apply to a conforming type as a whole if the protocol conformance is not declared in an extension.</p><p>Per-requirement isolation has a narrower impact on actor isolation inference, because it only applies to the implementation of that specific requirement. It does not impact the inferred isolation of protocol extensions or other methods on the conforming type. This approach should be favored if it makes sense to have conforming types that aren’t necessarily also tied to the same global actor.</p><p>Either way, changing the isolation of a protocol can affect the isolation of conforming types and it can impose restrictions on generic code using the protocol.</p><p>You can stage in diagnostics caused by adding global actor isolation on a protocol using <a href="doc://org.swift.migration.6/documentation/Swift-6-Concurrency-Migration-Guide/LibraryEvolution#Preconcurrency-annotations"><code>@preconcurrency</code></a>. This will preserve source compatibility with clients that have not yet begun adopting concurrency.</p><pre class="swift"><code>@preconcurrency @MainActor
+protocol Styler {
+    func applyStyle()
+}
+</code></pre><h4 id="Asynchronous-Requirements"><a href="#Asynchronous-Requirements">Asynchronous Requirements</a></h4><p>For methods that implement synchronous protocol requirements the isolation of implementations must match exactly. Making a requirement <i>asynchronous</i> offers more flexibility for conforming types.</p><pre class="swift"><code>protocol Styler {
+    func applyStyle() async
+}
+</code></pre><p>It’s possible to satisfy a non-isolated <code>async</code> protocol requirement with an isolated method.</p><pre class="swift"><code>@MainActor
+class WindowStyler: Styler {
+    // matches, even though it is synchronous and actor-isolated
+    func applyStyle() {
+    }
+}
+</code></pre><p>The above code is safe, because generic code must always call <code>applyStyle()</code> asynchronously, allowing isolated implementations to switch actors before accessing actor-isolated state.</p><p>However, this flexibility comes at a cost. Changing a method to be asynchronous can have a significant impact at every call site. In addition to an async context, both the parameters and return values may need to cross isolation boundaries. Together, these could require significant structural changes to address. This may still be the right solution, but the side-effects should be carefully considered first, even if only a small number of types are involved.</p><h4 id="Preconcurrency-Conformance"><a href="#Preconcurrency-Conformance">Preconcurrency Conformance</a></h4><p>Swift has a number of mechanisms to help you adopt concurrency incrementally and interoperate with code that has not yet begun using concurrency at all. These tools can be helpful both for code you do not own, as well as code you do own, but cannot easily change.</p><p>Annotating a protocol conformance with <code>@preconcurrency</code> makes it possible to suppress errors about any isolation mismatches.</p><pre class="swift"><code>@MainActor
+class WindowStyler: @preconcurrency Styler {
+    func applyStyle() {
+        // implementation body
+    }
+}
+</code></pre><p>This inserts runtime checks to ensure that that static isolation of the conforming class is always enforced.</p><aside class="note"><p class="label">Note</p><p>To learn more about incremental adoption and dynamic isolation, see <a href="doc://org.swift.migration.6/documentation/Swift-6-Concurrency-Migration-Guide/IncrementalAdoption#Dynamic-Isolation">Dynamic Isolation</a></p></aside><h3 id="Isolated-Conforming-Type"><a href="#Isolated-Conforming-Type">Isolated Conforming Type</a></h3><p>So far, the solutions presented assume that the causes of isolation mismatches are ultimately rooted in protocol definitions. But it could be that the protocol’s static isolation is appropriate, and the issue instead is only caused by the conforming type.</p><h4 id="Non-Isolated"><a href="#Non-Isolated">Non-Isolated</a></h4><p>Even a completely non-isolated function could still be useful.</p><pre class="swift"><code>@MainActor
+class WindowStyler: Styler {
+    nonisolated func applyStyle() {
+        // perhaps this implementation doesn't involve
+        // other MainActor-isolated state
+    }
+}
+</code></pre><p>The constraint on this implementation is isolated state and functions become unavailable. This can still be an appropriate solution, especially if the function is used as a source of instance-independent configuration.</p><h4 id="Conformance-by-Proxy"><a href="#Conformance-by-Proxy">Conformance by Proxy</a></h4><p>It’s possible to use an intermediate type to help address static isolation differences. This can be particularly effective if the protocol requires inheritance by its conforming types.</p><pre class="swift"><code>class UIStyler {
+}
+
+protocol Styler: UIStyler {
+    func applyStyle()
+}
+
+// actors cannot have class-based inheritance
+actor WindowStyler: Styler {
+}
+</code></pre><p>Introducing a new type to conform indirectly can make this situation work. However, this solution will require some structural changes to <code>WindowStyler</code> that could spill out to dependent code as well.</p><pre class="swift"><code>// class with necessary superclass
+class CustomWindowStyle: UIStyler {
+}
+
+// now, the conformance is possible
+extension CustomWindowStyle: Styler {
+    func applyStyle() {
+    }
+}
+</code></pre><p>Here, a new type has been created that can satisfy the needed inheritance. Incorporating will be easiest if the conformance is only used internally by <code>WindowStyler</code>.</p><h2 id="Crossing-Isolation-Boundaries"><a href="#Crossing-Isolation-Boundaries">Crossing Isolation Boundaries</a></h2><p>The compiler will only permit a value to move from one isolation domain to another when it can prove it will not introduce data races. Attempting to use values that do not satisfy this requirement in contexts that can cross isolation boundaries is a very common problem. And because libraries and frameworks may be updated to use Swift’s concurrency features, these issues can come up even when your code hasn’t changed.</p><aside class="experiment"><p class="label">Experiment</p><p>These code examples are available in package form. Try them out yourself in <a href="https://github.com/apple/swift-migration-guide/blob/main/Sources/Examples/Boundaries.swift">Boundaries.swift</a>.</p></aside><h3 id="Implicitly-Sendable-Types"><a href="#Implicitly-Sendable-Types">Implicitly-Sendable Types</a></h3><p>Many value types consist entirely of <code>Sendable</code> properties. The compiler will treat types like this as implicitly <code>Sendable</code>, but <i>only</i> when they are non-public.</p><pre class="swift"><code>public struct ColorComponents {
+    public let red: Float
+    public let green: Float
+    public let blue: Float
+}
+
+@MainActor
+func applyBackground(_ color: ColorComponents) {
+}
+
+func updateStyle(backgroundColor: ColorComponents) async {
+    await applyBackground(backgroundColor)
+}
+</code></pre><p>A <code>Sendable</code> conformance is part of a type’s public API contract, which is up to you to declare. Because <code>ColorComponents</code> is marked <code>public</code>, it will not implicitly conform to <code>Sendable</code>. This will result in the following error:</p><pre><code> 6 | 
+ 7 | func updateStyle(backgroundColor: ColorComponents) async {
+ 8 |     await applyBackground(backgroundColor)
+   |           |- error: sending 'backgroundColor' risks causing data races
+   |           `- note: sending task-isolated 'backgroundColor' to main actor-isolated global function 'applyBackground' risks causing data races between main actor-isolated and task-isolated uses
+ 9 | }
+10 | 
+</code></pre><p>A straightforward solution is to make the type’s <code>Sendable</code> conformance explicit:</p><pre class="swift"><code>public struct ColorComponents: Sendable {
+    // ...
+}
+</code></pre><p>Even when trivial, adding <code>Sendable</code> conformance should always be done with care. Remember that <code>Sendable</code> is a guarantee of thread-safety and removing the conformance is an API-breaking change.</p><h3 id="Preconcurrency-Import"><a href="#Preconcurrency-Import">Preconcurrency Import</a></h3><p>Even if the type in another module is actually <code>Sendable</code>, it is not always possible to modify its definition. In this case, you can use a <code>@preconcurrency import</code> to downgrade diagnostics until the library is updated.</p><pre class="swift"><code>// ColorComponents defined here
+@preconcurrency import UnmigratedModule
+
+func updateStyle(backgroundColor: ColorComponents) async {
+    // crossing an isolation domain here
+    await applyBackground(backgroundColor)
+}
+</code></pre><p>With the addition of this <code>@preconcurrency import</code>, <code>ColorComponents</code> remains non-<code>Sendable</code>. However, the compiler’s behavior will be altered. When using the Swift 6 language mode, the error produced here will be downgraded to a warning. The Swift 5 language mode will produce no diagnostics at all.</p><h3 id="Latent-Isolation"><a href="#Latent-Isolation">Latent Isolation</a></h3><p>Sometimes the <i>apparent</i> need for a <code>Sendable</code> type can actually be the symptom of a more fundamental isolation problem. The only reason a type needs to be <code>Sendable</code> is to cross isolation boundaries. If you can avoid crossing boundaries altogether, the result can often be both simpler and a better reflection of the true nature of your system.</p><pre class="swift"><code>@MainActor
+func applyBackground(_ color: ColorComponents) {
+}
+
+func updateStyle(backgroundColor: ColorComponents) async {
+    await applyBackground(backgroundColor)
+}
+</code></pre><p>The <code>updateStyle(backgroundColor:)</code> function is non-isolated. This means that its non-<code>Sendable</code> parameter is also non-isolated. The implementation crosses immediately from this non-isolated domain to the <code>MainActor</code> when <code>applyBackground(_:)</code> is called.</p><p>Since <code>updateStyle(backgroundColor:)</code> is working directly with <code>MainActor</code>-isolated functions and non-<code>Sendable</code> types, just applying <code>MainActor</code> isolation may be more appropriate.</p><pre class="swift"><code>@MainActor
+func updateStyle(backgroundColor: ColorComponents) async {
+    applyBackground(backgroundColor)
+}
+</code></pre><p>Now, there is no longer an isolation boundary for the non-<code>Sendable</code> type to cross. And in this case, not only does this resolve the problem, it also removes the need for an asynchronous call. Fixing latent isolation issues can also potentially make further API simplification possible.</p><p>Lack of <code>MainActor</code> isolation like this is, by far, the most common form of latent isolation. It is also very common for developers to hesitate to use this as a solution. It is completely normal for programs with a user interface to have a large set of <code>MainActor</code>-isolated state. Concerns around long-running <i>synchronous</i> work can often be addressed with just a handful of targeted <code>nonisolated</code> functions.</p><h3 id="Computed-Value"><a href="#Computed-Value">Computed Value</a></h3><p>Instead of trying to pass a non-<code>Sendable</code> type across a boundary, it may be possible to use a <code>Sendable</code> function that creates the needed values.</p><pre class="swift"><code>func updateStyle(backgroundColorProvider: @Sendable () -> ColorComponents) async {
+    await applyBackground(using: backgroundColorProvider)
+}
+</code></pre><p>Here, it does not matter that <code>ColorComponents</code> is not <code>Sendable</code>. By using <code>@Sendable</code> function that can compute the value, the lack of sendability is side-stepped entirely.</p><h3 id="Sending-Argument"><a href="#Sending-Argument">Sending Argument</a></h3><p>The compiler will permit non-<code>Sendable</code> values to cross an isolation boundary if the compiler can prove it can be done safely. Functions that explicitly state they require this can use the values within their implementations with less restrictions.</p><pre class="swift"><code>func updateStyle(backgroundColor: sending ColorComponents) async {
+    // this boundary crossing can now be proven safe in all cases
+    await applyBackground(backgroundColor)
+}
+</code></pre><p>A <code>sending</code> argument does impose some restrictions at call sites. But, this can still be easier or more appropriate than adding a <code>Sendable</code> conformance. This technique also works for types you do not control.</p><h3 id="Sendable-Conformance"><a href="#Sendable-Conformance">Sendable Conformance</a></h3><p>When encountering problems related to crossing isolation domains, a very natural reaction is to just try to add a conformance to <code>Sendable</code>. You can make a type <code>Sendable</code> in four ways.</p><h4 id="Global-Isolation"><a href="#Global-Isolation">Global Isolation</a></h4><p>Adding global isolation to any type will make it implicitly <code>Sendable</code>.</p><pre class="swift"><code>@MainActor
+public struct ColorComponents {
+    // ...
+}
+</code></pre><p>By isolating this type to the <code>MainActor</code>, any accesses from other isolation domains must be done asynchronously. This makes it possible to safely pass instances around across domains.</p><h4 id="Actors"><a href="#Actors">Actors</a></h4><p>Actors have an implicit <code>Sendable</code> conformance because their properties are protected by actor isolation.</p><pre class="swift"><code>actor Style {
+    private var background: ColorComponents
+}
+</code></pre><p>In addition to gaining a <code>Sendable</code> conformance, actors receive their own isolation domain. This allows them to work freely with other non-<code>Sendable</code> types internally. This can be a major advantage, but does come with trade-offs.</p><p>Because an actor’s isolated methods must all be asynchronous, sites that access the type may require an async context. This alone is a reason to make such a change with care. But further, data that is passed into or out of the actor may itself need to cross the isolation boundary. This can result in the need for yet more <code>Sendable</code> types.</p><pre class="swift"><code>actor Style {
+    private var background: ColorComponents
+
+    func applyBackground(_ color: ColorComponents) {
+        // make use of non-Sendable data here
+    }
+}
+</code></pre><p>By moving both the non-Sendable data <i>and</i> operations on that data into the actor, no isolation boundaries need to be crossed. This provides a <code>Sendable</code> interface to those operations that can be freely accessed from any asynchronous context.</p><h4 id="Manual-Synchronization"><a href="#Manual-Synchronization">Manual Synchronization</a></h4><p>If you have a type that is already doing manual synchronization, you can express this to the compiler by marking your <code>Sendable</code> conformance as <code>unchecked</code>.</p><pre class="swift"><code>class Style: @unchecked Sendable {
+    private var background: ColorComponents
+    private let queue: DispatchQueue
+}
+</code></pre><p>You should not feel compelled to remove the use of queues, locks, or other forms of manual synchronization to integrate with Swift’s concurrency system. However, most types are not inherently thread-safe. As a general rule, if a type isn’t already thread-safe, attempting to make it <code>Sendable</code> should not be your first approach. It is often easier to try other techniques first, falling back to manual synchronization only when truly necessary.</p><h4 id="Retroactive-Sendable-Conformance"><a href="#Retroactive-Sendable-Conformance">Retroactive Sendable Conformance</a></h4><p>Your dependencies may also expose types that are using manual synchronization. This is usually visible only via documentation. It is possible to add an <code>@unchecked Sendable</code> conformance in this case as well.</p><pre class="swift"><code>extension ColorComponents: @retroactive @unchecked Sendable {
+}
+</code></pre><p>Because <code>Sendable</code> is a marker protocol, a retroactive conformance does not have direct binary compatibility issues. However, it should still be used with extreme caution. Types that use manual synchronization can come with conditions or exceptions to their safety that may not completely match the semantics of <code>Sendable</code>. Further, you should be <i>particularly</i> careful about using this technique for types that are part of your system’s public API.</p><aside class="note"><p class="label">Note</p><p>To learn more about retroactive conformances, see the associated <a href="https://github.com/swiftlang/swift-evolution/blob/main/proposals/0364-retroactive-conformance-warning.md">Swift evolution proposal</a>.</p></aside><h4 id="Sendable-Reference-Types"><a href="#Sendable-Reference-Types">Sendable Reference Types</a></h4><p>It is possible for reference types to be validated as <code>Sendable</code> without the <code>unchecked</code> qualifier, but this is only done under very specific circumstances.</p><p>To allow a checked <code>Sendable</code> conformance, a class:</p><ul><li><p>Must be <code>final</code></p></li><li><p>Cannot inherit from another class other than <code>NSObject</code></p></li><li><p>Cannot have any non-isolated mutable properties</p></li></ul><pre class="swift"><code>public struct ColorComponents: Sendable {
+    // ...
+}
+
+final class Style: Sendable {
+    private let background: ColorComponents
+}
+</code></pre><p>A reference type that conforms to <code>Sendable</code> is sometimes a sign that a value type would be preferable. But there are circumstances where reference semantics need to be preserved, or where compatibility with a mixed Swift/Objective-C code base is required.</p><h4 id="Using-Composition"><a href="#Using-Composition">Using Composition</a></h4><p>You do not need to select one single technique for making a reference type <code>Sendable.</code> One type can use many techniques internally.</p><pre class="swift"><code>final class Style: Sendable {
+    private nonisolated(unsafe) var background: ColorComponents
+    private let queue: DispatchQueue
+
+    @MainActor
+    private var foreground: ColorComponents
+}
+</code></pre><p>The <code>background</code> property is protected by manual synchronization, while the <code>foreground</code> property uses actor isolation. Combining these two techniques results in a type that better describes its internal semantics. By doing this, the type continues to take advantage of the compiler’s automated isolation checking.</p><h3 id="Non-Isolated-Initialization"><a href="#Non-Isolated-Initialization">Non-Isolated Initialization</a></h3><p>Actor-isolated types can present a problem when they are initialized in a non-isolated context. This frequently occurs when the type is used in a default value expression or as a property initializer.</p><aside class="note"><p class="label">Note</p><p>These problems could also be a symptom of <a href="#Latent-Isolation">latent isolation</a> or an <a href="#Under-Specified-Protocol">under-specified protocol</a>.</p></aside><p>Here the non-isolated <code>Stylers</code> type is making a call to a <code>MainActor</code>-isolated initializer.</p><pre class="swift"><code>@MainActor
+class WindowStyler {
+    init() {
+    }
+}
+
+struct Stylers {
+    static let window = WindowStyler()
+}
+</code></pre><p>This code results in the following error:</p><pre><code> 7 | 
+ 8 | struct Stylers {
+ 9 |     static let window = WindowStyler()
+   |                `- error: main actor-isolated default value in a nonisolated context
+10 | }
+11 | 
+</code></pre><p>Globally-isolated types sometimes don’t actually need to reference any global actor state in their initializers. By making the <code>init</code> method <code>nonisolated</code>, it is free to be called from any isolation domain. This remains safe as the compiler still guarantees that any state that <i>is</i> isolated will only be accessible from the <code>MainActor</code>.</p><pre class="swift"><code>@MainActor
+class WindowStyler {
+    private var viewStyler = ViewStyler()
+    private var primaryStyleName: String
+
+    nonisolated init(name: String) {
+        self.primaryStyleName = name
+        // type is fully-initialized here
+    }
+}
+</code></pre><p>All <code>Sendable</code> properties can still be safely accessed in this <code>init</code> method. And while any non-<code>Sendable</code> properties cannot, they can still be initialized by using default expressions.</p><h3 id="Non-Isolated-Deinitialization"><a href="#Non-Isolated-Deinitialization">Non-Isolated Deinitialization</a></h3><p>Even if a type has actor isolation, deinitializers are <i>always</i> non-isolated.</p><pre class="swift"><code>actor BackgroundStyler {
+    // another actor-isolated type
+    private let store = StyleStore()
+
+    deinit {
+        // this is non-isolated
+        store.stopNotifications()
+    }
+}
+</code></pre><p>This code produces the error:</p><pre><code>error: call to actor-isolated instance method 'stopNotifications()' in a synchronous nonisolated context
+ 5 |     deinit {
+ 6 |         // this is non-isolated
+ 7 |         store.stopNotifications()
+   |               `- error: call to actor-isolated instance method 'stopNotifications()' in a synchronous nonisolated context
+ 8 |     }
+ 9 | }
+</code></pre><p>While this might feel surprising, given that this type is an actor, this is not a new constraint. The thread that executes a deinitializer has never been guaranteed and Swift’s data isolation is now just surfacing that fact.</p><p>Often, the work being done within the <code>deinit</code> does not need to be synchronous. A solution is to use an unstructured <code>Task</code> to first capture and then operate on the isolated values. When using this technique, it is <i>critical</i> to ensure you do not capture <code>self</code>, even implicitly.</p><pre class="swift"><code>actor BackgroundStyler {
+    // another actor-isolated type
+    private let store = StyleStore()
+
+    deinit {
+        // no actor isolation here, so none will be inherited by the task
+        Task { [store] in
+            await store.stopNotifications()
+        }
+    }
+}
+</code></pre><aside class="important"><p class="label">Important</p><p><b>Never</b> extend the life-time of <code>self</code> from within <code>deinit</code>. Doing so will crash at runtime.</p></aside></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

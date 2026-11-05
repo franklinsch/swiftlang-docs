@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Adding tags to tests</title><meta content="Use tags to provide semantic information for organization, filtering, and customizing appearances." name="description"><script src="../../../navigator-index-swift-testing.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Testing</a></li><li><a href="../traits/index.html">Traits</a></li><li>Adding tags to tests</li></ul></nav><hgroup><p>Article</p><h1>Adding tags to tests</h1></hgroup><p>Use tags to provide semantic information for organization, filtering, and customizing appearances.</p><ul id="availability"><li aria-label="Swift 6.0+, Available on Swift 6.0 and later" title="Available on Swift 6.0 and later">Swift 6.0+</li><li aria-label="Xcode 16.0+, Available on Xcode 16.0 and later" title="Available on Xcode 16.0 and later">Xcode 16.0+</li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>A complex package or project may contain hundreds or thousands of tests and suites. Some subset of those tests may share some common facet, such as being <i>critical</i> or <i>flaky</i>. The testing library includes a type of trait called <i>tags</i> that you can add to group and categorize tests.</p><p>Tags are different from test suites: test suites impose structure on test functions at the source level, while tags provide semantic information for a test that can be shared with any number of other tests across test suites, source files, and even test targets.</p><h2 id="Add-a-tag"><a href="#Add-a-tag">Add a tag</a></h2><p>To add a tag to a test, use the <a href="../trait/tags(_:)/index.html"><code>tags(<wbr>_:)</code></a> trait. This trait takes a sequence of tags as its argument, and those tags are then applied to the corresponding test at runtime. If any tags are applied to a test suite, then all tests in that suite inherit those tags.</p><p>The testing library doesn’t assign any semantic meaning to any tags, nor does the presence or absence of tags affect how the testing library runs tests.</p><p>Tags themselves are instances of <a href="../tag/index.html"><code>Tag</code></a> and expressed as named constants declared as static members of <a href="../tag/index.html"><code>Tag</code></a>. To declare a named constant tag, use the <a href="../tag()/index.html"><code>Tag()</code></a> macro:</p><pre class="swift"><code>extension Tag {
+  @Tag static var legallyRequired: Self
+}
+
+@Test("Vendor's license is valid", .tags(.legallyRequired))
+func licenseValid() { ... }
+</code></pre><p>If two tags with the same name (<code>legallyRequired</code> in the above example) are declared in different files, modules, or other contexts, the testing library treats them as equivalent.</p><p>If it’s important for a tag to be distinguished from similar tags declared elsewhere in a package or project (or its dependencies), use reverse-DNS naming to create a unique Swift symbol name for your tag:</p><pre class="swift"><code>extension Tag {
+  enum com_example_foodtruck {}
+}
+
+extension Tag.com_example_foodtruck {
+  @Tag static var extraSpecial: Tag
+}
+
+@Test(
+  "Extra Special Sauce recipe is secret",
+  .tags(.com_example_foodtruck.extraSpecial)
+)
+func secretSauce() { ... }
+</code></pre><h3 id="Where-tags-can-be-declared"><a href="#Where-tags-can-be-declared">Where tags can be declared</a></h3><p>Tags must always be declared as members of <a href="../tag/index.html"><code>Tag</code></a> in an extension to that type or in a type nested within <a href="../tag/index.html"><code>Tag</code></a>. Redeclaring a tag under a second name has no effect and the additional name will not be recognized by the testing library. The following example is unsupported:</p><pre class="swift"><code>extension Tag {
+  @Tag static var legallyRequired: Self // ✅ OK: Declaring a new tag.
+
+  static var requiredByLaw: Self { // ❌ ERROR: This tag name isn't
+                                   // recognized at runtime.
+    legallyRequired
+  }
+}
+</code></pre><p>If a tag is declared as a named constant outside of an extension to the <a href="../tag/index.html"><code>Tag</code></a> type (for example, at the root of a file or in another unrelated type declaration), it cannot be applied to test functions or test suites. The following declarations are unsupported:</p><pre class="swift"><code>@Tag let needsKetchup: Self // ❌ ERROR: Tags must be declared in an extension
+                            // to Tag.
+struct Food {
+  @Tag var needsMustard: Self // ❌ ERROR: Tags must be declared in an extension
+                              // to Tag.
+}
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Annotating-tests"><a href="#Annotating-tests">Annotating tests</a></h3><ul><li><a href="../addingcomments/index.html"><p class="api-collection">Adding comments to tests</p></a><p>Add comments to provide useful information about tests.</p></li><li><a href="../associatingbugs/index.html"><p class="api-collection">Associating bugs with tests</p></a><p>Associate bugs uncovered or verified by tests.</p></li><li><a href="../bugidentifiers/index.html"><p class="api-collection">Interpreting bug identifiers</p></a><p>Examine how the testing library interprets bug identifiers provided by developers.</p></li><li><a href="../tag()/index.html"><code>macro <span class="identifier">Tag</span>()</code></a><p>Declare a tag that can be applied to a test function or test suite.</p></li><li><a href="../trait/bug(_:_:)/index.html"><code>static func <span class="identifier">bug</span>(<wbr>String, Comment?) -> Self</code></a><p>Constructs a bug to track with a test.</p></li><li><a href="../trait/bug(_:id:_:)-10yf5/index.html"><code>static func <span class="identifier">bug</span>(<wbr>String?, <span class="identifier">id</span>: String, Comment?) -> Self</code></a><p>Constructs a bug to track with a test.</p></li><li><a href="../trait/bug(_:id:_:)-3vtpl/index.html"><code>static func <span class="identifier">bug</span>(<wbr>String?, <span class="identifier">id</span>: some Numeric, Comment?) -> Self</code></a><p>Constructs a bug to track with a test.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

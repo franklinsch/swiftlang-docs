@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Attachments</title><meta content="Attach values to tests to help diagnose issues and gather feedback." name="description"><script src="../../../navigator-index-swift-testing.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="api-collection"><nav id="breadcrumbs"><ul><li><a href="../index.html">Testing</a></li><li>Attachments</li></ul></nav><hgroup><p>API Collection</p><h1>Attachments</h1></hgroup><p>Attach values to tests to help diagnose issues and gather feedback.</p><ul id="availability"><li aria-label="Swift 6.0+, Available on Swift 6.0 and later" title="Available on Swift 6.0 and later">Swift 6.0+</li><li aria-label="Xcode 16.0+, Available on Xcode 16.0 and later" title="Available on Xcode 16.0 and later">Xcode 16.0+</li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Attach values such as strings and files to tests. Implement the <a href="../attachable/index.html"><code>Attachable</code></a> protocol to create your own attachable types.</p><h3 id="Attach-data-or-strings"><a href="#Attach-data-or-strings">Attach data or strings</a></h3><p>If your test produces encoded data that you want to save as an attachment, you can call <a href="../attachment/record(_:named:sourcelocation:)/index.html"><code>record(<wbr>_:<wbr>named:<wbr>source<wbr>Location:)</code></a>.</p><pre class="swift"><code>struct SalesReport { ... }
+
+@Test func `sales report adds up`() async throws {
+  let salesReport = await generateSalesReport()
+  try salesReport.validate()
+  let bytes: [UInt8] = try salesReport.convertToCSV()
+  Attachment.record(bytes, named: "sales report.csv")
+}
+</code></pre><p>You can attach an instance of <a href="https://developer.apple.com/documentation/swift/array"><code>Array&lt;<wbr>UInt8></code></a>, <a href="https://developer.apple.com/documentation/swift/contiguousarray"><code>Contiguous<wbr>Array&lt;<wbr>UInt8></code></a>, <a href="https://developer.apple.com/documentation/swift/arrayslice"><code>Array<wbr>Slice&lt;<wbr>UInt8></code></a>, or <a href="https://developer.apple.com/documentation/foundation/data"><code>Data</code></a> because these types automatically conform to <a href="../attachable/index.html"><code>Attachable</code></a>.</p><p>You can also attach an instance of <a href="https://developer.apple.com/documentation/swift/string"><code>String</code></a> or <a href="https://developer.apple.com/documentation/swift/substring"><code>Substring</code></a>. The testing library treats attached strings as UTF-8 text files. If you want to save a string as an attachment using a different encoding, convert it to <a href="https://developer.apple.com/documentation/foundation/data"><code>Data</code></a> using <a href="https://developer.apple.com/documentation/swift/stringprotocol/data(using:allowlossyconversion:)"><code>data(<wbr>using:<wbr>allow<wbr>Lossy<wbr>Conversion:)</code></a> and attach the resulting data instead of the original string.</p><h3 id="Attach-encodable-values"><a href="#Attach-encodable-values">Attach encodable values</a></h3><p>If you have a value you want to save as an attachment that conforms to either <a href="https://developer.apple.com/documentation/swift/encodable"><code>Encodable</code></a> or <a href="https://developer.apple.com/documentation/foundation/nssecurecoding"><code>NSSecure<wbr>Coding</code></a>, you can create an instance of <a href="../attachment/index.html"><code>Attachment</code></a> from it when you import the <a href="https://developer.apple.com/documentation/foundation">Foundation</a> module.</p><pre class="swift"><code>import Testing
+import Foundation
+
+struct SalesReport: Encodable { ... }
+
+@Test func `sales report adds up`() async throws {
+  let salesReport = await generateSalesReport()
+  try salesReport.validate()
+  let attachment = try Attachment(encoding: salesReport)
+  Attachment.record(attachment)
+}
+</code></pre><p>By default, the testing library encodes values as JSON if they conform to <a href="https://developer.apple.com/documentation/swift/encodable"><code>Encodable</code></a> or as binary property lists if they conform to <a href="https://developer.apple.com/documentation/foundation/nssecurecoding"><code>NSSecure<wbr>Coding</code></a>. You can customize the resulting encoded data further by passing an encoding format or a top-level encoder.</p><table><thead><tr><th>Type Conforms To</th><th>Customize With</th></tr></thead><tbody><tr><td><a href="https://developer.apple.com/documentation/swift/encodable"><code>Encodable</code></a></td><td><a href="../attachableencodingformat/index.html"><code>Attachable<wbr>Encoding<wbr>Format</code></a>, <a href="https://developer.apple.com/documentation/foundation/jsonencoder"><code>JSONEncoder</code></a>, <a href="https://developer.apple.com/documentation/foundation/propertylistencoder"><code>Property<wbr>List<wbr>Encoder</code></a>, or <a href="https://developer.apple.com/documentation/combine/toplevelencoder"><code>Top<wbr>Level<wbr>Encoder</code></a></td></tr><tr><td><a href="https://developer.apple.com/documentation/foundation/nssecurecoding"><code>NSSecure<wbr>Coding</code></a></td><td><a href="https://developer.apple.com/documentation/foundation/propertylistserialization/propertylistformat"><code>Property<wbr>List<wbr>Serialization.Property<wbr>List<wbr>Format</code></a></td></tr></tbody></table><p>For example, to attach a value to your test as an XML property list:</p><pre class="swift"><code>import Testing
+import Foundation
+
+struct SalesReport: Encodable { ... }
+
+@Test func `sales report adds up`() async throws {
+  let salesReport = await generateSalesReport()
+  try salesReport.validate()
+  let attachment = try Attachment(
+    encoding: salesReport,
+    as: .propertyListFormat(.xml)
+  )
+  Attachment.record(attachment)
+}
+</code></pre><aside class="important"><p class="label">Important</p><p>The testing library provides these <a href="../attachment/index.html"><code>Attachment</code></a> initializers only if your test target imports the <a href="https://developer.apple.com/documentation/foundation">Foundation</a> module.</p></aside><h3 id="Attach-transferable-values"><a href="#Attach-transferable-values">Attach transferable values</a></h3><p>If you have a value you want to save as an attachment that conforms to <a href="https://developer.apple.com/documentation/CoreTransferable/Transferable"><code>Transferable</code></a>, you can create an instance of <a href="../attachment/index.html"><code>Attachment</code></a> from it when you import the <a href="https://developer.apple.com/documentation/coretransferable">Core Transferable</a> module.</p><pre class="swift"><code>import Testing
+import CoreTransferable
+
+struct SalesReport: Transferable { ... }
+
+@Test func `sales report adds up`() async throws {
+  let salesReport = await generateSalesReport()
+  try salesReport.validate()
+  let attachment = try await Attachment(exporting: salesReport)
+  Attachment.record(attachment)
+}
+</code></pre><aside class="important"><p class="label">Important</p><p>The testing library provides this <a href="../attachment/index.html"><code>Attachment</code></a> initializer only if your test target imports the <a href="https://developer.apple.com/documentation/coretransferable">Core Transferable</a> module.</p></aside><p>When you create an attachment from a transferable value, the testing library calls the value’s <a href="https://developer.apple.com/documentation/coretransferable/transferable/exported(as:)"><code>exported(<wbr>as:)</code></a> function. By default, the testing library calls the value’s <a href="https://developer.apple.com/documentation/coretransferable/transferable/exportedcontenttypes(_:)"><code>exported<wbr>Content<wbr>Types(<wbr>_:)</code></a> function and uses the first returned content type that conforms to <a href="https://developer.apple.com/documentation/uniformtypeidentifiers/uttype-swift.struct/data"><code>UTType.data</code></a>. If you want to use a different format for the attachment, you can pass another content type supported by the attachable value when you create the attachment.</p><pre class="swift"><code>let attachment = try await Attachment(exporting: salesReport, as: .pdf)
+</code></pre><h3 id="Attach-files-and-directories"><a href="#Attach-files-and-directories">Attach files and directories</a></h3><p>If you have a file you want to save as an attachment, you can attach it using its file URL. The testing library needs to read or map the file before attaching it to your test, and those operations can fail, so you need to explicitly create an instance of <a href="../attachment/index.html"><code>Attachment</code></a> before you record it.</p><pre class="swift"><code>import Foundation
+
+@Test func `sales report adds up`() async throws {
+  let salesReport = await generateSalesReport()
+  try salesReport.validate()
+  let salesReportURL = try salesReport.save()
+  let attachment = try await Attachment(contentsOf: salesReportURL)
+  Attachment.record(attachment)
+}
+</code></pre><p>You can also attach a directory to a test using its file URL. When you attach a directory to a test, the testing library creates a ZIP file containing the directory’s contents, then attaches that ZIP file in place of the directory.</p><h3 id="Attach-images"><a href="#Attach-images">Attach images</a></h3><p>You can attach instances of the following system-provided image types to a test:</p><table><thead><tr><th>Platform</th><th>Supported types</th></tr></thead><tbody><tr><td>macOS</td><td><a href="https://developer.apple.com/documentation/coregraphics/cgimage"><code>CGImage</code></a>, <a href="https://developer.apple.com/documentation/coreimage/ciimage"><code>CIImage</code></a>, <a href="https://developer.apple.com/documentation/appkit/nsimage"><code>NSImage</code></a></td></tr><tr><td>iOS, tvOS, and visionOS</td><td><a href="https://developer.apple.com/documentation/coregraphics/cgimage"><code>CGImage</code></a>, <a href="https://developer.apple.com/documentation/coreimage/ciimage"><code>CIImage</code></a>, <a href="https://developer.apple.com/documentation/uikit/uiimage"><code>UIImage</code></a></td></tr><tr><td>watchOS</td><td><a href="https://developer.apple.com/documentation/coregraphics/cgimage"><code>CGImage</code></a>, <a href="https://developer.apple.com/documentation/uikit/uiimage"><code>UIImage</code></a></td></tr><tr><td>Windows</td><td><a href="https://learn.microsoft.com/en-us/windows/win32/gdi/bitmaps"><code>HBITMAP</code></a>, <a href="https://learn.microsoft.com/en-us/windows/win32/menurc/icons"><code>HICON</code></a>, <a href="https://learn.microsoft.com/en-us/windows/win32/api/wincodec/nn-wincodec-iwicbitmapsource"><code>IWICBitmap<wbr>Source</code></a> (including its subclasses declared by Windows Imaging Component)</td></tr></tbody></table><p>When you attach an image to a test, you can specify the image format to use in addition to a preferred name.</p><pre class="swift"><code>struct SalesReport { ... }
+
+@Test func `sales report adds up`() async throws {
+  let salesReport = await generateSalesReport()
+  let image = try salesReport.renderTrendsGraph()
+  Attachment.record(image, named: "sales report", as: .png)
+}
+</code></pre><p>If you don’t specify an image format when attaching an image to a test, the testing library selects the format to use based on the preferred name you pass.</p><h3 id="Attach-other-values"><a href="#Attach-other-values">Attach other values</a></h3><p>If you have a value that needs a custom encoded representation when you save it as an attachment, implement <a href="../attachable/withunsafebytes(for:_:)/index.html"><code>with<wbr>Unsafe<wbr>Bytes(<wbr>for:<wbr>_:)</code></a>. The implementation of this function calls its <code>body</code> argument and passes the encoded representation of <code>self</code> or, if a failure occurs, throws an error representing that failure.</p><pre class="swift"><code>struct SalesReport { ... }
+
+extension SalesReport: Attachable {
+  borrowing func withUnsafeBytes&lt;R>(
+    for attachment: borrowing Attachment&lt;Self>,
+    _ body: (UnsafeRawBufferPointer) throws -> R
+  ) throws -> R {
+    let bytes = try salesReport.convertToCSV() // might fail to convert to CSV
+    return try bytes.withUnsafeBytes { buffer in // rethrows errors from `body`
+      try body(buffer)
+    }
+  }
+}
+</code></pre><p>If your type conforms to <a href="https://developer.apple.com/documentation/swift/sendable"><code>Sendable</code></a>, the testing library avoids calling this function until it needs to save the attachment. If your type  <i>doesn’t</i> conform to <a href="https://developer.apple.com/documentation/swift/sendable"><code>Sendable</code></a>, the testing library calls this function as soon as you record the attachment.</p><h4 id="Customize-attachment-behavior"><a href="#Customize-attachment-behavior">Customize attachment behavior</a></h4><p>If you can reliably estimate in advance how large the encoded representation will be, implement <a href="../attachable/estimatedattachmentbytecount/index.html"><code>estimated<wbr>Attachment<wbr>Byte<wbr>Count</code></a>. The testing library uses the value of this property as a hint to optimize memory and disk usage.</p><pre class="swift"><code>extension SalesReport: Attachable {
+  ...
+
+  var estimatedAttachmentByteCount: Int? {
+    return self.entries.count * 123
+  }
+}
+</code></pre><p>You can also implement <a href="../attachable/preferredname(for:basedon:)/index.html"><code>preferred<wbr>Name(<wbr>for:<wbr>based<wbr>On:)</code></a> if you want to customize the name of the attachment when saving it.</p><pre class="swift"><code>extension SalesReport: Attachable {
+  ...
+
+  borrowing func preferredName(
+    for attachment: borrowing Attachment&lt;Self>,
+    basedOn suggestedName: String
+  ) -> String {
+    if suggestedName.contains(".") {
+      // The name already contains a path extension, so don't append another.
+      return suggestedName
+    }
+
+    // Append ".csv" to the name so the resulting file opens as a spreadsheet.
+    return "\(suggestedName).csv"
+  }
+}
+</code></pre><h3 id="Inspect-attachments-after-a-test-run-ends"><a href="#Inspect-attachments-after-a-test-run-ends">Inspect attachments after a test run ends</a></h3><p>By default, the testing library saves your attachments as soon as you call <a href="../attachment/record(_:sourcelocation:)/index.html"><code>record(<wbr>_:<wbr>source<wbr>Location:)</code></a> or <a href="../attachment/record(_:named:sourcelocation:)/index.html"><code>record(<wbr>_:<wbr>named:<wbr>source<wbr>Location:)</code></a>. You can access saved attachments after your tests finish running:</p><ul><li><p>When using Xcode, you can access attachments from the test report.</p></li><li><p>When using Visual Studio Code, the testing library saves attachments to <code>.build/attachments</code> by default. Visual Studio Code reports the paths to individual attachments in its Tests Results panel.</p></li><li><p>When using Swift Package Manager’s <code>swift test</code> command, you can pass the <code>--attachments-path</code> option. The testing library creates a directory at the specified path and saves attachments to it.</p><p>If you do not pass the <code>--attachments-path</code> option, the testing library does not save any attachments you record.</p></li></ul></section><section id="Topics"><h2><a href="#Topics">Topics</a></h2><h3 id="Attaching-values-to-tests"><a href="#Attaching-values-to-tests">Attaching values to tests</a></h3><ul><li><a href="../attachment/index.html"><code>struct <span class="identifier">Attachment</span></code></a><p>A type describing values that can be attached to the output of a test run and inspected later by the user.</p></li><li><a href="../attachable/index.html"><code>protocol <span class="identifier">Attachable</span></code></a><p>A protocol describing a type whose instances can be recorded and saved as part of a test run.</p></li><li><a href="../attachablewrapper/index.html"><code>protocol <span class="identifier">Attachable<wbr>Wrapper</span></code></a><p>A protocol describing a type whose instances can be recorded and saved as part of a test run and which contains another value that it stands in for.</p></li></ul><h3 id="Attaching-encodable-values-to-tests"><a href="#Attaching-encodable-values-to-tests">Attaching encodable values to tests</a></h3><p></p><ul><li><a href="../attachableencodingformat/index.html"><code>struct <span class="identifier">Attachable<wbr>Encoding<wbr>Format</span></code></a><p>An enumeration describing the encoding formats that you can use when attaching a value that conforms to <a href="https://developer.apple.com/documentation/swift/encodable"><code>Encodable</code></a>.</p></li></ul><h3 id="Attaching-images-to-tests"><a href="#Attaching-images-to-tests">Attaching images to tests</a></h3><ul><li><a href="../attachableasimage/index.html"><code>protocol <span class="identifier">Attachable<wbr>As<wbr>Image</span></code></a><p>A protocol describing images that can be converted to instances of <a href="https://developer.apple.com/documentation/testing/attachment"><code>Attachment</code></a>.</p></li><li><a href="../attachableimageformat/index.html"><code>struct <span class="identifier">Attachable<wbr>Image<wbr>Format</span></code></a><p>A type describing image formats supported by the system that can be used when attaching an image to a test.</p></li><li><a href="../attachment/init(_:named:as:sourcelocation:)/index.html"><code><span class="identifier">init</span>&lt;<wbr>T>(<wbr>T, <span class="identifier">named</span>: String?, <span class="identifier">as</span>: Attachable<wbr>Image<wbr>Format?, <span class="identifier">source<wbr>Location</span>: Source<wbr>Location)</code></a><p>Initialize an instance of this type that encloses the given image.</p></li><li><a href="../attachment/record(_:named:as:sourcelocation:)/index.html"><code>static func <span class="identifier">record</span>&lt;<wbr>T>(<wbr>T, <span class="identifier">named</span>: String?, <span class="identifier">as</span>: Attachable<wbr>Image<wbr>Format?, <span class="identifier">source<wbr>Location</span>: Source<wbr>Location)</code></a><p>Attach an image to the current test.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Reducing Binary Size</title><meta content="When using the `jextract` tool to wrap your Swift APIs as a Java library, several compiler and linker options can substantially reduce the final binary size by stripping dead code that would otherwise be retained." name="description"><script src="../../../navigator-index-swift-java.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Swift Java Documentation</a></li><li>Reducing Binary Size</li></ul></nav><hgroup><p>Article</p><h1>Reducing Binary Size</h1></hgroup><p>When using the <code>jextract</code> tool to wrap your Swift APIs as a Java library, several compiler and linker options can substantially reduce the final binary size by stripping dead code that would otherwise be retained.</p></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>The compiler and linker options below trim the shipped library by stripping Swift symbols that JNI never calls, then dead-stripping the resulting unreachable code. Applied together, they can significantly reduce the final <code>.so</code>/<code>.dylib</code> size compared to a default release build.</p><h3 id="Requirements"><a href="#Requirements">Requirements</a></h3><p>Full binary-size optimization requires <b>Swift 6.3 or later</b>. Swift 6.3 introduced the <code>@used</code> attribute, which <code>JExtractSwiftPlugin</code> attaches to every generated JNI entry point so the compiler cannot eliminate them before the linker has a chance to see them.</p><h3 id="Generated-Version-Script"><a href="#Generated-Version-Script">Generated Version Script</a></h3><p>When using the <code>jextract</code> tool in JNI mode, <code>JExtractSwiftPlugin</code> automatically generates a linker version script alongside the Swift thunks. The version script lists every JNI entry point as a <code>global:</code> export and hides everything else with <code>local: *</code>, giving the linker precise control over which symbols must be kept and allowing it to discard all internal Swift symbols.</p><p>The file is written to the plugin’s work directory:</p><pre><code>.build/plugins/outputs/&lt;PackageName>/&lt;TargetName>/JExtractSwiftPlugin/swift-java-jni-exports.map
+</code></pre><h3 id="Optimization-Flags"><a href="#Optimization-Flags">Optimization Flags</a></h3><p>The following flags, used together, produce the smallest possible binary:</p><table><thead><tr><th>Flag</th><th>Effect</th></tr></thead><tbody><tr><td><code>-Xswiftc -Osize</code></td><td>Optimize for binary size rather than speed</td></tr><tr><td><code>-Xlinker --version-script=&lt;path></code></td><td>Restrict exported symbols to JNI entry points; hides internal Swift symbols from the dynamic symbol table</td></tr><tr><td><code>--experimental-lto-mode=full</code></td><td>Full link-time optimization across all modules</td></tr><tr><td><code>-Xfrontend -internalize-at-link</code></td><td>Internalize Swift symbols at link time, enabling the linker to eliminate more dead code</td></tr></tbody></table><h3 id="Packageswift"><a href="#Packageswift">Package.swift</a></h3><p>Add the flags that don’t depend on a dynamic path directly to your <code>Package.swift</code>, conditioned on release builds for Android:</p><pre class="swift"><code>import PackageDescription
+
+let package = Package(
+  name: "MyLibrary",
+  products: [
+    .library(name: "MySwiftLibrary", type: .dynamic, targets: ["MySwiftLibrary"])
+  ],
+  dependencies: [
+    .package(url: "https://github.com/swiftlang/swift-java", from: "0.1.0"),
+  ],
+  targets: [
+    .target(
+      name: "MySwiftLibrary",
+      dependencies: [
+        .product(name: "SwiftJava", package: "swift-java")
+      ],
+      swiftSettings: [
+        .unsafeFlags(
+          ["-Osize", "-Xfrontend", "-internalize-at-link"],
+          .when(platforms: [.android], configuration: .release)
+        ),
+      ],
+      plugins: [
+        .plugin(name: "JExtractSwiftPlugin", package: "swift-java")
+      ]
+    )
+  ]
+)
+</code></pre><p>Then pass the remaining flags on the command line when invoking the build:</p><pre class="bash"><code>swift build \
+  --swift-sdk aarch64-unknown-linux-android28 \
+  -c release \
+  --experimental-lto-mode=full \
+  -Xlinker --version-script=.build/plugins/outputs/MyLibrary/MySwiftLibrary/JExtractSwiftPlugin/swift-java-jni-exports.map
+</code></pre><aside class="tip"><p class="label">Tip</p><p>Adjust the <code>--version-script</code> path to match your package name and target name. Run <code>find .build/plugins/outputs -name swift-java-jni-exports.map</code> after the first build if you are unsure of the exact path.</p></aside></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

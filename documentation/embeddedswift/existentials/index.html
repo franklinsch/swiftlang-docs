@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Working with existentials</title><meta content="Learn about restrictions on existentials that apply in Embedded Swift." name="description"><script src="../../../navigator-index-embedded-swift.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Embedded Swift</a></li><li>Working with existentials</li></ul></nav><hgroup><p>Article</p><h1>Working with existentials</h1></hgroup><p>Learn about restrictions on existentials that apply in Embedded Swift.</p></section><section id="Background"><h2><a href="#Background">Background</a></h2><p>Existentials (also known as “any” types) in Swift are a way to express a type-erased value, where the actual type is not known statically, and at runtime it can be any type that conforms to the specified protocol. Because the possible types can vary in size, the representation of such a value is an “existential container” and the actual represented value is stored either inline (when it fits) or indirectly as a pointer to a heap allocation. There are also multiple concrete representations of the existential container that are optimized for different constraints. For example, with class-bound existentials, the value does not make sense to ever store inline, so the size of the container is matched to hold exactly one pointer).</p><p>Existentials are somewhat restricted in Embedded Swift due to the requirement that all generics be fully specialized. Concretely, the following operations that are allowed in non-embedded Swift are prohibited in Embedded Swift:</p><ul><li><p>A value cannot be dynamically cast to an existential type.</p></li><li><p>Generic operations cannot be called on an existential value.</p></li><li><p>Existential values cannot be “opened” into a generic value.</p></li></ul><p>The restrictions are described in more detail below. Additionally, all compiler diagnostics related to Embedded Swift restrictions are documented as part of the <a href="https://docs.swift.org/compiler/documentation/diagnostics/embedded-restrictions/"><code>Embedded<wbr>Restrictions</code></a> diagnostic group, which can also be enabled in non-embedded Swift code to help ensure that the code will continue to work with Embedded Swift.</p><h2 id="Forming-existentials"><a href="#Forming-existentials">Forming existentials</a></h2><p>Embedded Swift allows and supports forming existentials of any kind:</p><pre class="swift"><code>protocol P { // ✅
+    func genericFoo&lt;T>(_ value: T)
+}
+
+extension Int: P { ... }
+class Base: P { ... }
+class Derived: Base { ... } // also conforms to P
+
+let existential: any P = ... // ✅, can be initialized with an Int, Base, Derived, etc.
+existential.foo() // ✅
+</code></pre><p>Existentials in Embedded Swift allow the “is” and “as!” / “as?” operators to check whether an existential holds a specific concrete type (or subclass thereof):</p><pre class="swift"><code>let existential: any P = ...
+if existential is Base { ... } // ✅
+guard let concrete = existential as? Derived else { ... } // ✅
+let concrete = existential as! Derived // ✅, and will trap at runtime if a different type is inside the existential
+</code></pre><h2 id="Restrictions-on-casting-to-existential-types"><a href="#Restrictions-on-casting-to-existential-types">Restrictions on casting to existential types</a></h2><p>Existentials can be formed only from a concrete type. It is not possible to form an existential by casting to it from another type. For example:</p><pre class="swift"><code>let existential: Any = ...
+
+if let p = existential as? any P { ... } // ❌, cannot cast to existential type "any P"
+let p = existential as! any P // ❌, cannot cast to existential type "any P"
+</code></pre><p>The same restriction applies to casting to an existential metatype, for example,</p><pre class="swift"><code>let anyType: Any.Type
+if let metaP = anyType as? (any Error).Type { ... } // ❌, cannot cast to existential metatype
+let metaP = anyType as! (any Error).Type // ❌, cannot cast to existential metatype
+</code></pre><h2 id="Restrictions-on-use-of-generics-on-existentials"><a href="#Restrictions-on-use-of-generics-on-existentials">Restrictions on use of generics on existentials</a></h2><p>You cannot use an existential to call a unbounded generic method from a protocol or an extension of a protocol. This is described in depth in <a href="../nonfinalgenericmethods/index.html">Restricting non-final generic methods</a>. For example:</p><pre class="swift"><code>protocol Q {
+  func genericFoo&lt;T>(t: T)
+}
+
+extension Q {
+  func genericBar&lt;T>(t: T) { }
+}
+
+let ex: any Q = ... // ✅
+ex.genericFoo(t: 42) // ❌, genericFoo is an unbounded generic
+ex.genericBar(t: 42) // ❌, genericBar is an unbounded generic
+</code></pre><h2 id="Alternatives-to-existentials"><a href="#Alternatives-to-existentials">Alternatives to existentials</a></h2><p>When existentials are not possible, or not desirable (for example, because the indirection on an existential causes an observation performance or code-size degradation), consider one of the following alternatives (which all have different tradeoffs and code structure implications):</p><p><b>(1) Avoid using an existential, use generics instead</b></p><pre class="swift"><code>protocol MyProtocol {
+    func write&lt;T>(t: T)
+}
+
+func usingProtocolAsGeneric(p: some MyProtocol) {
+    p.write(t: 42) // ✅
+}
+</code></pre><p><b>(2) If you only need a different type based on compile-time configuration (for example, mocking for unit testing), use #if and typealiases:</b></p><pre class="swift"><code>#if UNIT_TESTING
+typealias HWAccess = MMIOBasedHWAccess
+#else
+typealias HWAccess = MockHWAccess
+#endif
+
+let v = HWAccess()
+</code></pre><p><b>(3) If you only have a handful of tightly-coupled types that need to participate in an existential, use an enum instead:</b></p><pre class="swift"><code>enum E {
+    case type1(Type1)
+    case type2(Type2)
+    case type3(Type3)
+}
+</code></pre></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Language-features"><a href="#Language-features">Language features</a></h3><ul><li><a href="../languagesubset/index.html"><p class="api-collection">Reviewing the language subset</p></a><p>Learn about the Embedded Swift language subset compared to full Swift.</p></li><li><a href="../strings/index.html"><p class="api-collection">Using strings</p></a><p>Enable full Unicode-compliant string support in Embedded Swift.</p></li><li><a href="../conditionalcompilation/index.html"><p class="api-collection">Conditionalizing compilation for Embedded Swift</p></a><p>Share code between Embedded Swift and full Swift using conditional compilation.</p></li><li><a href="../libraries/index.html"><p class="api-collection">Using libraries and modules in Embedded Swift</p></a><p>Learn about the library setup and linkage model of Embedded Swift.</p></li><li><a href="../externaldependencies/index.html"><p class="api-collection">Managing external dependencies</p></a><p>Learn what external system dependencies to expect from Embedded Swift compilations.</p></li><li><a href="../nonfinalgenericmethods/index.html"><p class="api-collection">Restricting non-final generic methods</p></a><p>Learn why unbound generic methods aren’t allowed in Embedded Swift.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

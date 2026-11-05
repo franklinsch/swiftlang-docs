@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../../reference.css" rel="stylesheet"><title>init(_:)</title><meta content="Creates a new instance from the given string." name="description"><script src="../../../../navigator-index-swift-stdlib.js" defer></script><script src="../../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../../index.html">Standard Library</a></li><li><a href="../index.html">Double</a></li><li>init(_:)</li></ul></nav><hgroup><p>Initializer</p><h1>init(<wbr>_:)</h1></hgroup><p>Creates a new instance from the given string.</p><ul id="availability"><li aria-label="iOS 8.0+, Available on iOS 8.0 and later" title="Available on iOS 8.0 and later">iOS 8.0+</li><li aria-label="iPadOS 8.0+, Available on iPadOS 8.0 and later" title="Available on iPadOS 8.0 and later">iPadOS 8.0+</li><li aria-label="Mac Catalyst 13.0+, Available on Mac Catalyst 13.0 and later" title="Available on Mac Catalyst 13.0 and later">Mac Catalyst 13.0+</li><li aria-label="macOS 10.10+, Available on macOS 10.10 and later" title="Available on macOS 10.10 and later">macOS 10.10+</li><li aria-label="tvOS 9.0+, Available on tvOS 9.0 and later" title="Available on tvOS 9.0 and later">tvOS 9.0+</li><li aria-label="visionOS 1.0+, Available on visionOS 1.0 and later" title="Available on visionOS 1.0 and later">visionOS 1.0+</li><li aria-label="watchOS 2.0+, Available on watchOS 2.0 and later" title="Available on watchOS 2.0 and later">watchOS 2.0+</li></ul><pre id="declaration"><code><span class="keyword">init</span>?&lt;S>(_ <span class="internalParameter">text</span>: <span class="typeIdentifier">S</span>) <span class="keyword">where</span> <span class="typeIdentifier">S</span> : <a class="typeIdentifier" href="../../stringprotocol/index.html">StringProtocol</a></code></pre></section><section id="Parameters"><h2><a href="#Parameters">Parameters</a></h2><dl><dt>text</dt><dd><p>An input string to convert to a <code>Double?</code> instance.</p></dd></dl></section><section id="Discussion"><h2><a href="#Discussion">Discussion</a></h2><p>The string passed as <code>text</code> can represent a real number in decimal or hexadecimal format or can be in a special format representing infinity or NaN (“not a number”). If <code>text</code> is not in a recognized format, the optional initializer will fail and return <code>nil</code>.</p><p>The <code>text</code> string consists of an optional plus or minus sign character (<code>+</code> or <code>-</code>) followed by one of the following:</p><ul><li><p>A <i>decimal string</i> contains a significand consisting of one or more decimal digits that may include a decimal point:</p><pre><code>let c = Double("-1.0")
+// c == -1.0
+
+let d = Double("28.375")
+// d == 28.375
+</code></pre><p>A decimal string may also include an exponent following the significand, indicating the power of 10 by which the significand should be multiplied. If included, the exponent is separated by a single character, <code>e</code> or <code>E</code>, and consists of an optional plus or minus sign character and a sequence of decimal digits.</p><pre><code>let e = Double("2837.5e-2")
+// e == 28.375
+</code></pre></li><li><p>A <i>hexadecimal string</i> contains a significand consisting of <code>0X</code> or <code>0x</code> followed by one or more hexadecimal digits that may include a decimal point.</p><pre><code>let f = Double("0x1c.6")
+// f == 28.375
+</code></pre><p>A hexadecimal string may also include an exponent indicating the power of 2 by which the significand should be multiplied. If included, the exponent is separated by a single character, <code>p</code> or <code>P</code>, and consists of an optional plus or minus sign character and a sequence of decimal digits.</p><pre><code>let g = Double("0x1.c6p4")
+// g == 28.375
+</code></pre></li><li><p>The input strings <code>"inf"</code> or <code>"infinity"</code> (case insensitive) are converted to an infinite result:</p><pre><code>let i = Double("inf")
+// i == Double.infinity
+
+let j = Double("-Infinity")
+// j == -Double.infinity
+</code></pre></li><li><p>An input string of <code>"nan"</code> (case insensitive) is converted into a <i>NaN</i> value:</p><pre><code>let n = Double("-nan")
+// n?.isNaN == true
+// n?.sign == .minus
+</code></pre><p>A NaN string may also include a payload in parentheses following the <code>"nan"</code> keyword. The payload consists of a sequence of decimal digits, or the characters <code>0X</code> or <code>0x</code> followed by a sequence of hexadecimal digits. If the payload contains any other characters, it is ignored. If the value of the payload is larger than can be stored as the payload of a <code>Double.nan</code>, the least significant bits are used.</p><pre><code>let p = Double("nan(0x10)")
+// p?.isNaN == true
+// String(p!) == "nan(0x10)"
+</code></pre></li><li><p>An input string of <code>"snan"</code> (case insensitive) is converted into a <i>signaling NaN</i> value.  This form permits an optional payload in the same format as for a non-signaling NaN.</p></li></ul><p>A string in any other format than those described above or containing additional characters results in a <code>nil</code> value. For example, the following conversions result in <code>nil</code>:</p><pre><code>  Double(" 5.0")      // Includes whitespace
+  Double("±2.0")      // Invalid character
+  Double("0x1.25e4")  // Incorrect exponent format
+</code></pre><p>A decimal or hexadecimal string is converted to a <code>Double</code> instance using the IEEE 754 roundTiesToEven (default) rounding attribute. Values with absolute value smaller than one-half of <code>Double.leastNonzeroMagnitude</code> are rounded to plus or minus zero. Values with absolute value larger than <code>Double.greatestFiniteMagnitude</code> are rounded to plus or minus infinity.</p><pre><code>  let y = Double("1.23e-9999")
+  // y == 0.0
+  // y?.sign == .plus
+
+  let z = Double("-7.89e-7206")
+  // z == -0.0
+  // z?.sign == .minus
+
+  let r = Double("1.23e17802")
+  // r == Double.infinity
+
+  let s = Double("-7.89e7206")
+  // s == Double.-infinity
+</code></pre><aside class="note"><p class="label">Note</p><p>Prior to Swift 5.4, a decimal or hexadecimal input string whose value was too large to represent as a finite <code>Double</code> instance returned <code>nil</code> instead of <code>Double.infinity</code>.</p></aside></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Converting-Strings"><a href="#Converting-Strings">Converting Strings</a></h3><ul><li><a href="../init(_:)-15kej/index.html"><code><span class="identifier">init</span>?(<wbr>Substring)</code></a></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

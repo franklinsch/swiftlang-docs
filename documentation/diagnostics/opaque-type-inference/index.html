@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Underlying type inference for opaque result types (OpaqueTypeInference)</title><script src="../../../navigator-index-compiler-diagnostics.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section id="hero" class="article"><nav id="breadcrumbs"><ul><li><a href="../index.html">Swift compiler diagnostics</a></li><li><a href="../diagnostic-groups/index.html">Diagnostic groups</a></li><li>Underlying type inference for opaque result types (OpaqueTypeInference)</li></ul></nav><hgroup><p>Article</p><h1>Underlying type inference for opaque result types (OpaqueTypeInference)</h1></hgroup></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Opaque result types are a useful tool for abstracting the return type of a function or subscript, or type of a property. Although the concrete underlying type of an opaque type is hidden from clients, it is still inferred by the compiler, which enforces certain usage requirements:</p><ul><li><p>Property declarations with opaque types must have an initializer expression or getter, and functions or subscripts returning opaque types must have at least one <code>return</code> statement:</p></li></ul><pre class="swift"><code>let x: some Equatable // error: property declares an opaque return type, but has no initializer expression from which to infer an underlying type
+let y: some Equatable = 42 // OK
+let z: some Equatable { // Also OK
+  return "hello, " + "world!"
+}
+
+func foo() -> some Equatable { // error: function declares an opaque return type, but has no return statements in its body from which to infer an underlying type
+  fatalError("Unimplemented")
+}
+
+func bar() -> some Equatable { // OK
+  fatalError("Unimplemented")
+  return 42
+}
+</code></pre><ul><li><p>The underlying type of an opaque type must be unique. In other words, if a function or subscript returns an opaque type, it must return values of the same underlying type from every <code>return</code> statement in its body.</p></li></ul><pre class="swift"><code>func foo(bar: Bool) -> some Equatable { // error: function declares an opaque return type, but the return statements in its body do not have matching underlying types
+  if bar {
+    return "hello, world!" // note: return statement has underlying type 'String'
+  } else {
+    return 1 // note: return statement has underlying type 'Int'
+  }
+}
+
+func bar(baz: Bool) -> some Equatable { // OK, both branches of the if statement return a value of the same underlying type, Int.
+  if baz {
+    return 100
+  } else {
+    return 200
+  }
+}
+</code></pre><ul><li><p>Functions returning opaque types may be recursive. However, such functions must have at least one <code>return</code> statement that returns a concrete underlying type as opposed to the function’s own opaque result type. Additionally, recursive calls may not be used to create an infinitely recursive opaque type.</p></li></ul><pre class="swift"><code>func foo(_ x: Int) -> some Equatable { // error: function declares an opaque return type, but has no return statements in its body from which to infer an underlying type
+  // Not allowed because there aren't any non-recursive returns to infer the underlying type from.
+  return foo(x+1)
+}
+
+struct EquatableWrapper&lt;T: Equatable>: Equatable { var value: T }
+func foo() -> some Equatable { // error: function opaque return type was inferred as 'EquatableWrapper&lt;some Equatable>', which defines the opaque type in terms of itself
+  // Not allowed because the use of EquatableWrapper creates an infinitely recursive underlying type: EquatableWrapper&lt;EquatableWrapper&lt;EquatableWrapper&lt;...>>>...>
+  return EquatableWrapper(value: foo())
+}
+
+func bar(_ x: Int) -> some Equatable { // OK, the underlying type can be inferred from the second return statement.
+  if x > 0 {
+    return bar(x-1)
+  } else {
+    return x
+  }
+}
+</code></pre><p>To learn more about opaque result types, see the <a href="https://docs.swift.org/swift-book/documentation/the-swift-programming-language/opaquetypes">Opaque Types</a> section of <i>The Swift Programming Language</i>.</p></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><ul><li><a href="../dynamic-callable-requirements/index.html"><p class="api-collection">@dynamicCallable implementation requirements (DynamicCallable)</p></a></li><li><a href="../add-preconcurrency-import/index.html"><p class="api-collection">Add @preconcurrency import (AddPreconcurrencyImport)</p></a></li><li><a href="../always-available-domain/index.html"><p class="api-collection">Always enabled availability domains (AlwaysAvailableDomain)</p></a><p>Warnings that identify <code>@available</code> attributes and <code>if #available</code> statements that reference custom availability domains which have been permanently enabled.</p></li><li><a href="../always-unsafe/index.html"><p class="api-collection">Always unsafe (AlwaysUnsafe)</p></a></li><li><a href="../trailing-closure-matching/index.html"><p class="api-collection">Argument matching for trailing closures (TrailingClosureMatching)</p></a></li><li><a href="../actor-isolated-mutating-async/index.html"><p class="api-collection">Calling a mutating async actor-isolated method (ActorIsolatedMutatingAsync)</p></a></li><li><a href="../actor-isolated-call/index.html"><p class="api-collection">Calling an actor-isolated method from a synchronous nonisolated context (ActorIsolatedCall)</p></a></li><li><a href="../sendable-closure-captures/index.html"><p class="api-collection">Captures in a `@Sendable` closure (SendableClosureCaptures)</p></a></li><li><a href="../compilation-caching/index.html"><p class="api-collection">Compilation caching (CompilationCaching)</p></a><p>Errors and warnings related to the compiler’s CAS compilation caching.</p></li><li><a href="../string-interpolation-conformance/index.html"><p class="api-collection">Conforming to `StringInterpolationProtocol` (StringInterpolationConformance)</p></a></li><li><a href="../conversion-from-isolated-any-to-synchronous/index.html"><p class="api-collection">Conversion from `@isolated(any)` function type to synchronous function type (ConversionFromIsolatedAnyToSynchronous)</p></a></li><li><a href="../region-isolation-cross-isolation-data-race/index.html"><p class="api-collection">Cross-isolation data race (RegionIsolationCrossIsolationDataRace)</p></a></li><li><a href="../deprecated-declaration/index.html"><p class="api-collection">Deprecated declaration warnings (DeprecatedDeclaration)</p></a><p>Warnings related to deprecated APIs that may be removed in future versions and should be replaced with more current alternatives.</p></li><li><a href="../implementation-only-deprecated/index.html"><p class="api-collection">Deprecated implementation-only imports (ImplementationOnlyDeprecated)</p></a><p>Warnings that identify <code>import</code> declarations with the <code>@_implementationOnly</code> attribute.</p></li><li><a href="../dynamic-exclusivity/index.html"><p class="api-collection">Dynamic exclusivity (DynamicExclusivity)</p></a><p>Experimental</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>

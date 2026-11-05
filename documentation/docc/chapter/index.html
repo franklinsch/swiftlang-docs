@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en-US"><head><meta charset="utf-8"><meta content="width=device-width,initial-scale=1,viewport-fit=cover" name="viewport"><link href="../../../reference.css" rel="stylesheet"><title>Chapter</title><meta content="Organizes related tutorial pages into a chapter on a table of contents page." name="description"><script src="../../../navigator-index-docc-documentation.js" defer></script><script src="../../../navigator.js" defer></script></head><body><header><h2>Documentation</h2><span>Language: Swift</span></header><main><article><section><nav id="breadcrumbs"><ul><li><a href="../index.html">DocC</a></li><li>Chapter</li></ul></nav><hgroup><p>Directive</p><h1>Chapter</h1></hgroup><p>Organizes related tutorial pages into a chapter on a table of contents page.</p><ul id="availability"><li aria-label="Swift-DocC 5.5+, Available on Swift-DocC 5.5 and later" title="Available on Swift-DocC 5.5 and later">Swift-DocC 5.5+</li></ul><pre id="declaration"><code><span class="typeIdentifier">@Chapter</span>(name: <span class="typeIdentifier">String</span>) {
+    ...
+
+    <span class="typeIdentifier">@Image</span>(source: <span class="typeIdentifier">ResourceReference</span>, alt: <span class="typeIdentifier">String</span>?) { ... }
+    <span class="typeIdentifier">@TutorialReference</span>(tutorial: <span class="typeIdentifier">TopicReference</span>)
+}</code></pre></section><section id="Parameters"><h2><a href="#Parameters">Parameters</a></h2><dl><dt>name</dt><dd><p>The name of the chapter. <b>(required)</b></p></dd></dl></section><section id="Mentioned-In"><h2><a href="#Mentioned-In">Mentioned In</a></h2><ul><li><a href="../building-an-interactive-tutorial/index.html">Building an Interactive Tutorial</a></li></ul></section><section id="Overview"><h2><a href="#Overview">Overview</a></h2><p>Chapters appear on a table of contents page and help provide a sense of context and accomplishment as readers move through your tutorial content.</p><p><picture><source media="(prefers-color-scheme: light)" srcset="../../../images/org.swift.docc/tutorial-chapter@2x.png"><source media="(prefers-color-scheme: dark)" srcset="../../../images/org.swift.docc/tutorial-chapter~dark@2x.png"><img alt="A screenshot showing a chapter on a table of contents page." decoding="async" loading="lazy"></picture></p><p>Use <code>Chapter</code> directives to organize related tutorial pages into groupings. For each chapter, use the <code>name</code> parameter to specify a chapter name, and provide some descriptive text. Then, insert <a href="../tutorialreference/index.html"><code>Tutorial<wbr>Reference</code></a> directives for the tutorial pages each chapter contains. Optionally, use <a href="../image/index.html"><code>Image</code></a> directives to show images that illustrate the chapters’ content.</p><pre><code>@Tutorials(name: "SlothCreator") {
+    
+    ...
+    
+    @Chapter(name: "SlothCreator Essentials") {
+        @Image(source: chapter1-slothcreatorEssentials, alt: "A wireframe of an app interface that has an outline of a sloth and four buttons below the sloth. The buttons display the following symbols, from left to right: snowflake, fire, wind, and lightning.")
+        
+        Create custom sloths and edit their attributes and powers using SlothCreator.
+        
+        @TutorialReference(tutorial: "doc:Creating-Custom-Sloths")
+    }
+
+    ...
+    
+}
+</code></pre><h3 id="Group-Related-Chapters"><a href="#Group-Related-Chapters">Group Related Chapters</a></h3><p>If you need a second level of organization on a table of contents page, use <a href="../volume/index.html"><code>Volume</code></a> directives to organize related chapters into volume groupings.</p><pre><code>@Tutorials(name: "SlothCreator") {
+    @Intro(title: "Meet SlothCreator") {
+        
+        ...
+    }
+    
+    @Volume(name: "Getting Started") {
+        Building sloths, caring for them, and interacting with them.
+        
+        @Chapter(name: "SlothCreator Essentials") {
+            ...
+        }
+        
+        @Chapter(name: "Basic Sloth Care") {
+            ...
+        }
+        
+        @Chapter(name: "Basic Sloth Interaction") {
+            ...
+        }
+    }
+    
+    @Volume(name: "Climbing Higher") {
+        Taking your sloths to the next level.
+        
+        @Chapter(name: "Powering Up") {
+            ...
+        }
+    
+        ...
+    }
+    
+   ...
+}
+</code></pre><h3 id="Contained-Elements"><a href="#Contained-Elements">Contained Elements</a></h3><p>A chapter can contain the following items:</p><ul><li><p>term <a href="../image/index.html"><code>Image</code></a>: An image that represents the chapter’s content. <b>(optional)</b></p></li><li><p>term <a href="../tutorialreference/index.html"><code>Tutorial<wbr>Reference</code></a>: A reference to a tutorial page. A chapter must contain at least one tutorial page reference. <b>(optional)</b></p></li></ul><h3 id="Containing-Elements"><a href="#Containing-Elements">Containing Elements</a></h3><p>The following items can contain chapters:</p><ul><li><p><a href="../tutorials/index.html"><code>Tutorials</code></a></p></li><li><p><a href="../volume/index.html"><code>Volume</code></a></p></li></ul></section><section id="Topics"><h2><a href="#Topics">Topics</a></h2><h3 id="Referencing-Tutorials"><a href="#Referencing-Tutorials">Referencing Tutorials</a></h3><ul><li><a href="../tutorialreference/index.html"><code><span class="identifier">@Tutorial<wbr>Reference</span>(<span class="identifier">tutorial</span>: Topic<wbr>Reference)</code></a><p>Adds an individual tutorial page link to a chapter on a table of contents page.</p></li></ul><h3 id="Displaying-an-Image"><a href="#Displaying-an-Image">Displaying an Image</a></h3><p></p><ul><li><a href="../image/index.html"><code><span class="identifier">@Image</span>(<span class="identifier">source</span>: Resource<wbr>Reference, <span class="identifier">alt</span>: String)</code></a><p>Displays an image in a tutorial.</p></li></ul></section><section id="See-Also"><h2><a href="#See-Also">See Also</a></h2><h3 id="Organizing-Content"><a href="#Organizing-Content">Organizing Content</a></h3><ul><li><a href="../volume/index.html"><code><span class="identifier">@Volume</span>(<wbr>...)</code></a><p>Organizes related chapters into a volume on a tutorial’s table of contents page.</p></li></ul></section></article></main><footer><fieldset role="radiogroup"><legend>Select a color scheme preference</legend><label><input name="color-scheme" type="radio" value="light">Light</label><label><input name="color-scheme" type="radio" value="dark">Dark</label><label><input checked name="color-scheme" type="radio" value="auto">Auto</label></fieldset></footer></body></html>
